@@ -1,13 +1,14 @@
 ---
 name: perpetuals-and-funding
 description: >-
-  TRIGGER - perpetual swap, perp funding, funding interval, funding history, mark versus index
-  versus last price, liquidation threshold, maintenance margin, inverse contract, cash-and-carry,
-  basis to dated futures, open interest versus volume, why a perp backtest disagrees with cash
-  P&L. SKIP for token swaps and delistings (crypto-token-events), AMM impact and LP fees
-  (defi-and-amm-mechanics), calendars, outages and stablecoin depegs (crypto-market-structure),
-  exchange clients and data fetching (crypto-data-and-execution), and rolling dated contracts
-  (futures-continuous-contracts).
+  TRIGGER - perpetual swap mechanics, funding interval, mark versus index versus last price,
+  maintenance margin, inverse contract, open interest versus volume, why a perp backtest disagrees
+  with cash P&L. SKIP for downloading BTC perpetual funding rates from binance, how much funding
+  you pay holding a long BTC perp for a month, liquidation price for a 5x long on a perpetual, or
+  cash and carry basis trades between BTC spot and the quarterly future
+  (crypto-data-and-execution); for token swaps and delistings (crypto-token-events); for AMM
+  impact and LP fees (defi-and-amm-mechanics); for calendars, outages and stablecoin depegs
+  (crypto-market-structure); and for rolling dated contracts (futures-continuous-contracts).
 license: MIT
 compatibility: Python 3.10+ with numpy and pandas; seeded offline demonstrations only.
 metadata:

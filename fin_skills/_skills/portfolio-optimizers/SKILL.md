@@ -2,16 +2,16 @@
 name: portfolio-optimizers
 description: >-
   Turn expected returns and a covariance matrix into weights, and measure what the optimizer did
-  to your estimation error on the way. TRIGGER - portfolio optimization, mean-variance,
-  Markowitz, efficient frontier, tangency or max-Sharpe portfolio, minimum-variance portfolio,
-  long-only and budget constraints, scipy SLSQP or linprog for weights, Black-Litterman,
-  BlackLittermanModel, tau, Omega, market-implied prior, views matrix P and Q, risk parity, equal
-  risk contribution, ERC, inverse volatility, minimum CVaR, Rockafellar-Uryasev linear program,
-  1/N benchmark, DeMiguel Garlappi Uppal, weight turnover; "my optimizer puts 90% in one asset",
-  "the weights change completely every month". SKIP for choosing between optimizer libraries and
-  reporting the result (portfolio-and-risk), for the covariance matrix and its N > T failure
-  (covariance-and-risk-models), for expected returns (factor-models), for VaR and ES
-  (risk-measures-var-cvar), and for HRP and PyPortfolioOpt's API traps (lib-pyportfolioopt).
+  to your estimation error on the way. TRIGGER - Markowitz QP solver internals, SLSQP or linprog
+  weight constraints, Black-Litterman tau and Omega views matrix P and Q, equal risk contribution
+  ERC solver, Rockafellar-Uryasev CVaR linear program, 1/N benchmark, DeMiguel Garlappi Uppal,
+  weight turnover; "my optimizer puts 90% in one asset", "the weights change completely every
+  month". SKIP for general requests to optimize portfolio weights with mean variance, build a risk
+  parity portfolio, choose an optimizer library or compute Sharpe and drawdown
+  (portfolio-and-risk), for which backtesting library to use for a multi asset portfolio strategy
+  (backtesting-engines), for covariance matrices (covariance-and-risk-models), for expected
+  returns (factor-models), for VaR/ES (risk-measures-var-cvar), and for HRPOpt or PyPortfolioOpt
+  API traps (lib-pyportfolioopt).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -245,3 +245,5 @@ and routes between optimizer libraries;
 `../../../fin-libraries/skills/lib-riskfolio/SKILL.md` and
 `../../../fin-libraries/skills/lib-skfolio/SKILL.md` are the per-library deep dives, including
 hierarchical risk parity.
+
+- For choosing a multi-asset portfolio backtesting engine (`vectorbt`, `zipline`, `backtrader`, `nautilus_trader`), see `backtesting-engines`.

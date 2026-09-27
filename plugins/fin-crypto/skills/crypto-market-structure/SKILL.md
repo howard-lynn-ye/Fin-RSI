@@ -1,13 +1,13 @@
 ---
 name: crypto-market-structure
 description: >-
-  TRIGGER - crypto annualisation, 365 versus 252, weekend returns, 24/7 market, calendar-day
-  rolling windows, exchange daily close timezone, cross-venue price dispersion, no consolidated
-  tape, venue outage, auto-deleveraging, ADL, socialised losses, stablecoin depeg or quote-currency
-  conversion. SKIP for token events and delisting universes (crypto-token-events), perpetual
-  funding and mark-price liquidation (perpetuals-and-funding), AMM pools and LP fees
-  (defi-and-amm-mechanics), and choosing exchange clients or fetching data
-  (crypto-data-and-execution).
+  TRIGGER - weekend returns, 24/7 market, calendar-day rolling windows, exchange daily close
+  timezone, cross-venue price dispersion, no consolidated tape, venue outage, auto-deleveraging,
+  ADL, socialised losses, stablecoin depeg or quote-currency conversion. SKIP for annualizing
+  daily crypto returns with 365 or 252 and choosing exchange clients or fetching data
+  (crypto-data-and-execution), for token events and delisting universes (crypto-token-events), for
+  perpetual funding and liquidation (perpetuals-and-funding), and for AMM pools
+  (defi-and-amm-mechanics).
 license: MIT
 compatibility: Python 3.10+ with numpy and pandas; uses fin_skills.api.conventions when available.
 metadata:

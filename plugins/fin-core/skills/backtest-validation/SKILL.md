@@ -1,18 +1,17 @@
 ---
 name: backtest-validation
 description: >-
-  Decide whether a result survives the number of things you tried. TRIGGER - "I tried N strategies
-  or parameters and the best one..."; overfitting, p-hacking, data snooping, "is this result
-  real", "is this statistically significant"; deflated Sharpe, DSR, PSR, the trial ledger;
-  White's Reality Check, Hansen SPA, StepM, model confidence set, arch.bootstrap; purged or
-  combinatorial cross-validation, embargo, walk-forward, "cross validation on time series without
-  leaking"; a grid search, hyperopt or AutoML picked a winner; triple-barrier labeling,
-  meta-labeling, fractional differentiation, mlfinlab. Load whenever a Sharpe ratio is about to
-  be offered as evidence for trading. SKIP for plain performance metrics - Sharpe, Sortino, CAGR,
-  drawdown (portfolio-and-risk); for PBO, CSCV and the minimum backtest length
-  (backtest-overfitting); and for Bonferroni, Holm, Benjamini-Hochberg or Benjamini-Yekutieli
-  over a ledger of trials (multiple-testing-ledger). The deflated and probabilistic Sharpe
-  ratios are computed HERE.
+  Decide whether a result survives the number of things you tried. TRIGGER - I tried 200 parameter
+  combinations and the best one has Sharpe 2.5, is this backtest result statistically real,
+  overfitting, p-hacking, data snooping, "is this statistically significant"; compute the deflated
+  sharpe ratio, DSR, PSR, the trial ledger; White's Reality Check, Hansen SPA, StepM, model
+  confidence set, arch.bootstrap; purged or combinatorial cross-validation, embargo, walk-forward,
+  how do I do cross validation on time series without leaking; a grid search, hyperopt or AutoML
+  picked a winner; triple-barrier labeling, meta-labeling, fractional differentiation, mlfinlab.
+  Load whenever a Sharpe ratio is offered as evidence for trading. SKIP for plain performance
+  metrics - Sharpe, Sortino, CAGR, drawdown (portfolio-and-risk); for PBO, CSCV and minimum
+  backtest length (backtest-overfitting); and for Bonferroni, Holm, BH or BY over a trial ledger
+  (multiple-testing-ledger).
 license: MIT
 metadata:
   version: "0.1.0"

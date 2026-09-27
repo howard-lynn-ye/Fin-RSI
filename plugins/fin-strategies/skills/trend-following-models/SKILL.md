@@ -4,14 +4,15 @@ description: >-
   Build a trend-following or time-series-momentum strategy the way the paper defines it, and
   measure the two look-aheads that flatter its backtest. TRIGGER - time series momentum, TSMOM,
   Moskowitz Ooi Pedersen, 12-month momentum, trend following, managed futures, CTA replication;
-  Donchian channel, turtle rules, breakout system, 20-day high, moving average crossover, golden
-  cross, 50/200 MA; volatility targeting, vol scaling, ex-ante volatility, 40% vol target, risk
-  parity across futures, inverse-vol sizing, ATR sizing; "my trend backtest has a Sharpe of 3",
-  "should I skip the most recent month", "do I trade the close or the next open". SKIP for
-  computing the indicator itself and whether it repaints (signal-construction), for
-  cross-sectional ranking of many names (factor-and-timeseries-research), for combining several
-  alphas into one (alpha-combination-and-neutralization), for how much to bet given an edge
-  (position-sizing-kelly), and for the engine that runs the loop (backtesting-engines).
+  Donchian channel, turtle rules, breakout system, 20-day high, golden cross, 50/200 MA;
+  volatility targeting, vol scaling, ex-ante volatility, 40% vol target, risk parity across
+  futures, inverse-vol sizing, ATR sizing; "my trend backtest has a Sharpe of 3", "should I skip
+  the most recent month". SKIP for backtesting a moving average crossover on AAPL or SPY or
+  choosing the engine that runs the loop (backtesting-engines), for when a strategy has a Sharpe
+  of 4 and what to check (research-integrity-guards), for computing indicators
+  (signal-construction), for cross-sectional ranking (factor-and-timeseries-research), for
+  combining alphas (alpha-combination-and-neutralization), and for Kelly sizing
+  (position-sizing-kelly).
 license: MIT
 metadata:
   version: "0.1.0"

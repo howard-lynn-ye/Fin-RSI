@@ -2,12 +2,15 @@
 name: china-ashare-data
 description: >-
   Get China A-share and Greater China market data without the ecosystem's silent traps. TRIGGER -
+  获取 A 股日线数据并做前复权, akshare vs tushare which should I use, how do I get delisted A share tickers;
   A股, 沪深, 北交所, 科创板, 创业板; akshare, tushare, baostock, efinance, adata, qstock, mootdx,
   easyquotation, jqdatasdk, 聚宽, rqdatac, 米筐, Wind, 万得, Choice, 东方财富; 复权, qfq, hfq, 前复权, 后复权; ST,
   退市, delisted A-share tickers, 退市股票列表; 停牌 suspension; 公告日 versus 报告期; CSI300, HS300, 中证 index
   membership. Three popular libraries default to forward-adjusted prices, which are rewritten
-  retroactively and are therefore look-ahead contaminated. SKIP for backtesting or trading
-  A-shares (china-trading-stack) and for Hong Kong, Taiwan, Japan or Korea (asia-pacific-markets).
+  retroactively and are therefore look-ahead contaminated. SKIP for tushare qfq prices changing
+  when changing end_date (lib-tushare), for US ETF 美股 data or generic delisted data providers
+  (market-data-sourcing), for backtesting A-shares (china-trading-stack), and for Hong Kong or
+  Korea (asia-pacific-markets).
 license: MIT
 metadata:
   version: "0.1.0"

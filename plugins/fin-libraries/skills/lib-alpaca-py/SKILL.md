@@ -3,15 +3,16 @@ name: lib-alpaca-py
 description: >-
   Alpaca's current Python SDK, which defaults to the paper host but lets url_override silently
   send live orders from a client that believes it is in the sandbox. TRIGGER - import alpaca, pip
-  install alpaca-py, TradingClient, StockHistoricalDataClient, CryptoHistoricalDataClient,
-  submit_order, LimitOrderRequest, MarketOrderRequest, OrderSide, TimeInForce, client_order_id,
-  url_override, paper=True, BaseURL.TRADING_PAPER, paper-api.alpaca.markets, bracket OCO OTO
-  orders, trail_percent, IEX vs SIP feed, Algo Trader Plus, alpaca-trade-api, APCA_API_BASE_URL;
-  an order rejected asynchronously for time-in-force or price precision. Memory is stale here:
-  alpaca-trade-api was deprecated in 2024 and defaulted to LIVE, whereas alpaca-py 0.44.0
-  (2026-08-11) declares paper=True - the widely repeated warning is inverted. SKIP for Interactive
-  Brokers and for the general order-safety patterns (broker-execution-apis). SKIP for choosing
-  between libraries, or when no library is named - the domain skill's job.
+  install alpaca-py, how do I place a bracket order on alpaca, TradingClient,
+  StockHistoricalDataClient, CryptoHistoricalDataClient, submit_order, LimitOrderRequest,
+  MarketOrderRequest, OrderSide, TimeInForce, client_order_id, url_override, paper=True,
+  BaseURL.TRADING_PAPER, paper-api.alpaca.markets, bracket OCO OTO orders, trail_percent, IEX vs
+  SIP feed, Algo Trader Plus, alpaca-trade-api, APCA_API_BASE_URL; an order rejected
+  asynchronously for time-in-force or price precision. Memory is stale here: alpaca-trade-api was
+  deprecated in 2024 and defaulted to LIVE, whereas alpaca-py 0.44.0 (2026-08-11) declares
+  paper=True. SKIP for Interactive Brokers and for general order-safety patterns
+  (broker-execution-apis). SKIP for choosing between libraries, or when no library is named - the
+  domain skill's job.
 license: MIT
 metadata:
   version: "0.1.0"

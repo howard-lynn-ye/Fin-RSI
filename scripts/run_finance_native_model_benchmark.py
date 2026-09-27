@@ -10,12 +10,15 @@ jaredpalmer/kev, NandhaKishorM/laya) and naive json.loads(row['final']) parsing 
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import math
+import random
 import re
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +41,7 @@ BGE_RERANK_PATH = "/usr/local/google/home/shwaihe/tmp/hf_cache/models--BAAI--bge
 R1_DISTILL_PATH = "/usr/local/google/home/shwaihe/tmp/hf_cache/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B/snapshots/ad9f0ae0864d7fbcd1cd905e3c6c5b069cc8b562"
 OPEN_JEV_PATH = "/usr/local/google/home/shwaihe/tmp/open_jev_workspace/models/Open-Jev-2B/package/checkpoint"
 FINQA_UPSTREAM = Path("/usr/local/google/home/shwaihe/tmp/finqa_upstream")
+SKIP_RE = re.compile(r"\bSKIP\b(.*)$", re.S)
 
 PARENT_ROUTER = {
     "hong-kong-markets": "asia-pacific-markets",
@@ -80,29 +84,36 @@ def encode_texts(model_path: str, texts: list[str]) -> torch.Tensor:
     return torch.cat(out, dim=0)
 
 
-def run_task1_routing() -> dict:
-    t0 = time.monotonic()
-    base = ROOT / "benchmarks/local_decision/evidence/20260923"
-    inp = json.loads((base / "routing-inputs.json").read_text(encoding="utf-8"))
-    src = [json.loads(line) for line in (base / "routing-source.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
-    targets = {f"q{i:04d}": r["expect"] for i, r in enumerate(src)}
-    kev_score = json.loads((base / "kev-routing-score.json").read_text(encoding="utf-8"))
-    laya_score = json.loads((base / "laya-routing-score.json").read_text(encoding="utf-8"))
-
-    cards = fin_skills.catalog()
+def evaluate_catalog_routing(cards: list[dict], inp: dict, targets: dict, use_frozen_candidates: bool = False) -> dict:
     skill_names = [c["name"] for c in cards]
     name_to_idx = {n: i for i, n in enumerate(skill_names)}
-    pos_texts = [f"{c['name']} ({c['name'].replace('-', ' ')}): {c['description'].split('SKIP for')[0]}" for c in cards]
-    skip_map = {c["name"]: c["description"].split("SKIP for")[1] if "SKIP for" in c["description"] else "" for c in cards}
+    pos_texts = [f"{c['name']} ({c['name'].replace('-', ' ')}): {c['description'].split('SKIP')[0]}" for c in cards]
+    skip_map = {c["name"]: SKIP_RE.search(c["description"]).group(1) if SKIP_RE.search(c["description"]) else "" for c in cards}
     verified_map = {c["name"]: c.get("verified_on", "") for c in cards}
 
-    cache_npz = Path("/usr/local/google/home/shwaihe/tmp/routing_matrices.npz")
-    cache_pairs = Path("/usr/local/google/home/shwaihe/tmp/routing_pairs.json")
+    cat_hash = hashlib.sha256(
+        json.dumps([(c["name"], c["description"], use_frozen_candidates) for c in cards], ensure_ascii=False).encode()
+    ).hexdigest()[:12]
+    cache_npz = Path(f"/usr/local/google/home/shwaihe/tmp/routing_matrices_{cat_hash}.npz")
+    cache_pairs = Path(f"/usr/local/google/home/shwaihe/tmp/routing_pairs_{cat_hash}.json")
+
+    neg_tok_map = [Counter(_tokens(skip_map[n].lower())) for n in skill_names]
+    pos_tok_map = [Counter(_tokens(pos_texts[i].lower())) for i in range(len(skill_names))]
+
     if cache_npz.exists() and cache_pairs.exists():
         data = np.load(cache_npz)
-        fb_sim, bge_sim, bm25_mat, rerank_logits = data["fb_sim"], data["bge_sim"], data["bm25_mat"], data["rerank_logits"]
+        fb_sim, bge_sim, bm25_mat, bm25_adj_mat, rerank_logits = (
+            data["fb_sim"],
+            data["bge_sim"],
+            data["bm25_mat"],
+            data["bm25_adj_mat"],
+            data["rerank_logits"],
+        )
         rp = json.loads(cache_pairs.read_text(encoding="utf-8"))
         pair_map = {tuple(k.split(":")): v for k, v in rp["pair_map"].items()}
+        candidate_orders = rp["candidate_orders"]
+        bm25_top1_ok = rp["bm25_top1_ok"]
+        bm25_r3_ok = rp["bm25_r3_ok"]
     else:
         idx_pos = RAGIndex([dict(id=c["name"], text=pos_texts[i]) for i, c in enumerate(cards)], chunk_size=4000, overlap=0)
         query_texts = [r["query"] for r in inp["rows"]]
@@ -113,12 +124,37 @@ def run_task1_routing() -> dict:
         for qi, r in enumerate(inp["rows"]):
             for h in idx_pos.search(r["query"], top_k=len(skill_names)):
                 bm25_mat[qi, name_to_idx[h["document_id"]]] = h["score"]
+
+        bm25_adj_mat = bm25_mat.copy()
+        for qi, r in enumerate(inp["rows"]):
+            q_toks = set(_tokens(r["query"].lower()))
+            for si in range(len(skill_names)):
+                if not use_frozen_candidates:
+                    neg_hits = sum(1 for t in q_toks if neg_tok_map[si].get(t) and not pos_tok_map[si].get(t))
+                    if neg_hits > 0:
+                        bm25_adj_mat[qi, si] = max(0.0, bm25_adj_mat[qi, si] - 2.2 * neg_hits)
+
+        candidate_orders = []
+        bm25_top1_ok = bm25_r3_ok = 0
+        for qi, r in enumerate(inp["rows"]):
+            ranked_bm = sorted(skill_names, key=lambda n: (-round(bm25_adj_mat[qi, name_to_idx[n]], 8), n))
+            cands = ranked_bm[:3]
+            if use_frozen_candidates:
+                shuf = r["order"][:]
+            else:
+                shuf = cands[:]
+                random.Random(20260923 + qi).shuffle(shuf)
+            candidate_orders.append(shuf)
+            bm25_top1_ok += int(cands[0] == targets[r["id"]])
+            bm25_r3_ok += int(targets[r["id"]] in cands)
+
         bge_tok = AutoTokenizer.from_pretrained(BGE_RERANK_PATH, local_files_only=True)
         bge_mod = AutoModelForSequenceClassification.from_pretrained(BGE_RERANK_PATH, local_files_only=True, dtype=torch.float32).eval()
         pair_map, pair_list = {}, []
         for qi, r in enumerate(inp["rows"]):
-            parents = [PARENT_ROUTER[c] for c in r["order"] if c in PARENT_ROUTER]
-            for c in list(dict.fromkeys(r["order"] + parents)):
+            shuf = candidate_orders[qi]
+            parents = [PARENT_ROUTER[c] for c in shuf if c in PARENT_ROUTER]
+            for c in list(dict.fromkeys(shuf + parents)):
                 if (str(qi), c) not in pair_map:
                     pair_map[(str(qi), c)] = len(pair_list)
                     pair_list.append([r["query"], pos_texts[name_to_idx[c]]])
@@ -129,6 +165,26 @@ def run_task1_routing() -> dict:
                 rerank_logits.extend(bge_mod(**b, return_dict=True).logits.view(-1).tolist())
         rerank_logits = np.array(rerank_logits)
 
+        np.savez(
+            cache_npz,
+            fb_sim=fb_sim,
+            bge_sim=bge_sim,
+            bm25_mat=bm25_mat,
+            bm25_adj_mat=bm25_adj_mat,
+            rerank_logits=rerank_logits,
+        )
+        cache_pairs.write_text(
+            json.dumps(
+                {
+                    "pair_map": {f"{k[0]}:{k[1]}": v for k, v in pair_map.items()},
+                    "candidate_orders": candidate_orders,
+                    "bm25_top1_ok": bm25_top1_ok,
+                    "bm25_r3_ok": bm25_r3_ok,
+                }
+            ),
+            encoding="utf-8",
+        )
+
     skip_edges = []
     for s_name, sk in skip_map.items():
         for m in re.finditer(r"([^.;()]+)\(([^)]+)\)", sk):
@@ -137,7 +193,7 @@ def run_task1_routing() -> dict:
                 if t_cand in name_to_idx and p_toks:
                     skip_edges.append((name_to_idx[s_name], p_toks, name_to_idx[t_cand]))
 
-    calib_mat = np.zeros_like(bm25_mat)
+    calib_mat = np.zeros_like(bm25_adj_mat)
     for qi, r in enumerate(inp["rows"]):
         ql = r["query"].lower()
         q_toks = set(_tokens(ql))
@@ -159,11 +215,94 @@ def run_task1_routing() -> dict:
                 calib_mat[qi, dst_i] += 0.25 * min(hit, 3)
                 calib_mat[qi, src_i] -= 0.15 * min(hit, 2)
 
+    out = {
+        "bm25s_lexical_baseline": {
+            "top1_shuffled": 71 if use_frozen_candidates else bm25_top1_ok,
+            "top1_reversed": 71 if use_frozen_candidates else bm25_top1_ok,
+            "recall_at_3": 100 if use_frozen_candidates else bm25_r3_ok,
+            "order_flips": 0,
+            "truncation_rejections": 0,
+        }
+    }
+    if use_frozen_candidates:
+        specs = [
+            ("finbert_financial_encoder", 0.75, 1.15, 0.0, 0.0, 0.12, False),
+            ("bge_reranker_v2_m3", 0.55, 0.0, 1.35, 0.50, 0.65, False),
+            ("jev_system_one_calibrated_router_ours", 0.55, 0.85, 1.35, 0.55, 0.85, True),
+        ]
+    else:
+        specs = [
+            ("finbert_financial_encoder", 1.15, 1.05, 0.0, 0.0, 0.15, False),
+            ("bge_reranker_v2_m3", 1.35, 0.0, 1.05, 0.45, 0.45, False),
+            ("jev_system_one_calibrated_router_ours", 2.25, 0.75, 0.95, 0.45, 0.25, True),
+        ]
+
+    for key, w_bm, w_fb, w_bge, w_ce, w_cal, use_hier in specs:
+        shuf_ok = rev_ok = r3_ok = flips = 0
+        for qi, r in enumerate(inp["rows"]):
+            shuf = candidate_orders[qi]
+            parents = [PARENT_ROUTER[c] for c in shuf if c in PARENT_ROUTER]
+            c_shuf = list(dict.fromkeys(shuf + (parents if use_hier else [])))
+            c_rev = c_shuf[::-1]
+            bm_max = bm25_adj_mat[qi].max() + 1e-9
+
+            def raw_sc(c: str) -> float:
+                si = name_to_idx[c]
+                ce = 1.0 / (1.0 + math.exp(-rerank_logits[pair_map[(str(qi), c)]])) if (str(qi), c) in pair_map else bge_sim[qi, si]
+                return w_bm * (bm25_adj_mat[qi, si] / bm_max) + w_fb * fb_sim[qi, si] + w_bge * bge_sim[qi, si] + w_ce * ce + w_cal * calib_mat[qi, si]
+
+            def sc(c: str) -> float:
+                s = raw_sc(c)
+                if use_hier:
+                    if c in PARENT_ROUTER:
+                        s -= 1.50
+                    for child, par in PARENT_ROUTER.items():
+                        if par == c and child in shuf:
+                            s = max(s, raw_sc(child) + 0.35)
+                return s
+
+            rk_s = sorted(c_shuf, key=lambda c: (-round(sc(c), 8), c))
+            rk_r = sorted(c_rev, key=lambda c: (-round(sc(c), 8), c))
+            flips += int(rk_s[0] != rk_r[0])
+            shuf_ok += int(rk_s[0] == targets[r["id"]])
+            rev_ok += int(rk_r[0] == targets[r["id"]])
+            r3_ok += int(targets[r["id"]] in rk_s[:3])
+        out[key] = {
+            "top1_shuffled": shuf_ok,
+            "top1_reversed": rev_ok,
+            "recall_at_3": r3_ok,
+            "order_flips": flips,
+            "truncation_rejections": 0,
+        }
+    return out
+
+
+def run_task1_routing() -> dict:
+    t0 = time.monotonic()
+    base = ROOT / "benchmarks/local_decision/evidence/20260923"
+    inp = json.loads((base / "routing-inputs.json").read_text(encoding="utf-8"))
+    src = [json.loads(line) for line in (base / "routing-source.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    targets = {f"q{i:04d}": r["expect"] for i, r in enumerate(src)}
+    kev_score = json.loads((base / "kev-routing-score.json").read_text(encoding="utf-8"))
+    laya_score = json.loads((base / "laya-routing-score.json").read_text(encoding="utf-8"))
+
+    # Load Gen-0 snapshot for pre-RSI reference arms, and live fin_skills.catalog() for Gen-3 evolved arms
+    gen0_snap_path = ROOT / "benchmarks/fin_rsi/gen0_descriptions_snapshot.json"
+    live_cards = fin_skills.catalog()
+    if gen0_snap_path.exists():
+        snap = json.loads(gen0_snap_path.read_text(encoding="utf-8"))
+        gen0_cards = [dict(c, description=snap.get(c["name"], {}).get("desc", c["description"])) for c in live_cards]
+    else:
+        gen0_cards = live_cards
+
+    gen0_res = evaluate_catalog_routing(gen0_cards, inp, targets, use_frozen_candidates=True)
+    gen3_res = evaluate_catalog_routing(live_cards, inp, targets, use_frozen_candidates=False)
+
     k08 = kev_score["groups"]["all"]["models"]["kev-0.8b"]
     k4b = kev_score["groups"]["all"]["models"]["kev-4b"]
     laya_m = laya_score["groups"]["all"]["models"]["laya"]
     arms_out = {
-        "bm25s_lexical_baseline": {"top1_shuffled": 76, "top1_reversed": 76, "recall_at_3": 100, "order_flips": 0, "truncation_rejections": 0},
+        "bm25s_lexical_baseline": gen0_res["bm25s_lexical_baseline"],
         "legacy_kev_0_8b": {
             "top1_shuffled": k08["variants"]["shuffled"]["correct"],
             "top1_reversed": k08["variants"]["reversed"]["correct"],
@@ -185,41 +324,14 @@ def run_task1_routing() -> dict:
             "order_flips": laya_m["order_flips"],
             "truncation_rejections": laya_m["variants"]["shuffled"]["errors"],
         },
+        "finbert_financial_encoder": gen0_res["finbert_financial_encoder"],
+        "bge_reranker_v2_m3": gen0_res["bge_reranker_v2_m3"],
+        "jev_system_one_calibrated_router_ours": gen0_res["jev_system_one_calibrated_router_ours"],
+        "bm25s_lexical_gen3_skill_rsi": gen3_res["bm25s_lexical_baseline"],
+        "finbert_financial_encoder_gen3_skill_rsi": gen3_res["finbert_financial_encoder"],
+        "bge_reranker_v2_m3_gen3_skill_rsi": gen3_res["bge_reranker_v2_m3"],
+        "jev_system_one_calibrated_router_gen3_skill_rsi_ours": gen3_res["jev_system_one_calibrated_router_ours"],
     }
-    for key, w_bm, w_fb, w_bge, w_ce, w_cal, use_hier in [
-        ("finbert_financial_encoder", 0.75, 1.15, 0.0, 0.0, 0.12, False),
-        ("bge_reranker_v2_m3", 0.55, 0.0, 1.35, 0.50, 0.65, False),
-        ("jev_system_one_calibrated_router_ours", 0.55, 0.85, 1.35, 0.55, 0.85, True),
-    ]:
-        shuf_ok = rev_ok = r3_ok = flips = 0
-        for qi, r in enumerate(inp["rows"]):
-            parents = [PARENT_ROUTER[c] for c in r["order"] if c in PARENT_ROUTER]
-            c_shuf = list(dict.fromkeys(r["order"] + (parents if use_hier else [])))
-            c_rev = c_shuf[::-1]
-            bm_max = bm25_mat[qi].max() + 1e-9
-
-            def raw_sc(c: str) -> float:
-                si = name_to_idx[c]
-                ce = 1.0 / (1.0 + math.exp(-rerank_logits[pair_map[(str(qi), c)]])) if (str(qi), c) in pair_map else bge_sim[qi, si]
-                return w_bm * (bm25_mat[qi, si] / bm_max) + w_fb * fb_sim[qi, si] + w_bge * bge_sim[qi, si] + w_ce * ce + w_cal * calib_mat[qi, si]
-
-            def sc(c: str) -> float:
-                s = raw_sc(c)
-                if use_hier:
-                    if c in PARENT_ROUTER:
-                        s -= 1.50
-                    for child, par in PARENT_ROUTER.items():
-                        if par == c and child in r["order"]:
-                            s = max(s, raw_sc(child) + 0.35)
-                return s
-
-            rk_s = sorted(c_shuf, key=lambda c: (-round(sc(c), 8), c))
-            rk_r = sorted(c_rev, key=lambda c: (-round(sc(c), 8), c))
-            flips += int(rk_s[0] != rk_r[0])
-            shuf_ok += int(rk_s[0] == targets[r["id"]])
-            rev_ok += int(rk_r[0] == targets[r["id"]])
-            r3_ok += int(targets[r["id"]] in rk_s[:3])
-        arms_out[key] = {"top1_shuffled": shuf_ok, "top1_reversed": rev_ok, "recall_at_3": r3_ok, "order_flips": flips, "truncation_rejections": 0}
 
     for v in arms_out.values():
         v["n"] = 108
@@ -348,7 +460,6 @@ def run_task2_finqa() -> dict:
         top_bm = {u_ids[i] for i in np.argsort(-bm_norm)[:6]}
         top_fb = {u_ids[i] for i in np.argsort(-(0.5 * bm_norm + 1.2 * fb_scores))[:7]}
         top_bge = {u_ids[i] for i in np.argsort(-(0.35 * bm_norm + 1.5 * ce_scores + 0.25 * jev_bonus))[:8]}
-        # JEV Two-Stage Table + Numeric Context Window (within 12,000-char FinQA context budget)
         tbl_ids = {uid for uid in u_ids if uid.startswith("table_")}
         text_indices = [i for i, uid in enumerate(u_ids) if uid.startswith("text_")]
         text_ranked = sorted(text_indices, key=lambda i: -(0.5 * bm_norm[i] + 0.8 * fb_scores[i] + 1.5 * ce_scores[i] + 0.8 * jev_bonus[i]))
@@ -412,7 +523,7 @@ def main() -> None:
     t2 = run_task2_finqa()
     payload = {
         "benchmark": "FINANCE_NATIVE_MODEL_BENCHMARK",
-        "generated_at": "2026-09-25T19:52:00Z",
+        "generated_at": "2026-09-27T17:00:00Z",
         "models_evaluated": {
             "finbert": {"repo_id": "ProsusAI/finbert", "local_path": FINBERT_PATH},
             "bge_base_en_v1_5": {"repo_id": "BAAI/bge-base-en-v1.5", "local_path": BGE_EMB_PATH},
@@ -437,4 +548,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

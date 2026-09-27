@@ -1,0 +1,109 @@
+\section{Cross-episode memory and governed operator evolution}
+\label{sec:fly}
+Foundation language models are stateless across sessions: once an interaction ends,
+the model retains no memory of whether its previous trading strategy made or lost money.
+Fine-tuning the entire LLM with gradient descent after each trading day is impractical,
+computationally expensive, and prone to overfitting on noisy financial markets.
+
+To provide cross-episode adaptation without altering LLM weights, we couple an external
+associative memory module inspired by the fruit-fly mushroom body \cite{huang2024memory}
+with \textbf{Governed Financial Recursive Self-Improvement (\texttt{Fin-RSI})}.
+In biological systems, the mushroom body maps complex sensory features into sparse
+representations and uses dopamine-gated synaptic plasticity to associate sensory cues
+with delayed rewards and punishments across multiple decay rates. Complementarily,
+\texttt{Fin-RSI} evolves the mathematical form of the multimodal pooling, subspace
+shrinkage, and covariance-adaptation operators across generational research cycles inside
+a SHA-256-locked evaluation sandbox.
+
+\paragraph{Associative memory and complete-episode updates.}
+Our memory module projects market state features and candidate actions into a high-dimensional
+sparse representation (64 Kenyon Cells). When the agent evaluates a new trading decision, it
+queries the memory module for associative preference scores based on prior experiences in similar
+market regimes. Because financial rewards are delayed over a holding horizon $T$, for positive
+account values $W_0,\ldots,W_T$, the target episode return is
+\begin{equation}
+G = \sum_{t=0}^{T-1}\log(W_{t+1}/W_t)
+  = \log(W_T/W_0).
+\end{equation}
+This return accounts for transaction fees, daily price fluctuations, and final liquidation.
+The verification interface checks timestamp ordering, return accounting, and data lineage;
+trades relying on look-ahead data or unadjusted prices are rejected before reaching the
+memory module, preventing spurious profits from corrupting associative weights. Valid
+negative returns remain active learning signals, and each verified trade receipt updates
+memory exactly once after settlement clears.
+
+\paragraph{Governed Financial RSI (\texttt{Fin-RSI}) physical operator evolution.}
+While associative memory adapts readout weights within a fixed feature parameterization,
+raw multimodal financial sequences suffer from three structural pathologies diagnosed by our
+physical probes: (i) pre-LayerNorm scalar weight cancellation
+($\|\nabla_{w_t}\operatorname{LN}(w_t \mathbf{h}_t)\|_2 = 0$),
+(ii) effective sample size ($\operatorname{ESS} = (\sum_t w_t)^2 / \sum_t w_t^2$) collapse during
+intraday announcement or forum bursts, and (iii) small-cap subspace variance inflation under
+uniform scalar shrinkage. Guided by these probes inside a read-only evaluation harness
+(\texttt{HARNESS\_LOCK.json}), \texttt{Fin-RSI} progressively evolves the multimodal operator across
+three mathematical generations:
+\begin{enumerate}
+\item \textbf{Gen-1 (Post-Encoder Value-Space Bounded-Salience \& Burst Conservation):}
+To eliminate pre-LayerNorm scale cancellation and bound single-post leverage during intraday
+bursts, \texttt{Fin-RSI} moves salience weighting into post-encoder value space with temperature-bounded
+activation ($\tau = 2.5$) and Log-Sum-Exp (LSE) intraday burst partition conservation:
+\begin{equation}
+\begin{aligned}
+w_t &= \exp\!\bigl(\tau \tanh(z_t / \tau)\bigr), \\
+\bar{\mathbf{v}}_{i,t} &= \frac{\sum_{m \in \mathcal{B}_{i,t}} w_m \mathbf{v}_{i,t,m}}{\sum_{m \in \mathcal{B}_{i,t}} w_m},
+\end{aligned}
+\end{equation}
+lifting sequence effective sample size by $\RSIESSRatio{}\times$ ($\operatorname{ESS}: \RSIUnboundedESS{} \to \RSIBoundedESS{}$).
+\item \textbf{Gen-2 (Per-Channel Subspace Precision Gate \& Positive-Part James--Stein Denoising):}
+Because fundamental catalyst channels and noisy retail chatter exhibit heterogeneous signal-to-noise
+ratios across $D=16$ latent dimensions, \texttt{Fin-RSI} replaces scalar shrinkage with a per-channel
+precision gate $\boldsymbol{\alpha}_{i,t,d}$ conditioned on local effective sample size $n_{i,t}^{\text{eff}}$
+and cross-modal divergence $\Delta_{i,t,d} = |\mathbf{q}_{i,t,d}^{\text{soc}} - \mathbf{q}_{i,t,d}^{\text{ann}}|$, paired
+with positive-part James--Stein empirical-Bayes shrinkage \cite{james1961estimation}:
+\begin{equation}
+\resizebox{0.86\columnwidth}{!}{$\displaystyle
+\begin{aligned}
+\alpha_{i,t,d} &= \frac{n_{i,t}^{\text{eff}}}{n_{i,t}^{\text{eff}} + \kappa_d (1 + \Delta_{i,t,d})}, \\
+\hat{\theta}_{i,t,d}^{\text{JS}+} &= \mu_{0,d} + \left(1 - \frac{(D-2)\sigma_d^2}{\|\tilde{\mathbf{q}}_{i,t} - \boldsymbol{\mu}_0\|_2^2}\right)_{\!\!+}(\tilde{q}_{i,t,d} - \mu_{0,d}).
+\end{aligned}
+$}
+\end{equation}
+\item \textbf{Gen-3 Champion (Streaming Rank-1 Woodbury Covariance Adaptation \& Fisher Gate):}
+To capture non-stationary cross-channel correlations without $\mathcal{O}(D^3)$ batch inversion or
+look-ahead leakage, \texttt{Fin-RSI} maintains a streaming rank-1 Sherman--Morrison--Woodbury
+inverse covariance matrix \cite{sherman1950adjustment} with exponential forgetting factor $\gamma \in (0,1)$
+and modulates the 64-KC readout via a Bernoulli Fisher information uncertainty gate
+$g_{\text{Fisher}}(p_t) = 4 p_t(1-p_t)$ on the isotonic-calibrated probability $p_t \in (0,1)$:
+\begin{equation}
+\resizebox{0.86\columnwidth}{!}{$\displaystyle
+\begin{aligned}
+\boldsymbol{\Sigma}_t^{-1} &= \gamma^{-1}\boldsymbol{\Sigma}_{t-1}^{-1} - \frac{\gamma^{-2}\boldsymbol{\Sigma}_{t-1}^{-1}\mathbf{u}_t\mathbf{u}_t^\top\boldsymbol{\Sigma}_{t-1}^{-1}}{1 + \gamma^{-1}\mathbf{u}_t^\top\boldsymbol{\Sigma}_{t-1}^{-1}\mathbf{u}_t}, \\
+g_{\text{Fisher}}(p_t) &= 4 p_t(1-p_t),
+\end{aligned}
+$}
+\end{equation}
+where $\mathbf{u}_t = \sqrt{1-\gamma}\,\hat{\boldsymbol{\theta}}_t^{\text{JS}+}$. A candidate generation is
+promoted only if it simultaneously passes all 37 counterfactual guards and dominates predecessors across
+macro returns, sparse small-cap slices, and crisis regimes.
+\end{enumerate}
+
+\paragraph{Isolating learning from risk filtering.}
+To verify that performance gains reflect genuine associative learning rather than
+passive risk reduction, our benchmark compares the updating memory against a frozen-memory
+control and a volatility exposure gate under identical historical splits and costs
+(\texttt{FLY\_GATE\_CONTROL\_RESULTS.json}). On a single daily BTC-USDC trajectory ($720$ bars,
+$5$ seeds), plastic \texttt{fly} achieves $+5.58\%$ mean test return vs.\ $+2.39\%$ for
+\texttt{frozen} ($\Delta = +3.19\%$) and $+3.26\%$ for linear \texttt{ordinary} without the
+volatility gate, whereas under the static 80th-percentile volatility gate both \texttt{fly\_gated}
+($-0.58\%$) and \texttt{frozen\_gated} ($-0.02\%$) are constrained on the single crypto trend path.
+Across $21$ independent market trajectories ($7$ equity boards $\times$ $3$ non-overlapping 3-year
+regimes, $2018\text{--}2026$, \PanelBalancedRows{} 2D-balanced rows, $M=5$ seeds) with complete-episode checked
+feedback ($G = \log(W_T/W_0)$), holding the 80th-percentile volatility gate, transaction fees
+($8\text{ bps}$), and chronological splits strictly identical, \texttt{learn\_with\_gate} achieves
+a mean annualized Sharpe of $\mathbf{\FlyPairedLearnSharpe{} \pm 0.14}$ compared to $\mathbf{\FlyPairedFrozenSharpe{} \pm 0.11}$
+for \texttt{frozen\_with\_gate} ($\Delta = \mathbf{\FlyPairedDeltaSharpe{} \pm 0.15}$, paired $t = \mathbf{\FlyPairedTStat{}}$,
+$p < 10^{-7}$, winning $21/21$ trajectories), $\mathbf{\FlyPairedNoGateSharpe{} \pm 0.16}$ for un-gated \texttt{learn\_no\_gate},
+and $\mathbf{\FlyPairedLinearSharpe{} \pm 0.09}$ for dense linear \texttt{ordinary\_with\_gate} (which cannot
+separate non-linear contrarian-vs.-momentum regime interactions that sparse 64-KC Kenyon Cell
+expansion resolves).
+

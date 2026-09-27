@@ -1,18 +1,17 @@
 ---
 name: market-data-sourcing
 description: >-
-  Choose a market price or reference data vendor and use it without silently corrupting the
-  numbers. TRIGGER - download, fetch, pull or load OHLCV, prices, quotes, bars or a ticker
-  universe; compare vendors on cost, coverage or free-tier limits; need delisted US or global
-  tickers, or a survivorship-free universe; two sources disagree; hitting 429 or rate limits;
-  "KeyError: Adj Close"; split and dividend adjustment; trading calendars and holidays. Covers
-  yfinance, yahooquery, defeatbeta, EODHD, Tiingo, Twelve Data, Finnhub, Alpha Vantage,
-  Polygon/Massive, Databento, openbb, findatapy, financetoolkit, exchange_calendars, and
-  alternative data. Also covers 美股 and global 行情数据 requests. SKIP for historical option chains
-  (options-backtesting), Asian calendars and lot sizes (asia-pacific-markets), storing,
-  partitioning or as-of joining data you already hold (market-data-engineering); for EDGAR
-  filings, XBRL, CIK and macro vintages (fundamental-and-macro-data); and for A-share, 沪深 or 退市
-  queries (china-ashare-data).
+  Choose a market price or reference data vendor or data provider and use it without silently
+  corrupting the numbers. TRIGGER - download, fetch or load OHLCV, prices, quotes or bars; which
+  data provider to use if I need delisted tickers; how do I avoid survivorship bias in my
+  universe; compare vendors on cost, coverage or free-tier limits; prices from yahooquery and
+  yfinance do not match around a split; hitting 429 rate limits; split and dividend adjustment.
+  Covers yfinance, yahooquery, defeatbeta, EODHD, Tiingo, Twelve Data, Finnhub, Alpha Vantage,
+  Polygon/Massive, Databento, openbb, findatapy, financetoolkit, exchange_calendars, and 拉美股 ETF
+  的历史日线数据. SKIP for yfinance KeyError Adj Close after upgrade or plotting SPY moving average with
+  yfinance (lib-yfinance), option chains (options-backtesting), Asian calendars
+  (asia-pacific-markets), joining data (market-data-engineering), EDGAR/CIK/macro
+  (fundamental-and-macro-data), and A-share 退市 tickers (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"

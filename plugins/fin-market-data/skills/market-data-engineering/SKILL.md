@@ -2,13 +2,15 @@
 name: market-data-engineering
 description: >-
   Store, join and parallelize market data you already hold, without corrupting it. TRIGGER - as-of
-  join, merge_asof, join_asof, ASOF JOIN, "join quotes to trades", aligning signals to prices;
-  reading or writing Parquet, Feather, HDF5 or CSV of market data; choosing between pandas,
-  polars, DuckDB, pyarrow, dask or ray; a time-series store such as ArcticDB, QuestDB, ClickHouse,
-  TimescaleDB or kdb; storing years of minute bars for thousands of tickers; a dataset too big for
-  memory; partitioning; timestamps or timezones coming back wrong; float precision on prices or
-  volume; "different numbers when I parallelise". SKIP for choosing a data VENDOR
-  (market-data-sourcing) - this skill starts once the bytes are yours.
+  join, merge_asof is matching the wrong quote, join_asof, ASOF JOIN, join my signal table to the
+  quote table at the right timestamp, join quotes to trades, aligning signals to prices; reading
+  or writing Parquet, Feather, HDF5 or CSV of market data; choosing between pandas, polars,
+  DuckDB, pyarrow, dask or ray; a time-series store such as ArcticDB, QuestDB, ClickHouse,
+  TimescaleDB or kdb; how to store 10 years of minute bars for 3000 tickers; a dataset too big for
+  memory; partitioning; timestamps come back wrong after writing to parquet; float precision on
+  prices or volume; my backtest gives different numbers when I parallelise it. SKIP for choosing a
+  data VENDOR (market-data-sourcing) and for polars join_asof gave wrong rows silently
+  (lib-polars).
 license: MIT
 metadata:
   version: "0.1.0"

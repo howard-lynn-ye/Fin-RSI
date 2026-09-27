@@ -1,17 +1,17 @@
 ---
 name: ex-dividend-and-rebate-interest
 description: >-
-  Handle bonds that trade ex-dividend, where accrued interest goes negative and the buyer is
-  paid rebate interest instead of paying it. TRIGGER - gilt, UK gilt, ex-dividend, ex-div,
-  ex-coupon, exCouponPeriod, rebate interest, negative accrued interest, "my accrued interest
-  is negative", "accrued should be negative but isn't", seven business days before the coupon,
-  quasi-coupon date, DMO formulae, "Formulae for Calculating Gilt Prices from Yields",
-  ql.FixedRateBond exCouponPeriod, ql.Period(-7, ql.Days), record date vs ex-date on a bond,
-  3.5% War Loan, JGB and gilt settlement. SKIP for ordinary positive accrued and day-count
-  choice (bond-conventions-and-accrued), for price-to-yield solving in general
-  (yield-measures-and-bill-quotes), for index-linked gilt indexation lags
-  (../../../fin-models/skills/term-structure-models), and for QuantLib's evaluationDate global
-  (../../../fin-libraries/skills/lib-quantlib).
+  Handle bonds that trade ex-dividend, where accrued interest goes negative and the buyer is paid
+  rebate interest instead of paying it. TRIGGER - gilt, UK gilt, ex-dividend, ex-div, ex-coupon,
+  exCouponPeriod, rebate interest, negative accrued interest, "my accrued interest is negative",
+  "accrued should be negative but isn't", seven business days before the coupon, quasi-coupon
+  date, DMO formulae, "Formulae for Calculating Gilt Prices from Yields", ql.FixedRateBond
+  exCouponPeriod, ql.Period(-7, ql.Days), record date vs ex-date on a bond, 3.5% War Loan, JGB and
+  gilt settlement. SKIP for pricing an American put option with dividends (option-pricing-models),
+  for a short call getting assigned before ex-dividend (options-backtesting), for ordinary
+  positive accrued and day-count choice (bond-conventions-and-accrued), for price-to-yield solving
+  (yield-measures-and-bill-quotes), for index-linked gilt lags (term-structure-models), and for
+  QuantLib evaluationDate (lib-quantlib).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -190,3 +190,5 @@ usually ends in the wrong place.
 - `../../../fin-models/skills/term-structure-models/SKILL.md` — curve construction; the
   index-linked gilt formulae in the same DMO document (8-month and 3-month indexation lags)
   belong with inflation modelling, not here.
+
+- For pricing American or European equity options with discrete or continuous dividends, see `option-pricing-models`.

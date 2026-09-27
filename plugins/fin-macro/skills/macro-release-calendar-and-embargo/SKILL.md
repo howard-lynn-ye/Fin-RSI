@@ -2,16 +2,15 @@
 name: macro-release-calendar-and-embargo
 description: >-
   Build the timestamp at which a macro number becomes tradeable - release date, clock time,
-  timezone - and know where the release mechanics changed under your sample. TRIGGER -
-  release calendar, economic calendar, release date vs reference date, available_at,
-  as-of join on a macro series, "when was this number published", 8:30 ET, embargo,
-  press lock-up, media lockup, pre-release access, WASDE noon, EIA Wednesday 10:30, natural
-  gas storage Thursday, holiday release schedule, "why is my macro feature one day early",
-  forward-fill a monthly series onto daily bars, DST offset on a release timestamp,
-  event-study window around a print. SKIP for vintages and revisions to the value itself
-  (real-time-macro-backtesting), for where the series live (fundamental-and-macro-data), for
-  exchange sessions and holidays (us-market-rules), and for measuring fills you already have
-  (execution-cost-analysis).
+  timezone - and know where the release mechanics changed under your sample. TRIGGER - release
+  calendar, economic calendar, release date vs reference date, available_at, as-of join on a macro
+  series, "when was this number published", 8:30 ET, embargo, press lock-up, media lockup,
+  pre-release access, WASDE noon, EIA Wednesday 10:30, natural gas storage Thursday, holiday
+  release schedule, "why is my macro feature one day early", forward-fill a monthly series onto
+  daily bars, DST offset on a release time, event-study window around a print. SKIP for joining a
+  signal table to a quote table at the right timestamp (market-data-engineering), for vintages and
+  revisions (real-time-macro-backtesting), for where the series live (fundamental-and-macro-data),
+  for exchange sessions (us-market-rules), and for measuring fills (execution-cost-analysis).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -231,3 +230,5 @@ study. numpy + pandas, seed 20260909, under 1 s, no network.
   `../../../fin-core/skills/us-market-rules/SKILL.md`.
 - What a fill actually costs once you have one —
   `../../../fin-core/skills/execution-cost-analysis/SKILL.md`.
+
+- For general signal-to-quote table as-of joins (`merge_asof`, `join_asof`) and Parquet timestamp storage, see `market-data-engineering`.

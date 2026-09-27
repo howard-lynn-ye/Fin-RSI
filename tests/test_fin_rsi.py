@@ -214,3 +214,43 @@ def test_evaluate_rsi_pareto_gate_promotion_and_rejection() -> None:
         res["arm_evaluations"]["Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC"]["verdict"]
         == "PROMOTED_CHAMPION"
     )
+
+
+def test_skill_level_rsi_evolution_report_and_harness_gates() -> None:
+    import hashlib
+    import json
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    lock_path = root / "benchmarks/fin_rsi/SKILL_HARNESS_LOCK.json"
+    report_path = root / "benchmarks/SKILL_RSI_EVOLUTION_REPORT.json"
+    assert lock_path.exists()
+    assert report_path.exists()
+
+    lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
+    for rel, info in lock_data["files"].items():
+        actual_sha = hashlib.sha256((root / rel).read_bytes()).hexdigest()
+        assert actual_sha == info["sha256"], f"Harness lock mismatch on {rel}"
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["total_skills_in_catalog"] == 129
+    assert report["max_description_length_chars"] <= 1024
+    assert report["gate_receipts"]["eval_triggers_exit_code"] == 0
+    assert report["gate_receipts"]["eval_blind_exit_code"] == 0
+    assert report["gate_receipts"]["validate_exit_code"] == 0
+
+    g0 = report["generations"]["Gen-0_Unoptimized_Wave2_Catalog"]
+    g1 = report["generations"]["Gen-1_Contrastive_TRIGGER_Amplification"]
+    g2 = report["generations"]["Gen-2_Orthogonal_Negative_SKIP_Disambiguation"]
+    g3 = report["generations"]["Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync"]
+
+    assert g0["eval_triggers"]["top1_hits"] == 72
+    assert g1["eval_triggers"]["top1_hits"] == 103
+    assert g2["eval_triggers"]["top1_hits"] == 108
+    assert g2["eval_triggers"]["thin_margins_count"] == 0
+    assert g3["eval_triggers"]["top1_hits"] == 108
+    assert g3["eval_triggers"]["routed_correct"] == 108
+    assert g3["eval_triggers"]["thin_margins_count"] == 0
+    assert g3["eval_triggers"]["min_margin"] >= 0.15
+    assert g3["eval_blind"]["correct"] == 108
+    assert g3["multi_encoder_routing"]["jev_system_one_calibrated_router_ours"]["top1_shuffled"] == 108
+

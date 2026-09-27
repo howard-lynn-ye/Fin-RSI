@@ -2,15 +2,16 @@
 name: portfolio-and-risk
 description: >-
   Turn signals into weights, and compute performance metrics that are actually correct. TRIGGER -
-  portfolio weights, allocation, rebalancing, mean-variance, Black-Litterman, risk parity, HRP,
-  HERC, NCO, efficient frontier, covariance shrinkage or denoising, PyPortfolioOpt, riskfolio,
-  skfolio, cvxportfolio; or computing Sharpe, Sortino, Calmar, CAGR, annualized volatility, max
-  drawdown, VaR, CVaR, beta, alpha, a tearsheet, quantstats, pyfolio, empyrical, ffn, or
-  performance attribution. Load before quoting any performance number: popular libraries disagree
-  on identical input, one silently discards the risk-free rate you pass it, and an absurdly
-  negative Sharpe has one known cause. SKIP for the optimizer's own mathematics and what it does
-  to estimation error (portfolio-optimizers), and for whether the result survives multiple
-  testing (backtest-validation).
+  optimize portfolio weights with mean variance, build a risk parity portfolio, portfolio weights,
+  allocation, rebalancing, mean variance, Black-Litterman, risk parity, HRP, HERC, NCO, efficient
+  frontier, covariance shrinkage or denoising, PyPortfolioOpt, riskfolio, skfolio, cvxportfolio;
+  or compute the Sharpe ratio and max drawdown of this return series, Sortino, Calmar, CAGR,
+  annualized volatility, VaR, CVaR, beta, alpha, a tearsheet, quantstats, pyfolio, empyrical is
+  giving me a Sharpe of -65, ffn, or performance attribution. Load before quoting any performance
+  number: popular libraries disagree on identical input, and an absurdly negative Sharpe has one
+  known cause. SKIP for the optimizer's internal estimation-error math (portfolio-optimizers), for
+  quantstats cagr ignoring risk free rate (lib-quantstats), and for multiple testing
+  (backtest-validation).
 license: MIT
 metadata:
   version: "0.1.0"

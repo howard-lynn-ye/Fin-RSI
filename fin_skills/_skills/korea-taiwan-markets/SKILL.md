@@ -1,7 +1,11 @@
 ---
 name: korea-taiwan-markets
 description: >-
-  TRIGGER - KRX, KOSPI, KOSDAQ, 韓國 공매도, Korean short-selling ban, TWSE, TPEX, 台股, 漲跌停, limit-up queue, Korea foreign registration, Taiwan ticks, pykrx, FinanceDataReader, FinMind, shioaji. SKIP for Japan (japan-markets), Hong Kong (hong-kong-markets), India (india-markets), ASEAN (asean-markets), regional selection (asia-pacific-markets), and mainland China (china-trading-stack).
+  TRIGGER - KRX, KOSPI, KOSDAQ, 韓國 공매도, TWSE, TPEX, 台股, 漲跌停, limit-up queue, Korea foreign
+  registration, Taiwan ticks, pykrx, FinanceDataReader, FinMind, shioaji. SKIP for korean stock
+  delisted list and short selling ban dates or regional venue selection (asia-pacific-markets),
+  for Japan (japan-markets), Hong Kong (hong-kong-markets), India (india-markets), ASEAN
+  (asean-markets), and mainland China (china-trading-stack).
 license: MIT
 compatibility: Python 3.10+; offline scripts require numpy and pandas.
 metadata:

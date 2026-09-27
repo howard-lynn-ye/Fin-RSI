@@ -3,14 +3,14 @@ name: lib-pyportfolioopt
 description: >-
   Textbook mean-variance and Black-Litterman optimizer whose HRPOpt silently accepts a price
   matrix where it requires returns and returns plausible garbage. TRIGGER - pypfopt,
-  PyPortfolioOpt, EfficientFrontier, HRPOpt, CovarianceShrinkage, DiscreteAllocation,
-  BlackLittermanModel, EfficientCVaR, EfficientSemivariance, CLA, mean_historical_return,
-  capm_return, clean_weights, max_sharpe, min_volatility, portfolio_performance,
-  risk_models.risk_matrix, "efficient frontier", "whole-share allocation". Memory is stale - the
-  repo moved to the PyPortfolio org and 1.6.0 shipped 2026-02-26 after three dormant years under a
-  new maintainer. SKIP for Marcenko-Pastur denoising, HERC or NCO (lib-riskfolio) and for
-  GridSearchCV over portfolio models (lib-skfolio). SKIP for choosing between libraries, or when
-  no library is named - the domain skill's job.
+  PyPortfolioOpt, HRPOpt gave me nonsense weights, EfficientFrontier, HRPOpt, CovarianceShrinkage,
+  DiscreteAllocation, BlackLittermanModel, EfficientCVaR, EfficientSemivariance, CLA,
+  mean_historical_return, capm_return, clean_weights, max_sharpe, min_volatility,
+  portfolio_performance, risk_models.risk_matrix, "efficient frontier", "whole-share allocation".
+  Memory is stale - the repo moved to the PyPortfolio org and 1.6.0 shipped 2026-02-26 after three
+  dormant years under a new maintainer. SKIP for Marcenko-Pastur denoising, HERC or NCO
+  (lib-riskfolio) and for GridSearchCV over portfolio models (lib-skfolio). SKIP for choosing
+  between libraries, or when no library is named - the domain skill's job.
 license: MIT
 metadata:
   version: "0.1.0"

@@ -2,14 +2,14 @@
 name: broker-execution-apis
 description: >-
   Connect to a broker and place orders without accidentally trading live money. TRIGGER - connect
-  to Interactive Brokers, TWS, IB Gateway, ib_async, ib_insync, ibapi, Alpaca, Schwab, schwab-py,
-  Tastytrade, Tradier or Robinhood; place, modify or cancel an order; read positions or balances;
-  set up paper trading; order types, time-in-force, bracket or OCO orders, client order ID; FIX,
-  quickfix, simplefix; "make sure I don't send a live order"; a broker connection being refused.
-  Load before any code that can transmit an order. SKIP for crypto exchanges and ccxt
-  (crypto-data-and-execution), and for vnpy, CTP, QMT or any Chinese broker gateway
-  (china-trading-stack). This skill answers TWS/Gateway port and connection failures on its own -
-  the fin-libraries deep dive is optional and most installs will not have it.
+  to Interactive Brokers and read my positions, TWS, IB Gateway, TWS paper trading port keeps
+  refusing the connection, ib_async, ib_insync, ibapi, Schwab, schwab-py, Tastytrade, Tradier or
+  Robinhood; modify or cancel an order; read positions or balances; set up paper trading; order
+  types, time-in-force, OCO orders, client order ID; FIX, quickfix, simplefix; make sure this
+  script cannot accidentally send a real live order; a broker port or connection being refused.
+  Load before any code that can transmit an order. SKIP for how to place a bracket order on alpaca
+  (lib-alpaca-py), for crypto exchanges and ccxt (crypto-data-and-execution), and for vnpy, CTP,
+  QMT or any Chinese broker gateway (china-trading-stack).
 license: MIT
 metadata:
   version: "0.1.0"

@@ -37,7 +37,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 PKG = ROOT / "fin_skills"
-HAND_WRITTEN = {"__init__.py"}          # kept as-is; everything else under fin_skills/ is generated
+HAND_WRITTEN = {"__init__.py", "fin_rsi.py"}  # kept as-is; everything else under fin_skills/ is generated
 # Hand-written packages that sit ON TOP of the generated modules and survive regeneration:
 #   algorithms/ capability inventory, suitability routing and algorithm execution
 #   api/      the unified Guard interface and the Bundle container
@@ -71,8 +71,9 @@ def namespace(plugin: str) -> str:
 def generate(out: Path) -> dict[str, list[tuple[str, str]]]:
     """Write the package tree into `out`. Returns {namespace: [(module, skill), ...]}."""
     out.mkdir(parents=True, exist_ok=True)
-    if (PKG / "__init__.py").exists() and out.resolve() != PKG.resolve():
-        shutil.copy2(PKG / "__init__.py", out / "__init__.py")
+    for hw in HAND_WRITTEN:
+        if (PKG / hw).exists() and out.resolve() != PKG.resolve():
+            shutil.copy2(PKG / hw, out / hw)
 
     by_ns: dict[str, list[tuple[str, str]]] = {}
     for script in sorted(ROOT.glob("plugins/*/skills/*/scripts/*.py")):

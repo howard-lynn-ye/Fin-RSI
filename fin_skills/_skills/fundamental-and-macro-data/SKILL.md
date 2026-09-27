@@ -2,13 +2,14 @@
 name: fundamental-and-macro-data
 description: >-
   Company fundamentals and macro series with correct point-in-time semantics. TRIGGER - 10-K,
-  10-Q, 8-K, 13F, Forms 3/4/5, filings, EDGAR, XBRL, accession number, CIK, "which CIK is this
-  ticker", ticker-to-CIK mapping, edgartools; parsing an income statement or balance sheet out of
-  a filing; revenue, EPS or balance-sheet history as it was known on a past date; restatements;
-  earnings dates; or CPI, GDP, payrolls, unemployment, interest rates, FRED, ALFRED, data vintages
-  and revisions. Load before joining ANY fundamental or macro series to prices: the obvious join
-  is a look-ahead bug, and the SEC frames API cannot be made point-in-time. SKIP for price and
-  OHLCV vendors (market-data-sourcing) and Chinese filings (china-ashare-data).
+  10-Q, 8-K, 13F, Forms 3/4/5, filings, EDGAR, XBRL, accession number, CIK, what CIK maps to this
+  ticker, ticker-to-CIK mapping, edgartools; pull 10-K filings from EDGAR and parse the income
+  statement or balance sheet; get Apple quarterly revenue, EPS or balance-sheet history as it was
+  known in 2019 or on a past date; restatements; earnings dates; or CPI, need GDP data without the
+  later revisions, payrolls, unemployment, interest rates, FRED, ALFRED, data vintages and
+  revisions. Load before joining ANY fundamental or macro series to prices: the obvious join is a
+  look-ahead bug, and the SEC frames API cannot be made point-in-time. SKIP for price and OHLCV
+  vendors (market-data-sourcing) and Chinese filings (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"

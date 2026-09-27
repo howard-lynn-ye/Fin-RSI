@@ -5,13 +5,12 @@ description: >-
   the standard par-reprice check cannot see. TRIGGER - OIS discounting, CSA discounting,
   collateral discounting, multi-curve, dual curve, projection curve vs discount curve, tenor
   basis, "my swap reprices at par but the PV01 is wrong", swap annuity, fixedLegBPS,
-  DiscountingSwapEngine, RelinkableYieldTermStructureHandle, linkTo, "QuantLib NPV is exactly
-  0.0", exogenous discounting rate helpers, bootstrapping a SOFR curve against an OIS discount
-  curve, swaption numeraire, forward premium. SKIP for computing the compounded SOFR fixing
-  itself (sofr-and-rfr-compounding), for what a legacy LIBOR trade falls back to
-  (libor-transition-and-fallbacks), for bond duration and DV01
-  (duration-convexity-and-dv01), and for curve bootstrapping and interpolation in general
-  (../../../fin-models/skills/term-structure-models).
+  DiscountingSwapEngine, RelinkableYieldTermStructureHandle, linkTo, exogenous discounting rate
+  helpers, bootstrapping a SOFR curve against an OIS discount curve, swaption numeraire, forward
+  premium. SKIP for freqtrade stoploss filled at stop price (lib-freqtrade), for QuantLib NPV
+  returning 0.0 (lib-quantlib), for compounded SOFR fixing (sofr-and-rfr-compounding), for legacy
+  LIBOR fallbacks (libor-transition-and-fallbacks), for bond duration and DV01
+  (duration-convexity-and-dv01), and for curve bootstrapping (term-structure-models).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -191,3 +190,5 @@ most common way a QuantLib pricing script produces a plausible zero.
   handle lifetimes, and `ql.Date` being day-first.
 - `../../../fin-core/skills/derivatives-pricing/SKILL.md` — 🚨 `rateslib` is not open source;
   QuantLib term structures are the permissive route for everything above.
+
+- For crypto bot backtest stop-price fill assumptions (`stoploss_on_exchange`), see `lib-freqtrade`.

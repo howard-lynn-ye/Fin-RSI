@@ -2,16 +2,15 @@
 name: factor-models
 description: >-
   Build long-short factor portfolios from a characteristic panel and test the alpha with standard
-  errors that survive serial correlation. TRIGGER - factor model, Fama-French, Fama-MacBeth,
-  cross-sectional regression, decile or quintile long-short sort, 2x3 sort, SMB and HML, value-
-  weight vs equal-weight portfolio, characteristic panel, alpha t-stat, Newey-West, HAC standard
-  errors, cov_type="HAC" maxlags, Ken French Data Library, F-F_Research_Data_Factors, book-to-
-  market, 11-1 momentum; "my factor has a t-stat of 15", "should I lag the signal", "my HML does
-  not match Ken French", "joining monthly factors to daily returns". SKIP for scoring one alpha
-  signal with alphalens, IC decay or GARCH (factor-and-timeseries-research), for the covariance
-  matrix a factor model implies (covariance-and-risk-models), for turning expected returns into
-  weights (portfolio-optimizers), and for counting the specifications you tried
-  (backtest-validation).
+  errors that survive serial correlation. TRIGGER - factor model, Fama-French, decile or quintile
+  long-short sort, 2x3 sort, SMB and HML, value-weight vs equal-weight portfolio, characteristic
+  sort, alpha t-stat, Newey-West, HAC standard errors, cov_type="HAC" maxlags, Ken French Data
+  Library, F-F_Research_Data_Factors, book-to-market, 11-1 momentum; "my factor has a t-stat of
+  15", "should I lag the signal", "my HML does not match Ken French", "joining monthly factors to
+  daily returns". SKIP for running a Fama-MacBeth regression on a panel, scoring one alpha signal
+  with alphalens, IC decay or event studies (factor-and-timeseries-research), for covariance
+  matrices (covariance-and-risk-models), for portfolio weights (portfolio-optimizers), and for
+  counting tried specifications (backtest-validation).
 license: MIT
 metadata:
   version: "0.1.0"

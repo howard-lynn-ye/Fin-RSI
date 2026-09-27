@@ -4,14 +4,14 @@ description: >-
   Quote a two-sided market and survive the inventory - Avellaneda-Stoikov reservation price and
   optimal spread, and the adverse selection the model does not price. TRIGGER - Avellaneda
   Stoikov, market making model, optimal market making, reservation price, indifference price,
-  inventory skew, optimal bid ask spread, quoting strategy, "how wide should I quote", skew my
-  quotes, inventory risk, gamma risk aversion market maker; order arrival intensity, A exp(-k
-  delta), Poisson fill model, fill probability vs distance from mid; adverse selection, informed
-  flow, toxic flow, getting picked off, Glosten-Milgrom, order flow toxicity, VPIN. SKIP for
-  measuring realized and effective spreads from your own tape (intraday-microstructure), for
-  working a parent order by taking liquidity (execution-algorithms), for what a fill cost you
-  after the fact (execution-cost-analysis), and for exchange connectivity and order types
-  (broker-execution-apis).
+  inventory skew, quoting strategy, "how wide should I quote", skew my quotes, inventory risk,
+  gamma risk aversion market maker; order arrival intensity, A exp(-k delta), Poisson fill model,
+  fill probability vs distance from mid; adverse selection, informed flow, toxic flow, getting
+  picked off, Glosten-Milgrom, order flow toxicity, VPIN. SKIP for what bid ask spread I should
+  assume in my daily backtest (backtesting-engines), for measuring realized and effective spreads
+  from quotes and trades (intraday-microstructure), for working a parent order
+  (execution-algorithms), for what a fill cost you (execution-cost-analysis), and for exchange
+  connectivity (broker-execution-apis).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -222,3 +222,5 @@ with `informed_frac` / `informed_jump`, and `best_spread_multiplier`. numpy only
 - How much capital to put behind the quotes — `../position-sizing-kelly/SKILL.md`.
 - Whether a backtested quoting P&L is a discovery —
   `../../../fin-core/skills/backtest-validation/SKILL.md`.
+
+- For choosing what bid-ask spread or slippage assumption to configure in a daily bar backtest, see `backtesting-engines`.

@@ -4,14 +4,14 @@ description: >-
   Compute Value-at-Risk and Expected Shortfall by the four estimators that disagree in the tail,
   and backtest them properly. TRIGGER - VaR, value at risk, CVaR, expected shortfall, ES, tail
   risk, 99% VaR, 95% VaR, historical simulation VaR, parametric normal VaR, Cornish-Fisher
-  expansion, EVT, peaks over threshold, generalized Pareto, scipy genpareto, tail index xi,
-  Kupiec proportion of failures, Christoffersen independence, conditional coverage, VaR
-  exceptions or breaches, traffic light test, square root of time scaling, 10-day VaR, Basel,
-  filtered historical simulation, quantstats value_at_risk sign; "how many exceptions should I
-  see", "is my VaR model backtesting ok". SKIP for estimating the covariance matrix a parametric
-  VaR needs (covariance-and-risk-models), for minimising CVaR to choose weights
-  (portfolio-optimizers), for GARCH fitting itself (volatility-models), and for Sharpe, drawdown
-  and tearsheet conventions (portfolio-and-risk).
+  expansion, EVT, peaks over threshold, generalized Pareto, scipy genpareto, tail index xi, Kupiec
+  proportion of failures, Christoffersen independence, conditional coverage, VaR exceptions or
+  breaches, traffic light test, square root of time scaling, 10-day VaR, Basel, filtered
+  historical simulation, quantstats value_at_risk sign; "how many exceptions should I see", "is my
+  VaR model backtesting ok". SKIP for computing implementation shortfall on fills
+  (execution-cost-analysis), for covariance matrices (covariance-and-risk-models), for minimising
+  CVaR to choose weights (portfolio-optimizers), for GARCH fitting (volatility-models), and for
+  Sharpe and drawdown (portfolio-and-risk).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -237,3 +237,5 @@ window choices as trials; `../../../fin-libraries/skills/lib-arch/SKILL.md` is t
 fitting the GARCH model whose conditional variance the good rows above depend on; and
 `../../../fin-libraries/skills/lib-quantstats/SKILL.md` owns the reporting library whose sign
 convention is the opposite of this skill's.
+
+- For trade fill implementation shortfall (arrival price vs. execution fills, TCA), see `execution-cost-analysis`.

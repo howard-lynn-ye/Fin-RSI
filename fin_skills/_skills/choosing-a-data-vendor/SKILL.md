@@ -2,16 +2,15 @@
 name: choosing-a-data-vendor
 description: >-
   Decide whether a data source may legally and factually serve a research question, before any
-  fetch code is written. TRIGGER - need delisted, survivorship-free or point-in-time data and are
-  choosing where to get it; may I store, cache, redistribute or publish what I fetched; is the
-  free tier enough and what does a key cost; comparing vendor terms, licences, rate limits or
-  paid tiers; "there are no delisted names on the free tier"; picking between yfinance, Tiingo,
-  Alpha Vantage, stooq, EODHD, Norgate, CRSP or Polygon. Automated by `python -m fin_skills.data
-  advise`. SKIP once the source is chosen and the question is how to CALL it - adjustment,
-  timezone, calendar and off-by-one traps (market-data-sourcing); storing, partitioning or as-of
-  joining data you already hold (market-data-engineering); EDGAR, XBRL and macro vintages
-  (fundamental-and-macro-data); A-share sources and 退市 lists (china-ashare-data); exchange OHLCV
-  and venue limits (crypto-data-and-execution).
+  fetch code is written. TRIGGER - choosing where to get point-in-time data before writing fetch
+  code; is the free tier enough and what does a key cost; comparing vendor terms, licences, rate
+  limits or paid tiers; "there are no delisted names on the free tier"; picking between yfinance,
+  Tiingo, Alpha Vantage, stooq, EODHD, Norgate, CRSP or Polygon. Automated by `python -m
+  fin_skills.data advise`. SKIP for whether I am allowed to redistribute this price data under US
+  market rules (us-market-rules), for which data provider to use for delisted tickers or how to
+  call a vendor (market-data-sourcing), for storing or joining data (market-data-engineering), for
+  EDGAR and macro vintages (fundamental-and-macro-data), and for A-share sources
+  (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -190,3 +189,5 @@ This skill answers *may I, and can I, use this source at all*. Once the answer i
 - **`../../../fin-china/skills/china-ashare-data/SKILL.md`** — A-share sources and delisting lists.
 - **`../../../fin-crypto/skills/crypto-data-and-execution/SKILL.md`** — venue OHLCV and per-venue
   limits.
+
+- For US market redistribution rules (`may_redistribute`, `may_cache`), Reg SHO, PDT, and T+1 settlement rules, see `us-market-rules`.

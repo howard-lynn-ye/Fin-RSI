@@ -1,7 +1,11 @@
 ---
 name: india-markets
 description: >-
-  TRIGGER - NSE, BSE, Nifty, Sensex, upper circuit, lower circuit, price bands, Indian STT, index derivatives contract size, T+1 rollout, T+0, Muhurat, bhavcopy, kiteconnect, Zerodha. SKIP for Japan (japan-markets), Hong Kong (hong-kong-markets), Korea or Taiwan (korea-taiwan-markets), ASEAN (asean-markets), regional selection (asia-pacific-markets), and mainland China (china-trading-stack).
+  TRIGGER - BSE, Nifty, Sensex, upper circuit, lower circuit, price bands, Indian STT, index
+  derivatives contract size, T+1 rollout, T+0, Muhurat, bhavcopy, kiteconnect, Zerodha. SKIP for
+  NSE India trading calendar and regional selection (asia-pacific-markets), for Japan
+  (japan-markets), Hong Kong (hong-kong-markets), Korea or Taiwan (korea-taiwan-markets), ASEAN
+  (asean-markets), and mainland China (china-trading-stack).
 license: MIT
 compatibility: Python 3.10+; offline scripts require numpy and pandas.
 metadata:

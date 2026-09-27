@@ -4,15 +4,13 @@ description: >-
   Decide whether an edge that passed every mechanical check is still just the best of N tries.
   TRIGGER - PBO, probability of backtest overfitting, CSCV, combinatorially symmetric cross
   validation, logit of the out-of-sample rank; minimum backtest length, MinBTL, "how much history
-  do I need", "how many parameter sets can I try on N years of data"; a grid search, Optuna or
-  AutoML picked a winner and it decayed; "in-sample Sharpe 2, live Sharpe 0", "the best
-  parameter set stopped working", "is this peak on my parameter surface real"; pypbo,
-  RiskLabAI CSCV. SKIP for the deflated and probabilistic Sharpe ratios, the trial ledger and
-  SPA/StepM/MCS against a benchmark (backtest-validation); for family-wise error and
-  false-discovery control over a whole research programme (multiple-testing-ledger); for the
-  purged and combinatorial CV splitters themselves (lib-purgedcv); for the mechanical leakage
-  gates that come first (research-integrity-guards); and for regime coverage of the test
-  window (regime-detection).
+  do I need", "how many parameter sets can I try on N years of data"; Optuna or AutoML picked a
+  winner and it decayed; "in-sample Sharpe 2, live Sharpe 0", "the best parameter set stopped
+  working", "is this peak on my parameter surface real"; pypbo, RiskLabAI CSCV. SKIP for I tried
+  200 parameter combinations and the best one has Sharpe 2.5, the deflated and probabilistic
+  Sharpe ratios, the trial ledger and SPA/StepM/MCS (backtest-validation); for family-wise error
+  and false-discovery control (multiple-testing-ledger); for purged CV splitters (lib-purgedcv);
+  and for mechanical leakage gates (research-integrity-guards).
 license: MIT
 metadata:
   version: "0.1.0"

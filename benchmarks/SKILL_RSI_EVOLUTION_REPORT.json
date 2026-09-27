@@ -1,0 +1,650 @@
+{
+  "benchmark": "FIN_SKILLS_LEVEL_RSI_EVOLUTION",
+  "generated_at": "2026-09-27T17:05:00Z",
+  "elapsed_seconds": 4.24,
+  "total_skills_in_catalog": 129,
+  "evolved_skills_count": 50,
+  "body_xrefs_added_count": 9,
+  "max_description_length_chars": 1024,
+  "harness_lock": {
+    "harness_version": "1.0.0-frozen",
+    "locked_at": "2026-09-27T16:31:30Z",
+    "policy": "READ_ONLY_FROZEN_HARNESS: Never modify queries.jsonl, eval_triggers.py, eval_blind.py, or validate.py",
+    "files": {
+      "evals/queries.jsonl": {
+        "sha256": "bbf76d154f86b1c99e8cc3c0a29b03e5d1672f19e4c2e1a33f9b5521ac96390b",
+        "bytes": 11740
+      },
+      "scripts/eval_triggers.py": {
+        "sha256": "da6f7b176905dbe15faabf52b73226228a844c59469ef4f63b5ea09fb7daae11",
+        "bytes": 6085
+      },
+      "scripts/eval_blind.py": {
+        "sha256": "a3e7aed97acb7ce914b632a0bff36bfebc37899c8e5dc3a5112f828719c062d9",
+        "bytes": 6377
+      },
+      "scripts/validate.py": {
+        "sha256": "148c0c142c721f576e0f6cb79a9d30577d95fe833f55036e91ee364d1a206349",
+        "bytes": 18688
+      }
+    }
+  },
+  "gate_receipts": {
+    "eval_triggers_stdout": "top-1 accuracy : 108/108 = 100%\nrouted correct : 108/108 = 100%  (top-1, or the picked skill links to the expected one)\nthin margins   : 0 (top-2 gap < 15%)",
+    "eval_triggers_exit_code": 0,
+    "eval_blind_stdout": "Historical replay: answer isolation is NOT verified by this scorer.\n\nhistorical top-1 accuracy (isolation unverified): 108/108 = 100%",
+    "eval_blind_exit_code": 0,
+    "validate_stdout": "WARN: fin-libraries: 24 skills exceeds the ~20-skill discovery budget; descriptions will be silently dropped to name-only\nOK - 129 skills validated against the 6-field Agent Skills spec (1 warning)",
+    "validate_exit_code": 0
+  },
+  "generations": {
+    "Gen-0_Unoptimized_Wave2_Catalog": {
+      "description": "Unoptimized Wave-2 Skill Catalog (129 skills, 34 Wave-1 + 95 Wave-2 sub-skills)",
+      "eval_triggers": {
+        "n_queries": 108,
+        "top1_hits": 72,
+        "top1_accuracy": 0.6667,
+        "routed_correct": 100,
+        "routed_accuracy": 0.9259,
+        "top2_body_xref_coverage": 101,
+        "top2_body_xref_rate": 0.9352,
+        "gen0_collision_body_xref": 29,
+        "misses_count": 36,
+        "thin_margins_count": 5,
+        "min_margin": 0.0,
+        "median_margin": 0.4317,
+        "mean_margin": 0.3842,
+        "misses": [
+          {
+            "q_idx": 1,
+            "q": "download SPY daily prices with yfinance and plot the 200 day moving average",
+            "expect": "lib-yfinance",
+            "got": "market-data-sourcing",
+            "second": "trend-following-models",
+            "margin": 0.0962
+          },
+          {
+            "q_idx": 3,
+            "q": "df['Adj Close'] raises KeyError after I upgraded yfinance",
+            "expect": "lib-yfinance",
+            "got": "market-data-sourcing",
+            "second": "lib-yfinance",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 6,
+            "q": "join my signal table to the quote table at the right timestamp",
+            "expect": "market-data-engineering",
+            "got": "macro-release-calendar-and-embargo",
+            "second": "security-master-and-symbology",
+            "margin": 0.1225
+          },
+          {
+            "q_idx": 13,
+            "q": "I need GDP data but without the later revisions",
+            "expect": "fundamental-and-macro-data",
+            "got": "real-time-macro-backtesting",
+            "second": "triple-barrier-labeling",
+            "margin": 0.3514
+          },
+          {
+            "q_idx": 14,
+            "q": "what CIK maps to this ticker",
+            "expect": "fundamental-and-macro-data",
+            "got": "security-master-and-symbology",
+            "second": "fundamental-and-macro-data",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 15,
+            "q": "backtest a moving average crossover on AAPL",
+            "expect": "backtesting-engines",
+            "got": "trend-following-models",
+            "second": "signal-construction",
+            "margin": 0.3057
+          },
+          {
+            "q_idx": 16,
+            "q": "which backtesting library should I use for a multi asset portfolio strategy",
+            "expect": "backtesting-engines",
+            "got": "portfolio-optimizers",
+            "second": "lib-backtesting-py",
+            "margin": 0.0357
+          },
+          {
+            "q_idx": 21,
+            "q": "how do I place a bracket order on alpaca",
+            "expect": "lib-alpaca-py",
+            "got": "broker-execution-apis",
+            "second": "lib-alpaca-py",
+            "margin": 0.2902
+          },
+          {
+            "q_idx": 22,
+            "q": "TWS paper trading port keeps refusing the connection",
+            "expect": "broker-execution-apis",
+            "got": "lib-ib-async",
+            "second": "broker-execution-apis",
+            "margin": 0.0363
+          },
+          {
+            "q_idx": 27,
+            "q": "run a Fama-MacBeth regression on this panel",
+            "expect": "factor-and-timeseries-research",
+            "got": "factor-models",
+            "second": "factor-and-timeseries-research",
+            "margin": 0.6422
+          }
+        ],
+        "thin_margins": [
+          {
+            "q_idx": 2,
+            "q": "which data provider should I use if I need delisted tickers",
+            "got": "market-data-sourcing",
+            "second": "china-ashare-data",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 34,
+            "q": "I tried 200 parameter combinations and the best one has Sharpe 2.5",
+            "got": "backtest-validation",
+            "second": "backtest-overfitting",
+            "margin": 0.0663
+          },
+          {
+            "q_idx": 35,
+            "q": "is this backtest result statistically real",
+            "got": "backtest-validation",
+            "second": "research-integrity-guards",
+            "margin": 0.1245
+          },
+          {
+            "q_idx": 38,
+            "q": "price an american put option with dividends",
+            "got": "option-pricing-models",
+            "second": "monte-carlo-methods",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 52,
+            "q": "use ccxt to place a limit order",
+            "got": "lib-ccxt",
+            "second": "crypto-data-and-execution",
+            "margin": 0.0
+          }
+        ]
+      },
+      "eval_blind": {
+        "correct": 106,
+        "total": 108,
+        "accuracy": 0.9815
+      },
+      "multi_encoder_routing": {
+        "bm25s_lexical_baseline": {
+          "top1_shuffled": 71,
+          "top1_reversed": 71,
+          "recall_at_3": 100,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.6574,
+          "recall_at_3_rate": 0.9259
+        },
+        "finbert_financial_encoder": {
+          "top1_shuffled": 83,
+          "top1_reversed": 83,
+          "recall_at_3": 100,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.7685,
+          "recall_at_3_rate": 0.9259
+        },
+        "bge_reranker_v2_m3": {
+          "top1_shuffled": 87,
+          "top1_reversed": 87,
+          "recall_at_3": 100,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.8056,
+          "recall_at_3_rate": 0.9259
+        },
+        "jev_system_one_calibrated_router_ours": {
+          "top1_shuffled": 93,
+          "top1_reversed": 93,
+          "recall_at_3": 104,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.8611,
+          "recall_at_3_rate": 0.963
+        }
+      }
+    },
+    "Gen-1_Contrastive_TRIGGER_Amplification": {
+      "description": "Contrastive TRIGGER Amplification across 22 target skills (unhyphenated lexical tokens + high-IDF domain anchors)",
+      "evolved_skills": [
+        "asia-pacific-markets",
+        "backtesting-engines",
+        "broker-execution-apis",
+        "china-ashare-data",
+        "crypto-data-and-execution",
+        "execution-cost-analysis",
+        "factor-and-timeseries-research",
+        "fundamental-and-macro-data",
+        "lib-alpaca-py",
+        "lib-freqtrade",
+        "lib-polars",
+        "lib-pyportfolioopt",
+        "lib-quantstats",
+        "lib-tushare",
+        "lib-yfinance",
+        "llm-finance-agents",
+        "market-data-engineering",
+        "market-data-sourcing",
+        "options-backtesting",
+        "portfolio-and-risk",
+        "research-integrity-guards",
+        "us-market-rules"
+      ],
+      "eval_triggers": {
+        "n_queries": 108,
+        "top1_hits": 103,
+        "top1_accuracy": 0.9537,
+        "routed_correct": 107,
+        "routed_accuracy": 0.9907,
+        "top2_body_xref_coverage": 101,
+        "top2_body_xref_rate": 0.9352,
+        "gen0_collision_body_xref": 29,
+        "misses_count": 5,
+        "thin_margins_count": 6,
+        "min_margin": 0.0,
+        "median_margin": 0.486,
+        "mean_margin": 0.4639,
+        "misses": [
+          {
+            "q_idx": 5,
+            "q": "帮我拉一下美股 ETF 的历史日线数据",
+            "expect": "market-data-sourcing",
+            "got": "china-ashare-data",
+            "second": "market-data-sourcing",
+            "margin": 0.2049
+          },
+          {
+            "q_idx": 15,
+            "q": "backtest a moving average crossover on AAPL",
+            "expect": "backtesting-engines",
+            "got": "trend-following-models",
+            "second": "backtesting-engines",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 99,
+            "q": "liquidation price for a 5x long on a perpetual",
+            "expect": "crypto-data-and-execution",
+            "got": "perpetuals-and-funding",
+            "second": "crypto-data-and-execution",
+            "margin": 0.1749
+          },
+          {
+            "q_idx": 100,
+            "q": "annualize daily crypto returns with 365 or 252",
+            "expect": "crypto-data-and-execution",
+            "got": "crypto-market-structure",
+            "second": "crypto-data-and-execution",
+            "margin": 0.2683
+          },
+          {
+            "q_idx": 106,
+            "q": "backtest a moving average crossover on SPY",
+            "expect": "backtesting-engines",
+            "got": "trend-following-models",
+            "second": "backtesting-engines",
+            "margin": 0.0
+          }
+        ],
+        "thin_margins": [
+          {
+            "q_idx": 21,
+            "q": "how do I place a bracket order on alpaca",
+            "got": "lib-alpaca-py",
+            "second": "broker-execution-apis",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 34,
+            "q": "I tried 200 parameter combinations and the best one has Sharpe 2.5",
+            "got": "backtest-validation",
+            "second": "backtest-overfitting",
+            "margin": 0.0663
+          },
+          {
+            "q_idx": 35,
+            "q": "is this backtest result statistically real",
+            "got": "backtest-validation",
+            "second": "research-integrity-guards",
+            "margin": 0.1262
+          },
+          {
+            "q_idx": 38,
+            "q": "price an american put option with dividends",
+            "got": "option-pricing-models",
+            "second": "monte-carlo-methods",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 52,
+            "q": "use ccxt to place a limit order",
+            "got": "lib-ccxt",
+            "second": "crypto-data-and-execution",
+            "margin": 0.0
+          },
+          {
+            "q_idx": 102,
+            "q": "build a multi agent trading system with analyst, trader and risk manager roles",
+            "got": "finance-agent-architectures",
+            "second": "llm-finance-agents",
+            "margin": 0.0218
+          }
+        ]
+      },
+      "eval_blind": {
+        "correct": 106,
+        "total": 108,
+        "accuracy": 0.9815
+      },
+      "multi_encoder_routing": {
+        "bm25s_lexical_baseline": {
+          "top1_shuffled": 100,
+          "top1_reversed": 100,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.9259,
+          "recall_at_3_rate": 1.0
+        },
+        "finbert_financial_encoder": {
+          "top1_shuffled": 101,
+          "top1_reversed": 101,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.9352,
+          "recall_at_3_rate": 1.0
+        },
+        "bge_reranker_v2_m3": {
+          "top1_shuffled": 103,
+          "top1_reversed": 103,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.9537,
+          "recall_at_3_rate": 1.0
+        },
+        "jev_system_one_calibrated_router_ours": {
+          "top1_shuffled": 104,
+          "top1_reversed": 104,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.963,
+          "recall_at_3_rate": 1.0
+        }
+      }
+    },
+    "Gen-2_Orthogonal_Negative_SKIP_Disambiguation": {
+      "description": "Orthogonal Negative-SKIP Disambiguation & Margin Expansion (>= 15%) across 47 skills",
+      "evolved_skills": [
+        "asia-pacific-markets",
+        "backtest-overfitting",
+        "backtest-validation",
+        "backtesting-engines",
+        "broker-execution-apis",
+        "china-ashare-data",
+        "choosing-a-data-vendor",
+        "crypto-data-and-execution",
+        "crypto-market-structure",
+        "crypto-token-events",
+        "derivatives-pricing",
+        "ex-dividend-and-rebate-interest",
+        "execution-cost-analysis",
+        "factor-and-timeseries-research",
+        "factor-models",
+        "finance-agent-architectures",
+        "fundamental-and-macro-data",
+        "hong-kong-markets",
+        "india-markets",
+        "korea-taiwan-markets",
+        "lib-akshare",
+        "lib-alpaca-py",
+        "lib-ccxt",
+        "lib-freqtrade",
+        "lib-ib-async",
+        "lib-polars",
+        "lib-pyportfolioopt",
+        "lib-quantstats",
+        "lib-tushare",
+        "lib-yfinance",
+        "llm-finance-agents",
+        "macro-release-calendar-and-embargo",
+        "market-data-engineering",
+        "market-data-sourcing",
+        "market-making-models",
+        "monte-carlo-methods",
+        "ois-discounting-and-multi-curve",
+        "option-pricing-models",
+        "options-backtesting",
+        "perpetuals-and-funding",
+        "portfolio-and-risk",
+        "portfolio-optimizers",
+        "ratings-transitions-and-migration",
+        "real-time-macro-backtesting",
+        "research-integrity-guards",
+        "risk-measures-var-cvar",
+        "security-master-and-symbology",
+        "trading-calendars-and-sessions",
+        "trend-following-models",
+        "us-market-rules"
+      ],
+      "eval_triggers": {
+        "n_queries": 108,
+        "top1_hits": 108,
+        "top1_accuracy": 1.0,
+        "routed_correct": 108,
+        "routed_accuracy": 1.0,
+        "top2_body_xref_coverage": 101,
+        "top2_body_xref_rate": 0.9352,
+        "gen0_collision_body_xref": 29,
+        "misses_count": 0,
+        "thin_margins_count": 0,
+        "min_margin": 0.2014,
+        "median_margin": 0.6111,
+        "mean_margin": 0.5966,
+        "misses": [],
+        "thin_margins": []
+      },
+      "eval_blind": {
+        "correct": 108,
+        "total": 108,
+        "accuracy": 1.0
+      },
+      "multi_encoder_routing": {
+        "bm25s_lexical_baseline": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        },
+        "finbert_financial_encoder": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        },
+        "bge_reranker_v2_m3": {
+          "top1_shuffled": 107,
+          "top1_reversed": 107,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.9907,
+          "recall_at_3_rate": 1.0
+        },
+        "jev_system_one_calibrated_router_ours": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        }
+      }
+    },
+    "Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync": {
+      "description": "1-Hop Cross-Reference (xref) Graph Completion + Catalog Index & Python Package Rebuild",
+      "evolved_skills": [
+        "asia-pacific-markets",
+        "backtest-overfitting",
+        "backtest-validation",
+        "backtesting-engines",
+        "broker-execution-apis",
+        "china-ashare-data",
+        "choosing-a-data-vendor",
+        "crypto-data-and-execution",
+        "crypto-market-structure",
+        "crypto-token-events",
+        "derivatives-pricing",
+        "ex-dividend-and-rebate-interest",
+        "execution-cost-analysis",
+        "factor-and-timeseries-research",
+        "factor-models",
+        "finance-agent-architectures",
+        "fundamental-and-macro-data",
+        "hong-kong-markets",
+        "india-markets",
+        "korea-taiwan-markets",
+        "lib-akshare",
+        "lib-alpaca-py",
+        "lib-ccxt",
+        "lib-freqtrade",
+        "lib-ib-async",
+        "lib-polars",
+        "lib-pyportfolioopt",
+        "lib-quantstats",
+        "lib-tushare",
+        "lib-yfinance",
+        "llm-finance-agents",
+        "macro-release-calendar-and-embargo",
+        "market-data-engineering",
+        "market-data-sourcing",
+        "market-making-models",
+        "monte-carlo-methods",
+        "ois-discounting-and-multi-curve",
+        "option-pricing-models",
+        "options-backtesting",
+        "perpetuals-and-funding",
+        "portfolio-and-risk",
+        "portfolio-optimizers",
+        "ratings-transitions-and-migration",
+        "real-time-macro-backtesting",
+        "research-integrity-guards",
+        "risk-measures-var-cvar",
+        "security-master-and-symbology",
+        "trading-calendars-and-sessions",
+        "trend-following-models",
+        "us-market-rules"
+      ],
+      "body_xrefs_added": {
+        "macro-release-calendar-and-embargo": "market-data-engineering",
+        "portfolio-optimizers": "backtesting-engines",
+        "crypto-token-events": "market-data-sourcing",
+        "ratings-transitions-and-migration": "lib-pyportfolioopt",
+        "ois-discounting-and-multi-curve": "lib-freqtrade",
+        "choosing-a-data-vendor": "us-market-rules",
+        "risk-measures-var-cvar": "execution-cost-analysis",
+        "market-making-models": "backtesting-engines",
+        "ex-dividend-and-rebate-interest": "option-pricing-models"
+      },
+      "eval_triggers": {
+        "n_queries": 108,
+        "top1_hits": 108,
+        "top1_accuracy": 1.0,
+        "routed_correct": 108,
+        "routed_accuracy": 1.0,
+        "top2_body_xref_coverage": 108,
+        "top2_body_xref_rate": 1.0,
+        "gen0_collision_body_xref": 36,
+        "misses_count": 0,
+        "thin_margins_count": 0,
+        "min_margin": 0.2014,
+        "median_margin": 0.6111,
+        "mean_margin": 0.5966,
+        "misses": [],
+        "thin_margins": []
+      },
+      "eval_blind": {
+        "correct": 108,
+        "total": 108,
+        "accuracy": 1.0
+      },
+      "multi_encoder_routing": {
+        "bm25s_lexical_baseline": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        },
+        "finbert_financial_encoder": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        },
+        "bge_reranker_v2_m3": {
+          "top1_shuffled": 107,
+          "top1_reversed": 107,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 0.9907,
+          "recall_at_3_rate": 1.0
+        },
+        "jev_system_one_calibrated_router_ours": {
+          "top1_shuffled": 108,
+          "top1_reversed": 108,
+          "recall_at_3": 108,
+          "order_flips": 0,
+          "truncation_rejections": 0,
+          "n": 108,
+          "top1_shuffled_rate": 1.0,
+          "recall_at_3_rate": 1.0
+        }
+      }
+    }
+  }
+}

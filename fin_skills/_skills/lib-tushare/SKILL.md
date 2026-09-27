@@ -2,14 +2,14 @@
 name: lib-tushare
 description: >-
   tushare is the cheapest source of genuinely point-in-time A-share fundamentals, and it sends
-  your token over plaintext HTTP. TRIGGER - tushare, tushare pro, "import tushare as ts",
-  ts.pro_api, pro_bar, adj="qfq", stock_basic, list_status, daily_basic, adj_factor, income,
-  balancesheet, f_ann_date, ann_date, update_flag, 报告期, 公告日, tushare token, 积分, waditu,
-  api.waditu.com, "抱歉，您没有接口访问权限", tushare 权限不够. The public GitHub repo has been idle since 2024-03
-  while PyPI kept shipping through 2026, so recalled behaviour does not match the installed wheel.
-  SKIP for lib-akshare, which is the skill for breadth of free Chinese coverage rather than PIT.
-  SKIP when the question is WHICH library to choose, or names no library at all - both belong to
-  the domain skill.
+  your token over plaintext HTTP. TRIGGER - tushare, tushare qfq prices change when I change
+  end_date, tushare pro, "import tushare as ts", ts.pro_api, pro_bar, adj="qfq", stock_basic,
+  list_status, daily_basic, adj_factor, income, balancesheet, f_ann_date, ann_date, update_flag,
+  报告期, 公告日, tushare token, 积分, waditu, api.waditu.com, "抱歉，您没有接口访问权限", tushare 权限不够. The public
+  GitHub repo has been idle since 2024-03 while PyPI kept shipping through 2026, so recalled
+  behaviour does not match the installed wheel. SKIP for akshare vs tushare comparison
+  (china-ashare-data) and for lib-akshare, the skill for breadth of free Chinese coverage. SKIP
+  when no library is named.
 license: MIT
 metadata:
   version: "0.1.0"

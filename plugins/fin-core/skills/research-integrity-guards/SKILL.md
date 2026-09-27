@@ -2,16 +2,16 @@
 name: research-integrity-guards
 description: >-
   Second-pass audit that decides whether a finance result is real, applied after the work exists.
-  TRIGGER - about to REPORT, publish or act on a backtest, factor test or model score; a result
-  that looks good ("Sharpe 3.5", "beats SPY", "85% accuracy") and needs challenging; asked to
-  validate, verify, sanity-check or critique a research design; asked "what should I check".
-  Covers five gates: universe survivorship, availability timestamps, label leakage, cost realism,
-  trial count. SKIP when the task is to BUILD something rather than judge it - go to the domain
-  skill first (market-data-sourcing, backtesting-engines, factor-and-timeseries-research) and
-  return here before reporting a number. SKIP too for the arithmetic that runs AFTER these gates
-  pass and asks whether the surviving edge beats the best of N tries: PBO, CSCV and minimum
-  backtest length (backtest-overfitting), Bonferroni/Holm/BH/BY over a ledger of trials
-  (multiple-testing-ledger), and the deflated Sharpe (backtest-validation).
+  TRIGGER - review my research design for look-ahead bias, my strategy has a Sharpe of 4 what
+  should I check; about to REPORT, publish or act on a backtest, factor test or model score; a
+  result that looks too good ("Sharpe 3.5", "Sharpe of 4", "beats SPY", "85% accuracy") and needs
+  challenging; asked to validate, verify, sanity-check or critique a research design. Covers five
+  gates: universe survivorship, availability timestamps, label leakage, cost realism, trial count.
+  SKIP when the task is to BUILD something rather than judge it - go to the domain skill first
+  (market-data-sourcing, backtesting-engines, factor-and-timeseries-research) and return here
+  before reporting a number. SKIP too for PBO, CSCV and minimum backtest length
+  (backtest-overfitting), Bonferroni/Holm/BH/BY over a trial ledger (multiple-testing-ledger), and
+  whether a backtest result is statistically real or deflated Sharpe (backtest-validation).
 license: MIT
 metadata:
   version: "0.1.0"

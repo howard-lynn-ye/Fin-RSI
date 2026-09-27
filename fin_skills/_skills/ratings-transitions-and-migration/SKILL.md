@@ -1,17 +1,17 @@
 ---
 name: ratings-transitions-and-migration
 description: >-
-  Estimate and use a credit rating transition matrix without producing negative probabilities or
-  a five-year default rate that is five times the wrong number. TRIGGER - rating transition
-  matrix, migration matrix, credit migration, cohort estimator, duration estimator,
-  Aalen-Johansen, Nelson-Aalen generator, matrix power P^5, matrix root, square root of a
-  transition matrix, six-month transition matrix, scipy.linalg.logm, expm, embedding problem,
-  generator of a Markov chain, "negative probability in my transition matrix", "logm gave me a
-  negative off-diagonal", structural zero, AAA never defaults, withdrawn rating, NR, rating
-  withdrawal, notching, cumulative default rate, "5 times the one-year PD", transitionMatrix,
-  pyratings. SKIP for pricing a default probability or a hazard rate (credit-risk-models), for
-  CDS quotes and upfronts (cds-mechanics-and-upfront), for bond spreads (credit-spread-measures),
-  and for regulatory PD floors and Basel calibration (banking-regulatory).
+  Estimate and use a credit rating transition matrix without producing negative probabilities or a
+  five-year default rate that is five times the wrong number. TRIGGER - rating transition matrix,
+  migration matrix, credit migration, cohort estimator, duration estimator, Aalen-Johansen,
+  Nelson-Aalen generator, matrix power P^5, matrix root, square root of a transition matrix,
+  six-month transition matrix, scipy.linalg.logm, expm, embedding problem, generator of a Markov
+  chain, "negative probability in my transition matrix", negative off-diagonal from logm,
+  structural zero, AAA never defaults, withdrawn rating, NR, rating withdrawal, notching,
+  cumulative default rate, "5 times the one-year PD", transitionMatrix, pyratings. SKIP for HRPOpt
+  nonsense weights (lib-pyportfolioopt), for default probability or hazard rates
+  (credit-risk-models), for CDS quotes (cds-mechanics-and-upfront), and for bond spreads
+  (credit-spread-measures).
 license: MIT
 metadata:
   version: "0.1.0"
@@ -238,3 +238,5 @@ past their last release; check them before depending on them.
   verified by this repo. This skill deliberately stops at the estimator.
 - `../../../fin-market-data/skills/market-data-sourcing/SKILL.md` — where the matrices come from: the
   agencies' annual default studies are free PDFs, issuer-level rating histories are not.
+
+- For hierarchical risk parity (`HRPOpt`) weight anomalies in `PyPortfolioOpt`, see `lib-pyportfolioopt`.

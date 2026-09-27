@@ -2,16 +2,16 @@
 name: security-master-and-symbology
 description: >-
   Map ticker, CIK, ISIN, FIGI, SEDOL and CUSIP on (identifier, DATE) rather than on identifier,
-  and detect when the entity behind one changed. TRIGGER - ticker to CIK, ISIN to CUSIP, FIGI,
-  SEDOL, ISIN or CUSIP check digit, identifier validation; a reused ticker, a renamed company, a
-  merger or ticker change breaking a join; security master, symbology, cross-reference table,
-  PERMNO, entity resolution; "the fundamentals attached to the wrong company"; building a universe
-  from company_tickers.json. Load before any join keyed on a symbol - an identifier is not an
-  entity, neither is stable, and the SEC's own name windows both overlap and leave gaps. SKIP for
-  FINDING an identifier you do not have yet (finding-and-searching-data), for split/dividend
-  adjustment and delisted price history (market-data-sourcing), for the point-in-time vintage of
-  the fundamentals (fundamental-and-macro-data), for auditing a finished result
-  (research-integrity-guards), and for A-share code changes (china-ashare-data).
+  and detect when the entity behind one changed. TRIGGER - ISIN to CUSIP, FIGI, SEDOL, ISIN or
+  CUSIP check digit, identifier validation; a reused ticker, a renamed company, a merger or ticker
+  change breaking a join; security master, symbology, cross-reference table, PERMNO, entity
+  resolution; "the fundamentals attached to the wrong company"; building a universe from
+  company_tickers.json. Load before any join keyed on a symbol - an identifier is not an entity,
+  neither is stable, and the SEC's own name windows both overlap and leave gaps. SKIP for what CIK
+  maps to this ticker and point-in-time EDGAR filings (fundamental-and-macro-data), for joining a
+  signal table to a quote table at the right timestamp (market-data-engineering), for finding an
+  identifier (finding-and-searching-data), for delisted price history (market-data-sourcing), and
+  for A-share code changes (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"

@@ -3,15 +3,15 @@ name: lib-yfinance
 description: >-
   The default free Yahoo Finance downloader, whose yf.download() now returns pre-adjusted OHLC
   with no Adj Close column at all. TRIGGER - import yfinance as yf, pip install yfinance,
-  yf.download, yf.Ticker, Ticker.history, auto_adjust, multi_level_index, ignore_tz, repair=True,
-  get_shares_full, yf.Search, yf.Lookup, yf.WebSocket, yfinance-cache; errors "KeyError: 'Adj
-  Close'", YFRateLimitError, "Too Many Requests. Rate limited", YFTickerMissingError, "possibly
-  delisted", curl_cffi pin conflicts, one ticker returning MultiIndex columns. Memory is stale
-  here: auto_adjust flipped at 0.2.51 and hardened at 1.0, intraday timezones changed at 1.4.0,
-  the proxy= constructor kwarg is gone, and 1.7.0 shipped 2026-08-26. SKIP for choosing between
-  data vendors (market-data-sourcing) and for A-share data (china-ashare-data). SKIP when the
-  question is WHICH library to choose, or names no library at all - both belong to the domain
-  skill.
+  yf.download, download daily SPY prices with yfinance and plot a 200 day moving average,
+  yf.Ticker, Ticker.history, auto_adjust, multi_level_index, ignore_tz, repair=True,
+  get_shares_full, yf.Search, yf.Lookup, yf.WebSocket, yfinance-cache; df['Adj Close'] raises
+  KeyError after I upgraded yfinance, KeyError Adj Close after upgrade, YFRateLimitError, Too Many
+  Requests, YFTickerMissingError, possibly delisted, curl_cffi pin conflicts, MultiIndex columns.
+  Memory is stale here: auto_adjust flipped at 0.2.51 and hardened at 1.0, intraday timezones
+  changed at 1.4.0, the proxy= kwarg is gone, and 1.7.0 shipped 2026-08-26. SKIP for choosing
+  between data vendors or when yahooquery and yfinance disagree around a split
+  (market-data-sourcing), and for A-share data (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"

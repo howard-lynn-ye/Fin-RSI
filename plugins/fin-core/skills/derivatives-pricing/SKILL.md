@@ -1,17 +1,15 @@
 ---
 name: derivatives-pricing
 description: >-
-  Choose a derivatives pricing library and get its Greek units and conventions right. TRIGGER -
-  option pricing, implied volatility, IV, Greeks, delta, gamma, vega, theta, rho; which pricing
-  library, exotics coverage; QuantLib, vollib, py_vollib, financepy, rateslib, optionlab; option
-  chains. Greek scaling differs by 100x and 365x between the three common libraries, and one
-  popular fixed-income package is not open source. SKIP for option lifecycle events - assignment,
-  pin risk, expiry - live or backtested, and for historical option chains and vendors
-  (options-backtesting). SKIP for the models themselves - implementing one
-  (option-pricing-models), fitting a smile (implied-vol-surface), building a curve
-  (term-structure-models), bond accrued and the 30/360 family (bond-conventions-and-accrued),
-  duration and DV01 (duration-convexity-and-dv01), and projection-versus-discount choice on a
-  swap (ois-discounting-and-multi-curve).
+  Choose a derivatives pricing library and get its Greek units and conventions right. TRIGGER - my
+  vega is 100x off between two libraries, QuantLib, py_vollib, py_vollib_vectorized, mibian,
+  opstrat, FinancePy; choosing an option or rates pricing library, reconciling Greek conventions
+  (per-1% vs per-1.0 vol, per-day vs per-year theta), day-count conventions, Actual/365 vs
+  Actual/252, licence traps (QuantLib BSD vs py_vollib GPL derivs). SKIP for implementing
+  Black-Scholes, trees, Heston or SABR yourself (option-pricing-models), for fitting an SVI smile
+  or vol surface (implied-vol-surface), for bootstrapping a yield curve from swap rates
+  (term-structure-models), for QuantLib NPV returning 0.0 (lib-quantlib), and for option
+  assignment or expiry backtesting (options-backtesting).
 license: MIT
 metadata:
   version: "0.1.0"

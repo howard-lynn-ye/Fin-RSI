@@ -2,12 +2,13 @@
 name: crypto-token-events
 description: >-
   TRIGGER - token swap, redenomination, migration, same ticker changed units, hard fork,
-  airdropped fork coin, rebase, elastic supply, balance changed but price did not, wrapped
-  or bridged token, delisted pair, reconstruct a historical top-N crypto universe,
-  survivorship bias, a -90% day caused by a token conversion. SKIP for funding and liquidation
-  (perpetuals-and-funding), AMM pools and LP losses (defi-and-amm-mechanics), 24/7 calendars,
-  outages and stablecoin depegs (crypto-market-structure), and exchange clients and OHLCV
-  fetching (crypto-data-and-execution).
+  airdropped fork coin, rebase, elastic supply, balance changed but price did not, wrapped or
+  bridged token, delisted crypto pair, reconstruct a historical top-N crypto universe, a -90% day
+  caused by a token conversion. SKIP for how to avoid survivorship bias in my equity universe
+  (market-data-sourcing), for funding and liquidation (perpetuals-and-funding), for AMM pools and
+  LP losses (defi-and-amm-mechanics), for 24/7 calendars and stablecoin depegs
+  (crypto-market-structure), and for exchange clients and OHLCV fetching
+  (crypto-data-and-execution).
 license: MIT
 compatibility: Python 3.10+ with numpy and pandas; all demonstrations run offline.
 metadata:
@@ -126,3 +127,5 @@ source URL, crediting policy and terminal-price provenance.
 - `../../../fin-core/skills/research-integrity-guards/SKILL.md` — point-in-time universes.
 - `../../../fin-core/skills/backtesting-engines/SKILL.md` — corporate-action adjustment support.
 - `../../../fin-libraries/skills/lib-ccxt/SKILL.md` — market identifiers and OHLCV limitations.
+
+- For equity and ETF survivorship-free universes and delisted ticker vendors, see `market-data-sourcing`.

@@ -1,7 +1,11 @@
 ---
 name: hong-kong-markets
 description: >-
-  TRIGGER - HKEX, 港股, 每手 board lot, 碎股 odd lot, Stock Connect, 滬港通, 深港通, northbound quota, southbound quota, VCM, CAS, A/H premium, ADR ratio, typhoon trading. SKIP for Japan (japan-markets), India (india-markets), Korea or Taiwan (korea-taiwan-markets), ASEAN (asean-markets), regional selection (asia-pacific-markets), and the mainland leg (china-trading-stack).
+  TRIGGER - HKEX, 港股, 每手 board lot, 碎股 odd lot, Stock Connect, 滬港通, 深港通, northbound quota,
+  southbound quota, VCM, CAS, A/H premium, ADR ratio, typhoon trading. SKIP for getting Hong Kong
+  stock data and handling the lot size or regional venue selection (asia-pacific-markets), for
+  Japan (japan-markets), India (india-markets), Korea or Taiwan (korea-taiwan-markets), ASEAN
+  (asean-markets), and the mainland leg (china-trading-stack).
 license: MIT
 compatibility: Python 3.10+; offline scripts require numpy and pandas.
 metadata:

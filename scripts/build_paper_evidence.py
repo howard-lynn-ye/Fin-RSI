@@ -24,9 +24,10 @@ def main():
         "benchmarks/rag_jev/RAG_JEV_RESULTS.json",
         "benchmarks/FINANCE_NATIVE_MODEL_BENCHMARK.json",
         "benchmarks/FIN_RSI_PARETO_LEDGER_REPORT.json",
+        "benchmarks/SKILL_RSI_EVOLUTION_REPORT.json",
     ]
     data = [json.loads((ROOT / name).read_text(encoding="utf-8")) for name in sources]
-    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native, fin_rsi = data
+    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native, fin_rsi, skill_rsi = data
     beacon_models = {}
     beacon_conditions = {}  # (model_short, condition) -> {accepted, planned, mean_tokens, mean_wall}
     postfix_summary = {}
@@ -373,6 +374,53 @@ def main():
         rsi_macros[f"{prefix}CrisisSharpeMean"] = f"{arm['crisis_2018_2022_sharpe']:+.2f}"
         rsi_macros[f"{prefix}CrisisSharpeStd"] = f"{arm['crisis_2018_2022_sharpe_std']:.2f}"
         rsi_macros[f"{prefix}ESSRatio"] = f"{arm['sequence_ess_ratio']:.2f}"
+
+    s_gens = skill_rsi["generations"]
+    s_gen_map = {
+        "SkillRSIGenZero": "Gen-0_Unoptimized_Wave2_Catalog",
+        "SkillRSIGenOne": "Gen-1_Contrastive_TRIGGER_Amplification",
+        "SkillRSIGenTwo": "Gen-2_Orthogonal_Negative_SKIP_Disambiguation",
+        "SkillRSIGenThree": "Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync",
+    }
+    rsi_macros["SkillRSITotalCatalog"] = str(skill_rsi["total_skills_in_catalog"])
+    rsi_macros["SkillRSIEvolvedCount"] = str(skill_rsi["evolved_skills_count"])
+    rsi_macros["SkillRSIBodyXrefsAdded"] = str(skill_rsi["body_xrefs_added_count"])
+    rsi_macros["SkillRSIMaxDescLen"] = str(skill_rsi["max_description_length_chars"])
+    for sprefix, skey in s_gen_map.items():
+        sg = s_gens[skey]
+        st = sg["eval_triggers"]
+        sb = sg["eval_blind"]
+        se = sg["multi_encoder_routing"]
+        rsi_macros[f"{sprefix}TrigHits"] = str(st["top1_hits"])
+        rsi_macros[f"{sprefix}TrigPct"] = f"{st['top1_accuracy']*100:.1f}"
+        rsi_macros[f"{sprefix}RoutedHits"] = str(st["routed_correct"])
+        rsi_macros[f"{sprefix}RoutedPct"] = f"{st['routed_accuracy']*100:.1f}"
+        rsi_macros[f"{sprefix}TopTwoXrefHits"] = str(st["top2_body_xref_coverage"])
+        rsi_macros[f"{sprefix}TopTwoXrefPct"] = f"{st['top2_body_xref_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}Misses"] = str(st["misses_count"])
+        rsi_macros[f"{sprefix}ThinMargins"] = str(st["thin_margins_count"])
+        rsi_macros[f"{sprefix}MinMargin"] = f"{st['min_margin']:.4f}"
+        rsi_macros[f"{sprefix}MedMargin"] = f"{st['median_margin']:.4f}"
+        rsi_macros[f"{sprefix}MeanMargin"] = f"{st['mean_margin']:.4f}"
+        rsi_macros[f"{sprefix}BlindHits"] = str(sb["correct"])
+        rsi_macros[f"{sprefix}BlindPct"] = f"{sb['accuracy']*100:.1f}"
+        rsi_macros[f"{sprefix}BMTwoFiveHits"] = str(se["bm25s_lexical_baseline"]["top1_shuffled"])
+        rsi_macros[f"{sprefix}BMTwoFivePct"] = f"{se['bm25s_lexical_baseline']['top1_shuffled_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}BMTwoFiveRecallThree"] = str(se["bm25s_lexical_baseline"]["recall_at_3"])
+        rsi_macros[f"{sprefix}BMTwoFiveRecallThreePct"] = f"{se['bm25s_lexical_baseline']['recall_at_3_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}FinBERTHits"] = str(se["finbert_financial_encoder"]["top1_shuffled"])
+        rsi_macros[f"{sprefix}FinBERTPct"] = f"{se['finbert_financial_encoder']['top1_shuffled_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}FinBERTRecallThree"] = str(se["finbert_financial_encoder"]["recall_at_3"])
+        rsi_macros[f"{sprefix}FinBERTRecallThreePct"] = f"{se['finbert_financial_encoder']['recall_at_3_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}BGEHits"] = str(se["bge_reranker_v2_m3"]["top1_shuffled"])
+        rsi_macros[f"{sprefix}BGEPct"] = f"{se['bge_reranker_v2_m3']['top1_shuffled_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}BGERecallThree"] = str(se["bge_reranker_v2_m3"]["recall_at_3"])
+        rsi_macros[f"{sprefix}BGERecallThreePct"] = f"{se['bge_reranker_v2_m3']['recall_at_3_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}JEVHits"] = str(se["jev_system_one_calibrated_router_ours"]["top1_shuffled"])
+        rsi_macros[f"{sprefix}JEVPct"] = f"{se['jev_system_one_calibrated_router_ours']['top1_shuffled_rate']*100:.1f}"
+        rsi_macros[f"{sprefix}JEVRecallThree"] = str(se["jev_system_one_calibrated_router_ours"]["recall_at_3"])
+        rsi_macros[f"{sprefix}JEVRecallThreePct"] = f"{se['jev_system_one_calibrated_router_ours']['recall_at_3_rate']*100:.1f}"
+
     macros.update(rsi_macros)
     for (mlab, clab), info in beacon_conditions.items():
         macros[f"Beacon{mlab}{clab}Accepted"] = info["accepted"]
@@ -396,7 +444,7 @@ def main():
                     line for line in merge_path.read_text(encoding="utf-8").splitlines()
                     if not line.startswith("% Governed Financial RSI") and not any(f"\\{rk}}}" in line for rk in rsi_macros)
                 ]
-                merge_lines.append("% Governed Financial RSI (Fin-RSI) M=5 Seed Pareto Ledger Macros")
+                merge_lines.append("% Governed Financial RSI (Fin-RSI) M=5 Seed Pareto Ledger & Skill-RSI Macros")
                 for rk, rv in rsi_macros.items():
                     merge_lines.append(f"\\providecommand{{\\{rk}}}{{{rv}}}")
                 merge_path.write_text("\n".join(merge_lines) + "\n", encoding="utf-8")
@@ -411,6 +459,7 @@ def main():
         "fly_kol_checked_sharpe": fly_ablation["datasets"]["kol_cued_4asset"]["arms"]["fly_v3_greedy_checked_hold_adv"]["mean_sharpe_5bps"],
         "fin_rsi_status": fin_rsi["pareto_gate_evaluation"]["status"],
         "fin_rsi_gen3_sharpe": rsi_arms["Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC"]["annualized_net_sharpe"],
+        "skill_rsi_gen3_top1": s_gens["Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync"]["eval_triggers"]["top1_hits"],
     }))
 
 
