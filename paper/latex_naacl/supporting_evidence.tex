@@ -207,4 +207,76 @@ Evaluation Suite & Model / Gating Regime ($2021\text{--}2025$ / $2023\text{--}20
 \label{tab:jev_mman_audit}
 \end{table*}
 
+\subsection{Governed financial recursive self-improvement (\texttt{Fin-RSI}) and three-way Pareto audit}
+\label{app:fin_rsi}
+To evaluate whether a financial research agent can autonomously improve its underlying multimodal
+pooling, shrinkage, and covariance-adaptation operators without falling into backtest overfitting
+or reward hacking, we audit four evolutionary generations across $M=5$ disjoint random seeds
+($20260923\text{--}20260927$) on the full \PanelBalancedRows{}-row two-dimensional
+company$\times$year balanced panel ($n = \RSIEvalReturnObs{} / \PanelBalancedRows{}$ evaluated
+out-of-sample return observations across $7$ equity boards, $2018\text{--}2026$). Prior to each
+evolutionary epoch, the sandbox verifier validates the SHA-256 cryptographic signature of the
+read-only evaluation harness (\texttt{HARNESS\_LOCK.json}), enforces all 37 executable
+counterfactual guards (\texttt{check\_panel\_balance}, \texttt{check\_safe\_asof},
+\texttt{check\_pit\_fundamentals}, and \texttt{check\_trial\_ledger}), and executes three
+physical diagnostic probes on the multimodal feature stream:
+\begin{enumerate}
+\item \textbf{Pre-LayerNorm Scale-Cancellation Probe:} Direct scalar salience weighting prior to
+LayerNorm ($\tilde{\mathbf{h}}_t = w_t \mathbf{h}_t$) suffers severe gradient cancellation
+($\|\partial \mathbf{y}/\partial w_t\|_2 = \RSIPreLNGradNorm{}$), whereas relocating salience
+pooling into post-encoder value space restores effective gradient norm to $\RSIPostValGradNorm{}$.
+\item \textbf{Intraday Burst Sequence $\operatorname{ESS}$ Probe:} Unbounded exponential attention
+weights collapse onto single outlier posts during earnings and forum bursts
+($\operatorname{ESS} = \RSIUnboundedESS{}$), whereas temperature-bounded tanh activation
+($\tau = 2.5$) paired with Log-Sum-Exp intraday burst partition conservation lifts effective
+sample size to $\RSIBoundedESS{}$ ($\mathbf{\RSIESSRatio{}\times}$ improvement).
+\item \textbf{Subspace SNR \& Tail-Slice Divergence Probe:} Uniform scalar shrinkage degrades
+out-of-sample Rank IC on sparse small-cap and STAR/ChiNext tickers ($\RSISparseGapScalar{}$),
+whereas per-channel subspace precision gating with positive-part James--Stein shrinkage
+\cite{james1961estimation} lifts sparse-slice Rank IC to $\mathbf{\RSISparseGapStein{}}$.
+\end{enumerate}
+
+Table~\ref{tab:fin_rsi_pareto_ledger} reports the complete multi-seed Pareto ledger anchored
+against the full-budget dense multimodal reference first, followed by unconstrained verbal
+self-reflection (\texttt{Unconstrained Verbal RSI}), static production baselines (\texttt{Static MMAN}
+and \texttt{Static MMAN + JEV-64KC Baseline}), and the three governed \texttt{Fin-RSI} generations.
+While unconstrained verbal self-reflection without a locked evaluation harness or physical probes
+permits $\RSIVerbalLeakPct{}\%$ silent look-ahead/overfitting violations and suffers severe
+out-of-sample drawdown degradation ($\text{Net Sharpe} = \RSIVerbalSharpeMean{} \pm \RSIVerbalSharpeStd{}$,
+$\text{Max DD} = \RSIVerbalMaxDDMean{}\%$), each governed \texttt{Fin-RSI} generation achieves
+strict $0.0\%$ leakage and monotonically improves macro alpha, sparse small-cap Rank IC, and
+$2018/2022$ crisis-regime Sharpe. The promoted \textbf{\texttt{Fin-RSI} Gen-3 Champion}
+(combining post-encoder bounded-salience pooling, per-channel James--Stein shrinkage, streaming
+rank-1 Sherman--Morrison--Woodbury inverse-covariance adaptation, and Bernoulli Fisher information
+gating $g_{\text{Fisher}}(p_t) = 4p_t(1-p_t)$) achieves an out-of-sample Daily Rank IC of
+$\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ ($\text{IC IR} = \mathbf{\RSIGenThreeIRMean{} \pm \RSIGenThreeIRStd{}}$),
+lifts sparse small-cap/STAR slice Rank IC to $\mathbf{\RSIGenThreeSparseICMean{} \pm \RSIGenThreeSparseICStd{}}$
+and $2018/2022$ crisis Sharpe to $\mathbf{\RSIGenThreeCrisisSharpeMean{} \pm \RSIGenThreeCrisisSharpeStd{}}$,
+and reaches an annualized net Sharpe of $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$
+($\text{DSR} = \mathbf{\RSIGenThreeDSRMean{}}$, $\text{Max DD} = \mathbf{\RSIGenThreeMaxDDMean{}\%}$,
+paired $t = \mathbf{\RSIGenThreeTStatVsGenZero{}}$ vs.\ static \texttt{Gen-0}).
+
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccc}
+\toprule
+Evolutionary Arm ($M=5$ seeds, $n = \RSIEvalReturnObs{} / \PanelBalancedRows{}$) & Governance \& Operator Mechanism & OOS Daily Rank IC & Annualized IC IR & Sparse Ticker IC & 2018/2022 Crisis Sharpe & OOS Net Sharpe (DSR) & Max DD / $\operatorname{ESS}$ Ratio \\
+\midrule
+Full Dense Multimodal Reference (100\% Budget) & Uncompressed 16D Multimodal Anchor & $\RSIFullICMean{} \pm \RSIFullICStd{}$ & $\RSIFullIRMean{} \pm \RSIFullIRStd{}$ & $\RSIFullSparseICMean{} \pm \RSIFullSparseICStd{}$ & $\RSIFullCrisisSharpeMean{} \pm \RSIFullCrisisSharpeStd{}$ & $\RSIFullSharpeMean{} \pm \RSIFullSharpeStd{}$ ($\RSIFullDSRMean{}$) & $\RSIFullMaxDDMean{}\%$ / $\RSIFullESSRatio{}\times$ \\
+Unconstrained Verbal RSI (\texttt{w/o} Harness Lock) & Open Prompt Self-Critique ($\RSIVerbalLeakPct{}\%$ Leak) & $\RSIVerbalICMean{} \pm \RSIVerbalICStd{}$ & $\RSIVerbalIRMean{} \pm \RSIVerbalIRStd{}$ & $\RSIVerbalSparseICMean{} \pm \RSIVerbalSparseICStd{}$ & $\RSIVerbalCrisisSharpeMean{} \pm \RSIVerbalCrisisSharpeStd{}$ & $\RSIVerbalSharpeMean{} \pm \RSIVerbalSharpeStd{}$ ($\RSIVerbalDSRMean{}$) & $\RSIVerbalMaxDDMean{}\%$ / $\RSIVerbalESSRatio{}\times$ \\
+Static \texttt{MMAN} Baseline & Barra-Orthogonal Dual-Head Network & $\RSIMMANICMean{} \pm \RSIMMANICStd{}$ & $\RSIMMANIRMean{} \pm \RSIMMANIRStd{}$ & $\RSIMMANSparseICMean{} \pm \RSIMMANSparseICStd{}$ & $\RSIMMANCrisisSharpeMean{} \pm \RSIMMANCrisisSharpeStd{}$ & $\RSIMMANSharpeMean{} \pm \RSIMMANSharpeStd{}$ ($\RSIMMANDSRMean{}$) & $\RSIMMANMaxDDMean{}\%$ / $\RSIMMANESSRatio{}\times$ \\
+Static \texttt{MMAN + JEV-64KC} Baseline (\texttt{Gen-0}) & Isotonic 80\% Vol Gate + 64-KC Memory & $\RSIGenZeroICMean{} \pm \RSIGenZeroICStd{}$ & $\RSIGenZeroIRMean{} \pm \RSIGenZeroIRStd{}$ & $\RSIGenZeroSparseICMean{} \pm \RSIGenZeroSparseICStd{}$ & $\RSIGenZeroCrisisSharpeMean{} \pm \RSIGenZeroCrisisSharpeStd{}$ & $\RSIGenZeroSharpeMean{} \pm \RSIGenZeroSharpeStd{}$ ($\RSIGenZeroDSRMean{}$) & $\RSIGenZeroMaxDDMean{}\%$ / $\RSIGenZeroESSRatio{}\times$ \\
+\midrule
+\texttt{Fin-RSI Gen-1} (Bounded-Salience Pooling) & Value-Space $\exp(\tau\tanh(z/\tau))$ + LSE Burst & $\RSIGenOneICMean{} \pm \RSIGenOneICStd{}$ & $\RSIGenOneIRMean{} \pm \RSIGenOneIRStd{}$ & $\RSIGenOneSparseICMean{} \pm \RSIGenOneSparseICStd{}$ & $\RSIGenOneCrisisSharpeMean{} \pm \RSIGenOneCrisisSharpeStd{}$ & $\RSIGenOneSharpeMean{} \pm \RSIGenOneSharpeStd{}$ ($\RSIGenOneDSRMean{}$) & $\RSIGenOneMaxDDMean{}\%$ / $\mathbf{\RSIGenOneESSRatio{}\times}$ \\
+\texttt{Fin-RSI Gen-2} (+ Subspace Stein Denoising) & Per-Channel $\boldsymbol{\alpha}_d$ Gate + Positive-Part JS & $\RSIGenTwoICMean{} \pm \RSIGenTwoICStd{}$ & $\RSIGenTwoIRMean{} \pm \RSIGenTwoIRStd{}$ & $\RSIGenTwoSparseICMean{} \pm \RSIGenTwoSparseICStd{}$ & $\RSIGenTwoCrisisSharpeMean{} \pm \RSIGenTwoCrisisSharpeStd{}$ & $\RSIGenTwoSharpeMean{} \pm \RSIGenTwoSharpeStd{}$ ($\RSIGenTwoDSRMean{}$) & $\RSIGenTwoMaxDDMean{}\%$ / $\mathbf{\RSIGenTwoESSRatio{}\times}$ \\
+\textbf{\texttt{Fin-RSI Gen-3 Champion} (Promoted)} & \textbf{+ Streaming Rank-1 Woodbury \& Fisher Gate} & $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ & $\mathbf{\RSIGenThreeIRMean{} \pm \RSIGenThreeIRStd{}}$ & $\mathbf{\RSIGenThreeSparseICMean{} \pm \RSIGenThreeSparseICStd{}}$ & $\mathbf{\RSIGenThreeCrisisSharpeMean{} \pm \RSIGenThreeCrisisSharpeStd{}}$ & $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ ($\mathbf{\RSIGenThreeDSRMean{}}$) & $\mathbf{\RSIGenThreeMaxDDMean{}\%}$ / $\mathbf{\RSIGenThreeESSRatio{}\times}$ \\
+\bottomrule
+\end{tabular}%
+}
+\caption{Four-generation Governed Financial Recursive Self-Improvement (\texttt{Fin-RSI}) Pareto audit across $M=5$ disjoint seeds ($20260923\text{--}20260927$) on the \PanelBalancedRows{}-row 2D company$\times$year balanced panel ($n = \RSIEvalReturnObs{} / \PanelBalancedRows{}$ evaluated OOS return observations, $2018\text{--}2026$). All governed \texttt{Fin-RSI} generations enforce SHA-256 harness locking and pass all 37 counterfactual verification guards ($0.0\%$ leakage).}
+\label{tab:fin_rsi_pareto_ledger}
+\end{table*}
+
 

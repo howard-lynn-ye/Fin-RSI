@@ -1,23 +1,27 @@
-\section{Framework: tools, routing, guards, and memory}
+\section{Framework: tools, routing, guards, memory, and governed evolution}
 \label{sec:framework}
 We define research capability as the ability to choose appropriate quantitative methods,
-interpret their outputs, and adapt future choices based on realized outcomes.
-Counting API calls alone does not measure this capability. Our framework integrates
-progressive skill routing, counterfactual execution guards, and cross-episode memory.
+interpret their outputs, and adapt both future choices and underlying feature operators based on
+realized outcomes without look-ahead leakage. Counting API calls alone does not measure this
+capability. Our framework integrates progressive skill routing, counterfactual execution guards,
+cross-episode associative memory, and governed financial recursive self-improvement (\texttt{Fin-RSI}).
 
-\paragraph{Decision and learning cycle.}
+\paragraph{Decision, memory, and governed evolution cycle.}
 Let $q_t$ be the task prompt, $\mathcal{D}_{\le t}$ the market data available at time $t$,
 and $M_t$ the persistent memory state. A two-stage progressive router with point-in-time
 (\texttt{as\_of}) filtering selects atomic skill cards that fit the context budget without
 chunk fragmentation. The agent uses the hydrated skill specification and a readout of
 $M_t$ to select a tool, execute it with chosen parameters, and produce an asset
 allocation. When the trade clears at settlement $t+T$, the realized return updates
-$M_t$, provided it passes all 37 verification checks.
+$M_t$, provided it passes all 37 verification checks. Across multi-generation research cycles,
+\texttt{Fin-RSI} diagnoses mathematical bottlenecks in the feature and covariance operators and
+mutates candidate operators within a SHA-256-locked evaluation sandbox under a three-way Pareto
+promotion criterion.
 
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{p{0.16\textwidth}p{0.26\textwidth}p{0.25\textwidth}p{0.23\textwidth}}
+\begin{tabular}{p{0.17\textwidth}p{0.24\textwidth}p{0.24\textwidth}p{0.25\textwidth}}
 \toprule
 Component & Role in research workflow & Target question & Implementation and validation \\
 \midrule
@@ -32,23 +36,30 @@ Does past experience improve future method selection across regimes? &
 64-KC mushroom-body model; $+1.71 \pm 0.14$ Sharpe across 21 episodes \\
 Execution checks & Bind verification to code artifacts and filter invalid feedback &
 Are execution outputs, panels, and learning signals free of leaks? &
-37 guards (incl.\ \texttt{check\_panel\_balance}); \PanelBalancedRows{}-row 2D panel \\
+37 guards (incl.\ \texttt{check\_\-panel\_\-balance}); \PanelBalancedRows{}-row 2D panel \\
+Governed evolution (\texttt{Fin-RSI}) & Evolve pooling, shrinkage, and covariance operators in a locked sandbox &
+Can an agent self-improve operators without backtest overfitting? &
+SHA-256 lock + 3 probes; $\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}$ Sharpe ($\operatorname{ESS}\ \RSIESSRatio{}\times$) \\
 \bottomrule
 \end{tabular}
-\caption{System components, roles, and validation scope within the financial agent framework.}
+\caption{System components, roles, and validation scope within the closed-loop financial agent framework.}
 \label{tab:framework}
 \end{table*}
 
-\paragraph{Complementary retrieval and memory timescales.}
+\paragraph{Complementary retrieval, memory, and operator evolution timescales.}
 Progressive routing operates within a single task by hydrating only the 1--2 complete
 \texttt{SKILL.md} packages relevant to the query under a strict \texttt{as\_of} timestamp filter.
-Persistent memory operates across sessions by storing sparse Kenyon-Cell readout updates in an
-external module. The two mechanisms operate on complementary timescales: progressive routing
-controls which domain conventions and guard bindings the model sees right now, whereas persistent
-memory retains verified log-wealth credit across historical episodes.
+Persistent memory operates across trading episodes by storing sparse Kenyon-Cell readout updates
+in an external module, while \texttt{Fin-RSI} operates across generational research cycles by
+evolving the mathematical form of multimodal feature pooling, subspace shrinkage, and streaming
+covariance adaptation inside an immutable evaluation harness.
 
-\paragraph{Grounded feedback updates.}
+\paragraph{Grounded feedback and anti-reward-hacking governance.}
 When an episode concludes, the agent records the market context, the chosen tool, and the
 realized log-wealth return. Only verified, settlement-cleared outcomes update memory. Negative returns
 are retained as learning signals, while trades relying on look-ahead data, unbalanced panels, or
-unadjusted prices are rejected by guards to prevent memory corruption.
+unadjusted prices are rejected by guards to prevent memory corruption. Similarly, during
+\texttt{Fin-RSI} operator evolution, any candidate mutation that alters the read-only evaluation
+harness, triggers a counterfactual guard violation, or regresses on sparse small-cap or crisis slices
+is automatically rejected.
+

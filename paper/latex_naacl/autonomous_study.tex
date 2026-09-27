@@ -109,7 +109,8 @@ FinMem \cite{yu2024finmem} & Layered FAISS Memory & $51.4 \pm 2.1$ & $29.4\%$ & 
 TradingAgents \cite{xiao2024tradingagents} & Bull--Bear Debate & $56.2 \pm 2.5$ & $26.7\%$ & $15{,}420$ & $+0.0105 \pm 0.0019$ & $+0.58 \pm 0.15$ & $-23.4\%$ \\
 FinAgent \cite{zhang2024finagent} & Multimodal Reflection & $61.0 \pm 2.2$ & $21.8\%$ & $12{,}650$ & $+0.0146 \pm 0.0015$ & $+0.79 \pm 0.14$ & $-18.2\%$ \\
 \midrule
-\textbf{\textsc{fin-skills} Closed-Loop (Ours)} & \textbf{RAG-Jev + 37 Guards + 64-KC} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{+0.0292 \pm 0.0014}$ & $\mathbf{+1.71 \pm 0.14}$ & $\mathbf{-10.82\%}$ \\
+\textbf{\textsc{fin-skills} Closed-Loop (Gen-0)} & \textbf{RAG-Jev + 37 Guards + 64-KC} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{+0.0292 \pm 0.0014}$ & $\mathbf{+1.71 \pm 0.14}$ & $\mathbf{-10.82\%}$ \\
+\textbf{\textsc{fin-skills} + \texttt{Fin-RSI} Champion} & \textbf{+ Woodbury--Fisher RSI (Gen-3)} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ & $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ & $\mathbf{\RSIGenThreeMaxDDMean{}\%}$ \\
 \bottomrule
 \end{tabular}%
 }
@@ -124,14 +125,17 @@ self-critique cannot inspect runtime perturbation invariance. Multi-agent bull--
 (TradingAgents) consumes $3.8\times$ more tokens ($15{,}420$ vs.\ $4{,}039$) while achieving
 lower out-of-sample Sharpe ($+0.58 \pm 0.15$) than FinMem ($+0.62 \pm 0.13$). By combining
 atomic two-stage skill routing (\texttt{RAG-Jev}), 37 counterfactual verification guards, and
-checked 64-KC mushroom-body plasticity, our closed-loop system achieves $96.2\% \pm 1.1\%$
+checked 64-KC mushroom-body plasticity, our static closed-loop baseline achieves $96.2\% \pm 1.1\%$
 \texttt{Pass@1}, $0.0\%$ leakage, and a $+1.71 \pm 0.14$ net Sharpe ($t = 11.84, p < 10^{-5}$
-vs.\ FinAgent).
+vs.\ FinAgent), while evolving the multimodal pooling, subspace shrinkage, and streaming
+Woodbury--Fisher covariance operators inside our SHA-256-locked \texttt{Fin-RSI} sandbox further
+lifts out-of-sample Daily Rank IC to $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ and net
+Sharpe to $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ ($\text{Max DD} = \mathbf{\RSIGenThreeMaxDDMean{}\%}$).
 
-\subsection{Systematic component-wise ablation study}
+\subsection{Systematic component-wise ablation and governed \texttt{Fin-RSI} evolution}
 \label{sec:ablation_study}
 To quantify the causal contribution of each architectural pillar, Table~\ref{tab:component_ablation}
-reports a seven-arm leave-one-out ablation starting from the full \textsc{fin-skills} closed-loop
+reports a seven-arm leave-one-out ablation starting from the \textsc{fin-skills} closed-loop
 architecture:
 
 \begin{table*}[t]
@@ -172,5 +176,26 @@ with an 80th-percentile volatility gate lifts 5-year all-weather OOS Sharpe from
 $\text{Max DD} = \JEVMaxDDPct{}\%$, $\text{Calmar} = \JEVCalmar{}$), while Barra-orthogonal
 multimodal catalyst fusion (\texttt{MMAN}) raises 5-day Rank IC from $\MMANSparseSocialIC{}$
 (sparse social posts) to $\MMANBarraDualIC{}$ ($t = 11.50, p < 10^{-29}$).
+
+Finally, evaluating four generations of operator self-improvement across $M=5$ disjoint seeds on the
+\PanelBalancedRows{}-row 2D-balanced panel (\RSIEvalReturnObs{} return observations; full ledger in
+Appendix~\ref{app:fin_rsi}, Table~\ref{tab:fin_rsi_pareto_ledger}) demonstrates why financial
+self-improvement must be governed by cryptographic harness locks and physical diagnostic probes.
+Whereas unconstrained verbal self-reflection (\texttt{Unconstrained Verbal RSI}) degrades out-of-sample
+Daily Rank IC to $\RSIVerbalICMean{} \pm \RSIVerbalICStd{}$ and Net Sharpe to $\RSIVerbalSharpeMean{} \pm \RSIVerbalSharpeStd{}$
+($\text{Max DD} = \RSIVerbalMaxDDMean{}\%$) due to iterative overfitting on burst outliers, our
+governed \texttt{Fin-RSI} trajectory monotonically improves every Pareto dimension from the static
+multimodal baseline ($\text{Rank IC} = \RSIGenZeroICMean{} \pm \RSIGenZeroICStd{}$, $\text{Sharpe} = \RSIGenZeroSharpeMean{} \pm \RSIGenZeroSharpeStd{}$):
+\texttt{Gen-1} restores post-encoder gradient flow and lifts burst sequence $\operatorname{ESS}$ by
+$\RSIESSRatio{}\times$ ($\text{Rank IC} = \RSIGenOneICMean{} \pm \RSIGenOneICStd{}$, $\text{Sharpe} = \RSIGenOneSharpeMean{} \pm \RSIGenOneSharpeStd{}$);
+\texttt{Gen-2} eliminates small-cap variance inflation via per-channel positive-part James--Stein
+denoising, lifting sparse small-cap/STAR slice Rank IC from $\RSIGenZeroSparseICMean{} \pm \RSIGenZeroSparseICStd{}$
+to $\RSIGenTwoSparseICMean{} \pm \RSIGenTwoSparseICStd{}$ ($\text{Sharpe} = \RSIGenTwoSharpeMean{} \pm \RSIGenTwoSharpeStd{}$);
+and the promoted \texttt{Gen-3 Champion} couples streaming rank-1 Sherman--Morrison--Woodbury covariance
+adaptation with Bernoulli Fisher information gating to reach $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$
+Daily Rank IC, $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ annualized net Sharpe
+($\text{DSR} = \RSIGenThreeDSRMean{}$, paired $t = \RSIGenThreeTStatVsGenZero{}$ vs.\ static baseline),
+and $\mathbf{\RSIGenThreeCrisisSharpeMean{} \pm \RSIGenThreeCrisisSharpeStd{}}$ Sharpe across the
+$2018/2022$ crisis regimes with $0.0\%$ guard leakage.
 
 

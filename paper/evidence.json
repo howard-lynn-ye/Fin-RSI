@@ -56,6 +56,10 @@
     {
       "path": "benchmarks/FINANCE_NATIVE_MODEL_BENCHMARK.json",
       "sha256": "bbf2da2d00da7600f0be3f69d562b6ff1f05e5efb653bd5d33d910a8d4e480d7"
+    },
+    {
+      "path": "benchmarks/FIN_RSI_PARETO_LEDGER_REPORT.json",
+      "sha256": "2a99ee410adc0d4e525ac47a8d696273993d2baf2731f8548b16252596b27358"
     }
   ],
   "pilot": {
@@ -685,6 +689,258 @@
         "exec_accuracy": 0.9375,
         "parse_or_turn_errors": 0
       }
+    }
+  },
+  "fin_rsi_pareto_ledger": {
+    "status": "PROMOTED_CHAMPION",
+    "passed": true,
+    "dataset_rows": 207742,
+    "sampled_cross_sectional_obs": 107999,
+    "registered_seeds": [
+      20260923,
+      20260924,
+      20260925,
+      20260926,
+      20260927
+    ],
+    "physical_diagnostic_probes": {
+      "probe_a_scale_cancellation": {
+        "pre_ln_grad_norm_l2": 4.7550201998092234e-05,
+        "post_encoder_value_pool_grad_norm_l2": 1.737295,
+        "scale_cancellation_detected": true,
+        "diagnosis": "Pre-LN token scaling cancels out inside LayerNorm (||dL/dw_pre||_2 ~ 0). Post-Encoder Value-Space Salience Pooling restores O(1) gradient flow."
+      },
+      "probe_b_sequence_ess": {
+        "tau_bounded": 2.5,
+        "horizons": {
+          "T_8": {
+            "horizon": 8,
+            "unbounded_exp_ess": 2.9857,
+            "bounded_value_lse_ess": 7.4173,
+            "ess_improvement_ratio": 2.4843
+          },
+          "T_16": {
+            "horizon": 16,
+            "unbounded_exp_ess": 4.6062,
+            "bounded_value_lse_ess": 14.7219,
+            "ess_improvement_ratio": 3.1961
+          },
+          "T_32": {
+            "horizon": 32,
+            "unbounded_exp_ess": 7.0705,
+            "bounded_value_lse_ess": 29.3417,
+            "ess_improvement_ratio": 4.1499
+          },
+          "T_64": {
+            "horizon": 64,
+            "unbounded_exp_ess": 10.9904,
+            "bounded_value_lse_ess": 58.5551,
+            "ess_improvement_ratio": 5.3278
+          },
+          "T_128": {
+            "horizon": 128,
+            "unbounded_exp_ess": 17.3574,
+            "bounded_value_lse_ess": 117.0716,
+            "ess_improvement_ratio": 6.7448
+          }
+        },
+        "T64_ess_ratio": 5.3278,
+        "T128_ess_ratio": 6.7448,
+        "diagnosis": "Unbounded exponential salience exp(2.5*z_t) collapses effective sample size during earnings/Guba post bursts; temperature-bounded value pooling + LSE partition conservation boosts sequence ESS by >3.4x."
+      },
+      "probe_c_slice_gap": {
+        "sparse_n1_2_scalar_shrinkage_mse": 0.23157,
+        "sparse_n1_2_subspace_stein_mse": 0.06175,
+        "sparse_mse_reduction_pct": 73.33,
+        "evaluated_arms": {
+          "Row_1_Full_Dense_Multimodal_Ref": {
+            "mean_daily_rank_ic": 0.03151,
+            "sparse_ticker_n1_2_rank_ic": 0.0264,
+            "crisis_2018_2022_sharpe": 1.592,
+            "sequence_ess_ratio": 3.1
+          },
+          "Row_2_Prod_Baseline_Verbal_Reflexion_RSI": {
+            "mean_daily_rank_ic": 0.00448,
+            "sparse_ticker_n1_2_rank_ic": 0.00285,
+            "crisis_2018_2022_sharpe": -0.344,
+            "sequence_ess_ratio": 1.0
+          },
+          "Row_3_Prod_Baseline_MMAN_Barra_Dual": {
+            "mean_daily_rank_ic": 0.02811,
+            "sparse_ticker_n1_2_rank_ic": 0.02144,
+            "crisis_2018_2022_sharpe": 1.073,
+            "sequence_ess_ratio": 1.18
+          },
+          "Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC": {
+            "mean_daily_rank_ic": 0.02831,
+            "sparse_ticker_n1_2_rank_ic": 0.0236,
+            "crisis_2018_2022_sharpe": 1.104,
+            "sequence_ess_ratio": 1.34
+          },
+          "Row_5_RSI_Gen1_ValueSpace_BoundedESS": {
+            "mean_daily_rank_ic": 0.02872,
+            "sparse_ticker_n1_2_rank_ic": 0.02107,
+            "crisis_2018_2022_sharpe": 1.322,
+            "sequence_ess_ratio": 3.48
+          },
+          "Row_6_RSI_Gen2_Subspace_Precision_Stein": {
+            "mean_daily_rank_ic": 0.03147,
+            "sparse_ticker_n1_2_rank_ic": 0.02903,
+            "crisis_2018_2022_sharpe": 0.771,
+            "sequence_ess_ratio": 3.54
+          },
+          "Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC": {
+            "mean_daily_rank_ic": 0.03629,
+            "sparse_ticker_n1_2_rank_ic": 0.03467,
+            "crisis_2018_2022_sharpe": 1.891,
+            "sequence_ess_ratio": 3.62
+          }
+        }
+      }
+    },
+    "arms": {
+      "Row_1_Full_Dense_Multimodal_Ref": {
+        "mean_daily_rank_ic": 0.03151,
+        "mean_daily_rank_ic_std": 0.00421,
+        "retention_vs_row1_pct": 100.0,
+        "annualized_ic_ir": 3.035,
+        "annualized_ic_ir_std": 0.443,
+        "annualized_net_sharpe": 1.409,
+        "annualized_net_sharpe_std": 0.397,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -8.85,
+        "max_drawdown_pct_std": 2.61,
+        "sparse_ticker_n1_2_rank_ic": 0.0264,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00807,
+        "crisis_2018_2022_sharpe": 1.592,
+        "crisis_2018_2022_sharpe_std": 0.517,
+        "sequence_ess_ratio": 3.1,
+        "leakage_rate_pct": 0.0
+      },
+      "Row_2_Prod_Baseline_Verbal_Reflexion_RSI": {
+        "mean_daily_rank_ic": 0.00448,
+        "mean_daily_rank_ic_std": 0.00241,
+        "retention_vs_row1_pct": 14.23,
+        "annualized_ic_ir": 0.422,
+        "annualized_ic_ir_std": 0.217,
+        "annualized_net_sharpe": 0.182,
+        "annualized_net_sharpe_std": 0.233,
+        "deflated_sharpe_ratio_dsr": 0.0,
+        "max_drawdown_pct": -22.47,
+        "max_drawdown_pct_std": 11.26,
+        "sparse_ticker_n1_2_rank_ic": 0.00285,
+        "sparse_ticker_n1_2_rank_ic_std": 0.0044,
+        "crisis_2018_2022_sharpe": -0.344,
+        "crisis_2018_2022_sharpe_std": 0.968,
+        "sequence_ess_ratio": 1.0,
+        "leakage_rate_pct": 38.5
+      },
+      "Row_3_Prod_Baseline_MMAN_Barra_Dual": {
+        "mean_daily_rank_ic": 0.02811,
+        "mean_daily_rank_ic_std": 0.00363,
+        "retention_vs_row1_pct": 89.22,
+        "annualized_ic_ir": 2.67,
+        "annualized_ic_ir_std": 0.402,
+        "annualized_net_sharpe": 1.256,
+        "annualized_net_sharpe_std": 0.359,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -11.81,
+        "max_drawdown_pct_std": 4.11,
+        "sparse_ticker_n1_2_rank_ic": 0.02144,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00568,
+        "crisis_2018_2022_sharpe": 1.073,
+        "crisis_2018_2022_sharpe_std": 0.912,
+        "sequence_ess_ratio": 1.18,
+        "leakage_rate_pct": 0.0
+      },
+      "Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC": {
+        "mean_daily_rank_ic": 0.02831,
+        "mean_daily_rank_ic_std": 0.0038,
+        "retention_vs_row1_pct": 89.84,
+        "annualized_ic_ir": 2.734,
+        "annualized_ic_ir_std": 0.402,
+        "annualized_net_sharpe": 1.16,
+        "annualized_net_sharpe_std": 0.216,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -10.53,
+        "max_drawdown_pct_std": 2.75,
+        "sparse_ticker_n1_2_rank_ic": 0.0236,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00693,
+        "crisis_2018_2022_sharpe": 1.104,
+        "crisis_2018_2022_sharpe_std": 0.609,
+        "sequence_ess_ratio": 1.34,
+        "leakage_rate_pct": 0.0
+      },
+      "Row_5_RSI_Gen1_ValueSpace_BoundedESS": {
+        "mean_daily_rank_ic": 0.02872,
+        "mean_daily_rank_ic_std": 0.00411,
+        "retention_vs_row1_pct": 91.14,
+        "annualized_ic_ir": 2.75,
+        "annualized_ic_ir_std": 0.465,
+        "annualized_net_sharpe": 1.301,
+        "annualized_net_sharpe_std": 0.13,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -8.19,
+        "max_drawdown_pct_std": 1.87,
+        "sparse_ticker_n1_2_rank_ic": 0.02107,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00745,
+        "crisis_2018_2022_sharpe": 1.322,
+        "crisis_2018_2022_sharpe_std": 0.551,
+        "sequence_ess_ratio": 3.48,
+        "leakage_rate_pct": 0.0
+      },
+      "Row_6_RSI_Gen2_Subspace_Precision_Stein": {
+        "mean_daily_rank_ic": 0.03147,
+        "mean_daily_rank_ic_std": 0.0041,
+        "retention_vs_row1_pct": 99.87,
+        "annualized_ic_ir": 3.006,
+        "annualized_ic_ir_std": 0.474,
+        "annualized_net_sharpe": 1.508,
+        "annualized_net_sharpe_std": 0.281,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -6.79,
+        "max_drawdown_pct_std": 0.84,
+        "sparse_ticker_n1_2_rank_ic": 0.02903,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00746,
+        "crisis_2018_2022_sharpe": 0.771,
+        "crisis_2018_2022_sharpe_std": 0.342,
+        "sequence_ess_ratio": 3.54,
+        "leakage_rate_pct": 0.0
+      },
+      "Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC": {
+        "mean_daily_rank_ic": 0.03629,
+        "mean_daily_rank_ic_std": 0.00417,
+        "retention_vs_row1_pct": 115.16,
+        "annualized_ic_ir": 3.463,
+        "annualized_ic_ir_std": 0.51,
+        "annualized_net_sharpe": 1.766,
+        "annualized_net_sharpe_std": 0.338,
+        "deflated_sharpe_ratio_dsr": 1.0,
+        "max_drawdown_pct": -6.84,
+        "max_drawdown_pct_std": 2.5,
+        "sparse_ticker_n1_2_rank_ic": 0.03467,
+        "sparse_ticker_n1_2_rank_ic_std": 0.00731,
+        "crisis_2018_2022_sharpe": 1.891,
+        "crisis_2018_2022_sharpe_std": 0.663,
+        "sequence_ess_ratio": 3.62,
+        "leakage_rate_pct": 0.0
+      }
+    },
+    "headline_comparisons": {
+      "gen3_vs_row4_static_jev_64kc": {
+        "delta_daily_rank_ic": 0.00798,
+        "delta_net_sharpe": 0.606,
+        "delta_sparse_ticker_ic": 0.01107,
+        "delta_crisis_sharpe": 0.787,
+        "paired_t_stat_ic": 13.77
+      },
+      "gen3_vs_row2_unguarded_verbal_reflexion": {
+        "delta_daily_rank_ic": 0.03181,
+        "delta_net_sharpe": 1.584,
+        "drawdown_reduction_pct_pts": 15.63,
+        "leakage_reduction_pct_pts": 38.5
+      },
+      "gen3_retention_vs_row1_full_dense_pct": 115.16
     }
   },
   "extended_ablations": {

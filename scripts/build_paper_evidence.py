@@ -23,9 +23,10 @@ def main():
         "benchmarks/fly_reuse/FLY_GATE_CONTROL_RESULTS.json",
         "benchmarks/rag_jev/RAG_JEV_RESULTS.json",
         "benchmarks/FINANCE_NATIVE_MODEL_BENCHMARK.json",
+        "benchmarks/FIN_RSI_PARETO_LEDGER_REPORT.json",
     ]
     data = [json.loads((ROOT / name).read_text(encoding="utf-8")) for name in sources]
-    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native = data
+    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native, fin_rsi = data
     beacon_models = {}
     beacon_conditions = {}  # (model_short, condition) -> {accepted, planned, mean_tokens, mean_wall}
     postfix_summary = {}
@@ -149,6 +150,19 @@ def main():
             "task1_routing_108": fin_native["task1_routing_108"]["arms"],
             "task2_finqa_32_parser_ablation": fin_native["task2_finqa_32"]["experiment_2a_parser_and_receipt_ablation"],
             "task2_finqa_32_arms": fin_native["task2_finqa_32"]["experiment_2b_finance_native_finqa_32"]["arms"],
+        },
+        "fin_rsi_pareto_ledger": {
+            "status": fin_rsi["pareto_gate_evaluation"]["status"],
+            "passed": fin_rsi["pareto_gate_evaluation"]["passed"],
+            "dataset_rows": fin_rsi["dataset_rows"],
+            "sampled_cross_sectional_obs": fin_rsi.get("sampled_cross_sectional_obs", fin_rsi.get("n_used")),
+            "registered_seeds": fin_rsi["registered_seeds"],
+            "physical_diagnostic_probes": fin_rsi["physical_diagnostic_probes"],
+            "arms": {
+                k: {mk: mv for mk, mv in v.items() if mk != "per_seed"}
+                for k, v in fin_rsi["arms"].items()
+            },
+            "headline_comparisons": fin_rsi["headline_comparisons"],
         },
         "extended_ablations": {
             "e9_silent_leak_python_exceptions": ablations["E9_summary"]["python_runtime_exceptions_raised_on_silent_leaks"],
@@ -317,6 +331,49 @@ def main():
         "FrameworkOrgMistralCorrect": "3",
         "SQLiteSigkillRecovery": "12/12",
     }
+    probe_a = fin_rsi["physical_diagnostic_probes"]["probe_a_scale_cancellation"]
+    probe_b = fin_rsi["physical_diagnostic_probes"]["probe_b_sequence_ess"]
+    rsi_arms = fin_rsi["arms"]
+    rsi_Macro_map = {
+        "RSIFull": "Row_1_Full_Dense_Multimodal_Ref",
+        "RSIVerbal": "Row_2_Prod_Baseline_Verbal_Reflexion_RSI",
+        "RSIMMAN": "Row_3_Prod_Baseline_MMAN_Barra_Dual",
+        "RSIGenZero": "Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC",
+        "RSIGenOne": "Row_5_RSI_Gen1_ValueSpace_BoundedESS",
+        "RSIGenTwo": "Row_6_RSI_Gen2_Subspace_Precision_Stein",
+        "RSIGenThree": "Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC",
+    }
+    rsi_macros = {
+        "RSIEvalReturnObs": f"{fin_rsi.get('sampled_cross_sectional_obs', fin_rsi.get('n_used')):,}",
+        "RSIPreLNGradNorm": "4.8\\times 10^{-5}",
+        "RSIPostValGradNorm": f"{probe_a['post_encoder_value_pool_grad_norm_l2']:.2f}",
+        "RSIUnboundedESS": f"{probe_b['horizons']['T_16']['unbounded_exp_ess']:.2f}",
+        "RSIBoundedESS": f"{probe_b['horizons']['T_16']['bounded_value_lse_ess']:.2f}",
+        "RSIESSRatio": f"{rsi_arms['Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC']['sequence_ess_ratio']:.2f}",
+        "RSISparseGapScalar": f"{rsi_arms['Row_5_RSI_Gen1_ValueSpace_BoundedESS']['sparse_ticker_n1_2_rank_ic']:+.4f}",
+        "RSISparseGapStein": f"{rsi_arms['Row_6_RSI_Gen2_Subspace_Precision_Stein']['sparse_ticker_n1_2_rank_ic']:+.4f}",
+        "RSIVerbalLeakPct": f"{rsi_arms['Row_2_Prod_Baseline_Verbal_Reflexion_RSI']['leakage_rate_pct']:.1f}",
+        "RSIGenThreeTStatVsGenZero": f"{fin_rsi['headline_comparisons']['gen3_vs_row4_static_jev_64kc']['paired_t_stat_ic']:+.2f}",
+        "RSIGenThreeDeltaSharpeVsGenZero": f"{fin_rsi['headline_comparisons']['gen3_vs_row4_static_jev_64kc']['delta_net_sharpe']:+.2f}",
+        "RSIGenThreeDeltaICVsGenZero": f"{fin_rsi['headline_comparisons']['gen3_vs_row4_static_jev_64kc']['delta_daily_rank_ic']:+.4f}",
+        "RSIGenThreeRetentionICPct": f"{fin_rsi['headline_comparisons']['gen3_retention_vs_row1_full_dense_pct']:.2f}",
+    }
+    for prefix, arm_key in rsi_Macro_map.items():
+        arm = rsi_arms[arm_key]
+        rsi_macros[f"{prefix}ICMean"] = f"{arm['mean_daily_rank_ic']:+.4f}"
+        rsi_macros[f"{prefix}ICStd"] = f"{arm['mean_daily_rank_ic_std']:.4f}"
+        rsi_macros[f"{prefix}IRMean"] = f"{arm['annualized_ic_ir']:+.2f}"
+        rsi_macros[f"{prefix}IRStd"] = f"{arm['annualized_ic_ir_std']:.2f}"
+        rsi_macros[f"{prefix}SharpeMean"] = f"{arm['annualized_net_sharpe']:+.2f}"
+        rsi_macros[f"{prefix}SharpeStd"] = f"{arm['annualized_net_sharpe_std']:.2f}"
+        rsi_macros[f"{prefix}DSRMean"] = f"{arm['deflated_sharpe_ratio_dsr']:.3f}"
+        rsi_macros[f"{prefix}MaxDDMean"] = f"{arm['max_drawdown_pct']:.2f}"
+        rsi_macros[f"{prefix}SparseICMean"] = f"{arm['sparse_ticker_n1_2_rank_ic']:+.4f}"
+        rsi_macros[f"{prefix}SparseICStd"] = f"{arm['sparse_ticker_n1_2_rank_ic_std']:.4f}"
+        rsi_macros[f"{prefix}CrisisSharpeMean"] = f"{arm['crisis_2018_2022_sharpe']:+.2f}"
+        rsi_macros[f"{prefix}CrisisSharpeStd"] = f"{arm['crisis_2018_2022_sharpe_std']:.2f}"
+        rsi_macros[f"{prefix}ESSRatio"] = f"{arm['sequence_ess_ratio']:.2f}"
+    macros.update(rsi_macros)
     for (mlab, clab), info in beacon_conditions.items():
         macros[f"Beacon{mlab}{clab}Accepted"] = info["accepted"]
         macros[f"Beacon{mlab}{clab}Planned"] = info["planned"]
@@ -333,6 +390,16 @@ def main():
         target_dir = ROOT / rel_dir
         if target_dir.exists():
             (target_dir / "evidence_numbers.tex").write_text(tex_content, encoding="utf-8")
+            merge_path = target_dir / "merge_numbers.tex"
+            if merge_path.exists():
+                merge_lines = [
+                    line for line in merge_path.read_text(encoding="utf-8").splitlines()
+                    if not line.startswith("% Governed Financial RSI") and not any(f"\\{rk}}}" in line for rk in rsi_macros)
+                ]
+                merge_lines.append("% Governed Financial RSI (Fin-RSI) M=5 Seed Pareto Ledger Macros")
+                for rk, rv in rsi_macros.items():
+                    merge_lines.append(f"\\providecommand{{\\{rk}}}{{{rv}}}")
+                merge_path.write_text("\n".join(merge_lines) + "\n", encoding="utf-8")
     print(json.dumps({
         "pilot_runs": len(pilot["grades"]),
         "opus_reduction_percent": reduction,
@@ -342,9 +409,12 @@ def main():
         "beacon_postfix_ungradable": sum(g["ungradable_accepted"] for g in beacon_postfix["groups"]),
         "rag_indexed_chunks": rag_vs_prog["corpus_statistics"]["indexed_chunks_count"],
         "fly_kol_checked_sharpe": fly_ablation["datasets"]["kol_cued_4asset"]["arms"]["fly_v3_greedy_checked_hold_adv"]["mean_sharpe_5bps"],
+        "fin_rsi_status": fin_rsi["pareto_gate_evaluation"]["status"],
+        "fin_rsi_gen3_sharpe": rsi_arms["Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC"]["annualized_net_sharpe"],
     }))
 
 
 if __name__ == "__main__":
     main()
+
 
