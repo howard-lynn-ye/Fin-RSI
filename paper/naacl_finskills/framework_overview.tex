@@ -3,20 +3,31 @@
 We define research capability as the ability to choose appropriate quantitative methods,
 interpret their outputs, and adapt future choices, discrete skill routing specifications, and
 underlying feature operators based on realized outcomes without look-ahead leakage. Counting API
-calls alone does not measure this capability. Our framework integrates progressive skill routing,
-counterfactual execution guards, cross-episode associative memory, and dual-layer governed
-financial recursive self-improvement (\texttt{Fin-RSI}) spanning \textbf{Skill-Space RSI} and
-\textbf{Operator-Space RSI}.
+calls alone does not measure this capability. As illustrated in Figure~\ref{fig:architecture}, our
+framework integrates progressive skill routing, counterfactual execution guards, cross-episode
+associative memory, and dual-layer governed financial recursive self-improvement (\texttt{Fin-RSI})
+spanning \textbf{Skill-Space RSI} and \textbf{Operator-Space RSI}.
+
+\begin{figure*}[t]
+\centering
+\IfFileExists{figures/fig1_dual_layer_fin_rsi_arch.pdf}{%
+  \includegraphics[width=0.90\textwidth]{figures/fig1_dual_layer_fin_rsi_arch.pdf}%
+}{}
+\vspace{-4pt}
+\caption{Architecture of the closed-loop \textsc{fin-skills} and \textbf{Dual-Layer Governed \texttt{Fin-RSI}} framework. \textbf{Top (Online Inference \& Verified Memory):} Point-in-time progressive routing (\texttt{RAG-Jev}, $-98.91\%$ tokens), 64-KC mushroom-body readout, and 37 counterfactual verification guards gating settlement-cleared return updates $G=\log(W_T/W_0)$. \textbf{Bottom (Offline Dual-Layer Governed Evolution):} Under SHA-256 locks, \textbf{Skill-Space RSI} (\texttt{SKILL\_HARNESS\_LOCK}) evolves contrastive \texttt{TRIGGER}/\texttt{SKIP} margins ($\Delta m \ge 0.15, |d_k| \le 1{,}024$) and one-hop cross-references, while \textbf{Operator-Space RSI} (\texttt{HARNESS\_LOCK}) optimizes bounded value-space pooling, James--Stein shrinkage, and rank-1 Woodbury--Fisher covariance updates under a three-way Pareto gate.}
+\label{fig:architecture}
+\vspace{-4pt}
+\end{figure*}
 
 \paragraph{Decision, memory, and dual-layer governed evolution cycle.}
 Let $q_t$ be the task prompt, $\mathcal{D}_{\le t}$ the market data available at time $t$,
-and $M_t$ the persistent memory state. A two-stage progressive router with point-in-time
+and $M_t$ the persistent memory state (Figure~\ref{fig:architecture}, top). A two-stage progressive router with point-in-time
 (\texttt{as\_of}) filtering selects atomic skill cards that fit the context budget without
 chunk fragmentation. The agent uses the hydrated skill specification and a readout of
 $M_t$ to select a tool, execute it with chosen parameters, and produce an asset
 allocation. When the trade clears at settlement $t+T$, the realized return updates
-$M_t$, provided it passes all 37 verification checks. Across multi-generation research cycles,
-\texttt{Fin-RSI} operates at two levels under SHA-256 harness locks: \textbf{Skill-Space RSI}
+$M_t$, provided it passes all 37 verification checks. Across multi-generation research cycles
+(Figure~\ref{fig:architecture}, bottom), \texttt{Fin-RSI} operates at two levels under SHA-256 harness locks: \textbf{Skill-Space RSI}
 diagnoses umbrella-versus-leaf routing collisions and mutates frontmatter \texttt{TRIGGER}/\texttt{SKIP}
 boundaries ($|d_k| \le 1{,}024$) and one-hop body cross-references under \texttt{SKILL\_HARNESS\_LOCK},
 while \textbf{Operator-Space RSI} diagnoses mathematical bottlenecks in multimodal feature and

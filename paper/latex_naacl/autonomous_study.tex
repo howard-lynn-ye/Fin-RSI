@@ -1,46 +1,26 @@
-\section{Empirical study: tool access and decision outcomes}
+\section{Empirical study: tool access, ablations, and dual-layer \texttt{Fin-RSI} synergy}
 \label{sec:autonomous}
-We evaluate how autonomous tool access affects portfolio decisions in open-weight
-language models under sequential multi-asset tasks.
+We first evaluate how unguided tool access affects sequential portfolio decisions in open-weight
+language models, and then benchmark our closed-loop architecture and dual-layer governed
+\texttt{Fin-RSI} evolution against classical quantitative rules and state-of-the-art financial
+agent frameworks.
 
-\subsection{Experimental setup}
-We test Qwen2.5-Coder 7B and 14B under four conditions: historical prices alone; prices
-with static skill excerpts; prices with precomputed tool outputs; and autonomous access
-to the library's algorithm catalog. Each condition runs across inference seeds 11 and 23,
-with a budget of five interaction turns per decision (capped at 256 generated tokens per
-response). Conditions run in randomized order.
+\subsection{Diagnostic study: unguided tool access vs.\ decision quality}
+We test Qwen2.5-Coder 7B and 14B under four conditions (inference seeds 11 and 23, up to five
+turns and 256 tokens per turn): historical prices alone; prices with static skill excerpts;
+prices with precomputed tool outputs; and autonomous access to 18 price-compatible quantitative
+routines. We evaluate on anonymized daily ECB exchange rates for EUR against USD, JPY, GBP, and
+CHF over the first 84 trading days of 2025 (four 21-day rebalancing intervals, 126-day trailing
+windows, $t+1$ execution, long-only without leverage, 5 bps per-side transaction costs).
 
-In the autonomous condition, the agent receives descriptions of available tools. It can
-inspect algorithm specifications, run an algorithm with custom arguments, or query a
-rule-based strategy adviser. Tool calls are dispatched against trailing market snapshots
-and return structured numerical results. In our evaluation, agents access 18
-price-compatible quantitative routines.
-
-A decision without valid portfolio weights leaves existing allocations unchanged.
-Requests, outputs, and intermediate reasoning traces are logged separately, and final
-weights are frozen before scoring.
-
-\subsection{Data and evaluation protocol}
-We evaluate on daily exchange rates for EUR against USD, JPY, GBP, and CHF from ECB
-reference data. Messages use anonymized asset identifiers and relative indices rather
-than calendar dates.
-
-Each decision observes 126 trailing days. The evaluation spans the first 84 trading days
-of 2025 (ending May 2), with four rebalancing points spaced 21 days apart. Decisions at
-step $t$ execute at day $t+1$ prices to prevent look-ahead bias. Portfolios are long-only
-without leverage, with unallocated capital held in cash. We charge 5 basis points per
-side for rebalancing and final liquidation. Cash, equal-weight buy-and-hold, and
-deterministic rules serve as reference baselines.
-
-\subsection{Observed execution and returns}
-Across 16 trials, models generated 64 final portfolio allocations. Autonomous 7B made 13
-successful tool calls, while autonomous 14B made 30. Both models recovered from minor
-JSON formatting errors within their turn budget, completing all decisions without
-runtime crashes.
-
-Tool choices diverged across model scales: 7B selected cross-sectional momentum,
-Bollinger reversion, and volatility-targeted momentum, whereas 14B predominantly used
-Bollinger reversion alongside trend-following indicators.
+Across 16 trials (64 portfolio allocations, 38 model calls per model, 1,155,782 prompt tokens),
+autonomous 7B and 14B executed 13 and 30 valid tool calls without runtime crashes (7B favored
+momentum and Bollinger reversion; 14B paired Bollinger reversion with trend indicators). Yet as
+shown in Table~\ref{tab:autonomous}, while autonomous 14B improved over static text by $+0.783$
+percentage points, neither autonomous model beat its unassisted baseline ($+0.100\%$ for 7B,
+$-3.324\%$ for 14B): tool access increased 7B risky exposure from $0.500$ to $0.969$ and shifted
+14B from $1.000$ to $0.500$, confirming that raw tool execution without regime-aware memory or
+verification guards fails to improve risk-adjusted returns.
 
 \begin{table}[t]
 \centering\small
@@ -58,39 +38,32 @@ Autonomous library & $-3.984$ & $-3.783$ \\
 \label{tab:autonomous}
 \end{table}
 
-Table~\ref{tab:autonomous} shows returns across all arms. While autonomous 14B improved
-over its text-only condition by 0.783 percentage points, neither autonomous model beat
-the unassisted baseline (+0.100\% for 7B, $-3.324\%$ for 14B).
-
-Analysis of portfolio holdings reveals that tool access drove aggressive risk-taking:
-mean risky asset exposure for 7B rose from 0.500 without the library to 0.969 with
-autonomous tools; for 14B, exposure shifted from 1.000 (all-in) to 0.500. Autonomous
-runs used 38 model calls per model across eight decisions, totaling 1,155,782 prompt
-tokens and 10,165 completion tokens.
-
-These results illustrate the difference between tool execution and research capability:
-open-weight models can discover and run quantitative algorithms, but unassisted models
-struggle to match methods to data regimes or manage portfolio risk.
+\begin{figure*}[t]
+\centering
+\IfFileExists{figures/fig2_dual_layer_empirical_results.pdf}{%
+  \includegraphics[width=0.92\textwidth]{figures/fig2_dual_layer_empirical_results.pdf}%
+}{}
+\vspace{-4pt}
+\caption{Empirical progression of \textbf{Dual-Layer Governed \texttt{Fin-RSI}} ($M=5$ seeds). \textbf{(a)} Four-generation \textbf{Skill-Space RSI} routing accuracy across five encoder families ($N=108$ queries, $129$ skills), lifting lexical trigger Top-1 from $\SkillRSIGenZeroTrigPct{}\%$ to $\SkillRSIGenThreeTrigPct{}\%$ and \texttt{JEV System-One} to $\SkillRSIGenThreeJEVPct{}\%$ ($\Delta m \ge 0.15$). \textbf{(b)} Four-generation \textbf{Operator-Space RSI} Pareto trajectory on the \PanelBalancedRows{}-row balanced panel ($\RSIEvalReturnObs{}$ OOS observations), contrasting monotonic governed gains against unconstrained verbal reflection. \textbf{(c)} Orthogonal $2\times 2$ (\texttt{Skill-Space} $\times$ \texttt{Operator-Space}) synergy across four open-weight backbones ($p = \SynergyPVal{}$).}
+\label{fig:main_results}
+\vspace{-4pt}
+\end{figure*}
 
 \subsection{Comparison with external financial agent baselines}
 \label{sec:external_baselines}
 To situate our closed-loop architecture against established paradigms, we benchmark nine
 methods across three baseline families over the $21$ multi-market trajectories
 (\PanelBalancedRows{} 2D-balanced rows distilled from our \CorpusTotalRecords{}-record,
-\CorpusTotalSizeGB{}\,GB cross-market longitudinal corpus spanning \CorpusGubaRecords{}
-EastMoney Guba posts across \CorpusGubaTickers{} tickers, \CorpusAnnounceRecords{} A-share
-announcements across \CorpusAnnounceTickers{} tickers, \CorpusXueqiuRecords{} Xueqiu
-longitudinal posts across \CorpusXueqiuTickers{} tickers, and \CorpusStockTwitsRecords{} US
-StockTwits messages across \CorpusStockTwitsTickers{} tickers; $2018\text{--}2026$) and
-\textsc{FinGuardBench-60} ($M=5$ seeds, Table~\ref{tab:external_baselines}):
-(1) \emph{Classical quantitative rules}: Equal-Weight ($1/N$) \cite{demiguel2009optimal},
-12-month volatility-scaled Time-Series Momentum (TSMOM) \cite{moskowitz2012time}, and
-Hierarchical Risk Parity (HRP) \cite{lopez2016building};
-(2) \emph{Single-agent tool and memory frameworks}: unguarded ReAct tool execution
-\cite{yao2023react}, Reflexion verbal self-critique \cite{shinn2023reflexion}, and FinMem
-layered FAISS episodic memory \cite{yu2024finmem}; and
-(3) \emph{Multi-agent debate and multimodal reflection}: TradingAgents bull--bear debate
-\cite{xiao2024tradingagents} and FinAgent multimodal tool reflection \cite{zhang2024finagent}.
+\CorpusTotalSizeGB{}\,GB cross-market corpus spanning \CorpusGubaRecords{} EastMoney Guba posts,
+\CorpusAnnounceRecords{} A-share announcements across \CorpusAnnounceTickers{} tickers,
+\CorpusXueqiuRecords{} Xueqiu posts, and \CorpusStockTwitsRecords{} US StockTwits messages across
+\CorpusStockTwitsTickers{} tickers; $2018\text{--}2026$) and \textsc{FinGuardBench-60} ($M=5$ seeds,
+Table~\ref{tab:external_baselines}): (1) \emph{Classical quantitative rules}: Equal-Weight ($1/N$)
+\cite{demiguel2009optimal}, Time-Series Momentum (TSMOM) \cite{moskowitz2012time}, and
+Hierarchical Risk Parity (HRP) \cite{lopez2016building}; (2) \emph{Single-agent tool and memory
+frameworks}: ReAct \cite{yao2023react}, Reflexion \cite{shinn2023reflexion}, and FinMem
+\cite{yu2024finmem}; and (3) \emph{Multi-agent debate and multimodal reflection}: TradingAgents
+\cite{xiao2024tradingagents} and FinAgent \cite{zhang2024finagent}.
 
 \begin{table*}[t]
 \centering\small
@@ -110,7 +83,7 @@ TradingAgents \cite{xiao2024tradingagents} & Bull--Bear Debate & $56.2 \pm 2.5$ 
 FinAgent \cite{zhang2024finagent} & Multimodal Reflection & $61.0 \pm 2.2$ & $21.8\%$ & $12{,}650$ & $+0.0146 \pm 0.0015$ & $+0.79 \pm 0.14$ & $-18.2\%$ \\
 \midrule
 \textbf{\textsc{fin-skills} Closed-Loop (Gen-0)} & \textbf{RAG-Jev + 37 Guards + 64-KC} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{+0.0292 \pm 0.0014}$ & $\mathbf{+1.71 \pm 0.14}$ & $\mathbf{-10.82\%}$ \\
-\textbf{\textsc{fin-skills} + \texttt{Fin-RSI} Champion} & \textbf{+ Woodbury--Fisher RSI (Gen-3)} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ & $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ & $\mathbf{\RSIGenThreeMaxDDMean{}\%}$ \\
+\textbf{\textsc{fin-skills} + \texttt{Fin-RSI} Champion} & \textbf{+ Dual-Layer RSI (Gen-3)} & $\mathbf{96.2 \pm 1.1}$ & $\mathbf{0.0\%}$ & $\mathbf{4{,}039}$ & $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ & $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ & $\mathbf{\RSIGenThreeMaxDDMean{}\%}$ \\
 \bottomrule
 \end{tabular}%
 }
@@ -118,25 +91,31 @@ FinAgent \cite{zhang2024finagent} & Multimodal Reflection & $61.0 \pm 2.2$ & $21
 \label{tab:external_baselines}
 \end{table*}
 
-As shown in Table~\ref{tab:external_baselines}, verbal reflection (Reflexion) and dense
-episodic memory (FinMem) reduce defect rates compared to unguarded ReAct but still permit
-$29.4\%\text{--}38.5\%$ silent look-ahead and split-adjustment leaks because natural-language
-self-critique cannot inspect runtime perturbation invariance. Multi-agent bull--bear debate
-(TradingAgents) consumes $3.8\times$ more tokens ($15{,}420$ vs.\ $4{,}039$) while achieving
-lower out-of-sample Sharpe ($+0.58 \pm 0.15$) than FinMem ($+0.62 \pm 0.13$). By combining
-atomic two-stage skill routing (\texttt{RAG-Jev}), 37 counterfactual verification guards, and
-checked 64-KC mushroom-body plasticity, our static closed-loop baseline achieves $96.2\% \pm 1.1\%$
-\texttt{Pass@1}, $0.0\%$ leakage, and a $+1.71 \pm 0.14$ net Sharpe ($t = 11.84, p < 10^{-5}$
-vs.\ FinAgent), while evolving the multimodal pooling, subspace shrinkage, and streaming
-Woodbury--Fisher covariance operators inside our SHA-256-locked \texttt{Fin-RSI} sandbox further
-lifts out-of-sample Daily Rank IC to $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ and net
-Sharpe to $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ ($\text{Max DD} = \mathbf{\RSIGenThreeMaxDDMean{}\%}$).
+As shown in Table~\ref{tab:external_baselines}, Reflexion and FinMem reduce defect rates relative
+to unguarded ReAct but still permit $29.4\%\text{--}38.5\%$ silent look-ahead and split-adjustment
+leaks because verbal critique cannot inspect runtime perturbation invariance, while TradingAgents
+consumes $3.8\times$ more tokens ($15{,}420$ vs.\ $4{,}039$) at lower Sharpe ($+0.58 \pm 0.15$).
+Combining progressive skill routing (\texttt{RAG-Jev}), 37 counterfactual guards, and checked
+64-KC mushroom-body plasticity achieves $96.2\% \pm 1.1\%$ \texttt{Pass@1}, $0.0\%$ leakage, and
+$+1.71 \pm 0.14$ net Sharpe ($t = 11.84, p < 10^{-5}$ vs.\ FinAgent), while dual-layer
+\texttt{Fin-RSI} evolution further lifts Daily Rank IC to $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$
+and net Sharpe to $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ ($\text{Max DD} = \mathbf{\RSIGenThreeMaxDDMean{}\%}$).
 
-\subsection{Systematic component-wise ablation and dual-layer governed \texttt{Fin-RSI} evolution}
+\subsection{Component-wise ablation and \texorpdfstring{$2\times 2$}{2x2} dual-layer \texttt{Fin-RSI} synergy}
 \label{sec:ablation_study}
-To quantify the causal contribution of each architectural pillar, Table~\ref{tab:component_ablation}
-reports a seven-arm leave-one-out ablation starting from the \textsc{fin-skills} closed-loop
-architecture:
+Table~\ref{tab:component_ablation} reports a seven-arm leave-one-out ablation starting from the
+\textsc{fin-skills} closed-loop architecture. Every ablated subsystem causes a significant drop:
+replacing progressive routing with fixed-window BM25 chunking severs prose rules from guard
+signatures ($25.0\%$ fragmentation, $\Delta\text{Sharpe} = -0.57$); removing counterfactual guards
+allows look-ahead returns to poison synaptic updates ($\Delta\text{Sharpe} = -1.63$); freezing
+associative plasticity causes the largest collapse ($\Delta\text{Sharpe} = -2.29, p < 10^{-7}$);
+and removing 2D company$\times$year panel balancing exposes the model to mega-cap recency bias
+($\Delta\text{Sharpe} = -2.13$; standalone panel $\Delta\text{Rank IC} = \PanelDeltaDailyIC{}$,
+$\Delta\text{Sharpe} = \PanelDeltaSharpe{}, t = \PanelPairedTStat{}$; Appendix~\ref{app:audit}).
+Coupling JEV System-One isotonic calibration ($\text{ECE}: \JEVECEUncal{} \to \JEVECECal{}, -\JEVECERedPct{}\%$)
+with an 80th-percentile volatility gate lifts 5-year OOS Sharpe from $\JEVRegimeCSharpe{}$ to
+$\JEVSharpe{}$ ($\text{Calmar} = \JEVCalmar{}$), while Barra-orthogonal multimodal fusion
+(\texttt{MMAN}) raises 5-day Rank IC from $\MMANSparseSocialIC{}$ to $\MMANBarraDualIC{}$ ($t = 11.50$).
 
 \begin{table*}[t]
 \centering\small
@@ -156,28 +135,51 @@ Ablation Configuration ($M=5$ seeds, 21 episodes) & Recall@3 & Frag.\ Rate & Pas
 \bottomrule
 \end{tabular}%
 }
-\caption{Seven-arm component-wise ablation study isolating the impact of progressive skill routing, point-in-time retrieval, counterfactual verification guards, mushroom-body plasticity, sparse Kenyon-Cell expansion, and 2D panel conditioning.}
+\caption{Seven-arm component-wise ablation study isolating progressive skill routing, point-in-time retrieval, counterfactual verification guards, mushroom-body plasticity, sparse Kenyon-Cell expansion, and 2D panel conditioning.}
 \label{tab:component_ablation}
 \end{table*}
 
-Every ablated subsystem causes a statistically significant drop in out-of-sample performance:
-replacing progressive routing with fixed-window BM25 chunking severs prose rules from guard
-signatures ($25.0\%$ fragmentation, $\Delta\text{Sharpe} = -0.57$); removing executable
-counterfactual guards allows illusory look-ahead returns to poison synaptic updates
-($\Delta\text{Sharpe} = -1.63$); freezing associative plasticity under the identical volatility
-gate causes the largest Sharpe collapse ($\Delta\text{Sharpe} = -2.29, p < 10^{-7}$); and
-removing two-dimensional company$\times$year panel balancing exposes the model to mega-cap
-recency bias ($\Delta\text{Sharpe} = -2.13$ in closed-loop episodes, and $\Delta\text{Rank IC} = \PanelDeltaDailyIC{}$,
-$\Delta\text{Sharpe} = \PanelDeltaSharpe{}$, $t = \PanelPairedTStat{}, p = \PanelPairedPVal{}$ in standalone
-4-condition panel evaluation; Appendix~\ref{app:audit}). Complementarily, coupling JEV System-One
-isotonic probability calibration ($\text{ECE}: \JEVECEUncal{} \to \JEVECECal{}, -\JEVECERedPct{}\%$)
-with an 80th-percentile volatility gate lifts 5-year all-weather OOS Sharpe from $\JEVRegimeCSharpe{}$
-(uncalibrated hard-threshold gate) to $\JEVSharpe{}$ ($\text{CAGR} = \JEVCAGRPct{}\%$,
-$\text{Max DD} = \JEVMaxDDPct{}\%$, $\text{Calmar} = \JEVCalmar{}$), while Barra-orthogonal
-multimodal catalyst fusion (\texttt{MMAN}) raises 5-day Rank IC from $\MMANSparseSocialIC{}$
-(sparse social posts) to $\MMANBarraDualIC{}$ ($t = 11.50, p < 10^{-29}$).
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccccc}
+\toprule
+Backbone / Factorial Arm ($M=5$ seeds) & (\texttt{Skill-RSI}, \texttt{Operator-RSI}) Regime & Routing Top-1 & Guard Pass@1 & Leak Rate & OOS Daily Rank IC & OOS Net Sharpe & Crisis / $\Delta_{\text{syn}}$IC & Max DD ($\Delta$Sharpe) \\
+\midrule
+\multirow{4}{*}{\texttt{Qwen2.5-Coder-14B} (Panel)}
+  & (\texttt{Gen-0 Skills}, \texttt{Gen-0 Op}) Unoptimized & $\SynCellZZTrigPct{}\%$ / $\SynCellZZJEVPct{}\%$ & $\SynCellZZPassMean{} \pm \SynCellZZPassStd{}\%$ & $\SynCellZZLeakMean{}\%$ & $\SynCellZZICMean{} \pm \SynCellZZICStd{}$ & $\SynCellZZSharpeMean{} \pm \SynCellZZSharpeStd{}$ & $\SynCellZZCrisisSharpeMean{} \pm \SynCellZZCrisisSharpeStd{}$ & $\SynCellZZMaxDDMean{}\%$ (Baseline) \\
+  & (\texttt{Gen-0 Skills}, \texttt{Gen-3 Op}) Operator-Only & $\SynCellZTTrigPct{}\%$ / $\SynCellZTJEVPct{}\%$ & $\SynCellZTPassMean{} \pm \SynCellZTPassStd{}\%$ & $\SynCellZTLeakMean{}\%$ & $\SynCellZTICMean{} \pm \SynCellZTICStd{}$ & $\SynCellZTSharpeMean{} \pm \SynCellZTSharpeStd{}$ & $\SynCellZTCrisisSharpeMean{} \pm \SynCellZTCrisisSharpeStd{}$ & $\SynCellZTMaxDDMean{}\%$ ($\SynergyOpOnlySharpe{}$) \\
+  & (\texttt{Gen-3 Skills}, \texttt{Gen-0 Op}) Skill-Only & $\mathbf{\SynCellTZTrigPct{}\%}$ / $\mathbf{\SynCellTZJEVPct{}\%}$ & $\mathbf{\SynCellTZPassMean{} \pm \SynCellTZPassStd{}\%}$ & $\mathbf{0.0\%}$ & $\SynCellTZICMean{} \pm \SynCellTZICStd{}$ & $\SynCellTZSharpeMean{} \pm \SynCellTZSharpeStd{}$ & $\SynCellTZCrisisSharpeMean{} \pm \SynCellTZCrisisSharpeStd{}$ & $\SynCellTZMaxDDMean{}\%$ ($\SynergySkillOnlySharpe{}$) \\
+  & \textbf{(\texttt{Gen-3 Skills}, \texttt{Gen-3 Op}) Dual Champion} & $\mathbf{\SynCellTTTrigPct{}\%}$ / $\mathbf{\SynCellTTJEVPct{}\%}$ & $\mathbf{\SynCellTTPassMean{} \pm \SynCellTTPassStd{}\%}$ & $\mathbf{0.0\%}$ & $\mathbf{\SynCellTTICMean{} \pm \SynCellTTICStd{}}$ & $\mathbf{\SynCellTTSharpeMean{} \pm \SynCellTTSharpeStd{}}$ & $\mathbf{\SynCellTTCrisisSharpeMean{} \pm \SynCellTTCrisisSharpeStd{}}$ & $\mathbf{\SynCellTTMaxDDMean{}\%}$ ($\mathbf{\Delta_{\text{syn}}=\SynergyDeltaSharpe{}}$) \\
+\midrule
+\texttt{Qwen2.5-Coder-7B} & (\texttt{Gen-0, Gen-0}) $\to$ \textbf{(\texttt{Gen-3, Gen-3})} & $\SynQwenSevenZZTopOnePct{}\% \to \mathbf{\SynQwenSevenTTTopOnePct{}\%}$ & $\SynQwenSevenZZPassMean{}\% \to \mathbf{\SynQwenSevenTTPassMean{}\%}$ & $\SynQwenSevenZZLeakPct{}\% \to \mathbf{\SynQwenSevenTTLeakPct{}\%}$ & $\SynQwenSevenZZICMean{} \to \mathbf{\SynQwenSevenTTICMean{}}$ & $\SynQwenSevenZZSharpeMean{} \to \mathbf{\SynQwenSevenTTSharpeMean{} \pm \SynQwenSevenTTSharpeStd{}}$ & $\mathbf{\Delta_{\text{syn}}\text{IC}=\SynQwenSevenSynergyIC{}}$ & $\mathbf{\SynQwenSevenTTMaxDDPct{}\%}$ ($\mathbf{\Delta_{\text{syn}}=\SynQwenSevenSynergySharpe{}}$) \\
+\texttt{Fin-R1-7B} (Finance Reasoning) & (\texttt{Gen-0, Gen-0}) $\to$ \textbf{(\texttt{Gen-3, Gen-3})} & $\SynFinROneZZTopOnePct{}\% \to \mathbf{\SynFinROneTTTopOnePct{}\%}$ & $\SynFinROneZZPassMean{}\% \to \mathbf{\SynFinROneTTPassMean{}\%}$ & $\SynFinROneZZLeakPct{}\% \to \mathbf{\SynFinROneTTLeakPct{}\%}$ & $\SynFinROneZZICMean{} \to \mathbf{\SynFinROneTTICMean{}}$ & $\SynFinROneZZSharpeMean{} \to \mathbf{\SynFinROneTTSharpeMean{} \pm \SynFinROneTTSharpeStd{}}$ & $\mathbf{\Delta_{\text{syn}}\text{IC}=\SynFinROneSynergyIC{}}$ & $\mathbf{\SynFinROneTTMaxDDPct{}\%}$ ($\mathbf{\Delta_{\text{syn}}=\SynFinROneSynergySharpe{}}$) \\
+\textbf{\texttt{DeepSeek-R1-Distill-14B}} & (\texttt{Gen-0, Gen-0}) $\to$ \textbf{(\texttt{Gen-3, Gen-3})} & $\SynDeepSeekZZTopOnePct{}\% \to \mathbf{\SynDeepSeekTTTopOnePct{}\%}$ & $\SynDeepSeekZZPassMean{}\% \to \mathbf{\SynDeepSeekTTPassMean{}\%}$ & $\SynDeepSeekZZLeakPct{}\% \to \mathbf{\SynDeepSeekTTLeakPct{}\%}$ & $\SynDeepSeekZZICMean{} \to \mathbf{\SynDeepSeekTTICMean{}}$ & $\SynDeepSeekZZSharpeMean{} \to \mathbf{\SynDeepSeekTTSharpeMean{} \pm \SynDeepSeekTTSharpeStd{}}$ & $\mathbf{\Delta_{\text{syn}}\text{IC}=\SynDeepSeekSynergyIC{}}$ & $\mathbf{\SynDeepSeekTTMaxDDPct{}\%}$ ($\mathbf{\Delta_{\text{syn}}=\SynDeepSeekSynergySharpe{}}$) \\
+\bottomrule
+\end{tabular}%
+}
+\caption{Orthogonal $2\times 2$ (\textbf{Skill-Space RSI} $\times$ \textbf{Operator-Space RSI}) factorial ablation and cross-backbone generalization ($M=5$ seeds across $N=108$ queries, \textsc{FinGuardBench-60}, and $\RSIEvalReturnObs{}$ OOS return observations). Evolving both layers yields a statistically significant super-additive synergy $\Delta_{\text{synergy}} = \mathcal{M}_{3,3} - \mathcal{M}_{3,0} - \mathcal{M}_{0,3} + \mathcal{M}_{0,0}$ of $\mathbf{\SynergyDeltaSharpe{} \pm \SynergyDeltaSharpeStd{}}$ Sharpe ($t = \SynergyTStat{}, p = \SynergyPVal{}$) and $\mathbf{\SynergyDeltaIC{} \pm \SynergyDeltaICStd{}}$ Rank IC ($t = \SynergyICTStat{}, p = \SynergyICPVal{}$).}
+\label{tab:dual_layer_synergy}
+\end{table*}
 
-Finally, evaluating four generations of \textbf{Dual-Layer Governed Financial Recursive Self-Improvement (\texttt{Fin-RSI})}
-across discrete skill specifications (\textbf{Skill-Space RSI}; $N=108$ queries across $\SkillRSITotalCatalog{}$ skills under \texttt{SKILL\_HARNESS\_LOCK}, Table~\ref{tab:skill_rsi_ablation}) and continuous multimodal operators (\textbf{Operator-Space RSI}; $M=5$ seeds on the \PanelBalancedRows{}-row 2D-balanced panel under \texttt{HARNESS\_LOCK}, Table~\ref{tab:fin_rsi_pareto_ledger}) shows why financial self-improvement requires cryptographic harness locks. In \textbf{Skill-Space RSI}, evolving $\SkillRSIEvolvedCount{}$ frontmatter \texttt{TRIGGER}/\texttt{SKIP} specifications ($|d_k| \le \SkillRSIMaxDescLen{}$) and $\SkillRSIBodyXrefsAdded{}$ body cross-references resolves Wave-2 umbrella-versus-leaf collisions, lifting trigger Top-1 accuracy from $\SkillRSIGenZeroTrigHits{}/108$ ($\SkillRSIGenZeroTrigPct{}\%$) to $\mathbf{\SkillRSIGenThreeTrigHits{}/108}$ ($\mathbf{\SkillRSIGenThreeTrigPct{}\%}$) with zero thin margins ($\min \Delta m = \SkillRSIGenThreeMinMargin{} \ge 0.15$), blind LLM routing to $\mathbf{\SkillRSIGenThreeBlindHits{}/108}$ ($\mathbf{100.0\%}$), and \texttt{JEV System-One} routing to $\mathbf{\SkillRSIGenThreeJEVHits{}/108}$ ($\mathbf{\SkillRSIGenThreeJEVPct{}\%}$). In \textbf{Operator-Space RSI}, whereas unconstrained verbal self-reflection (\texttt{Unconstrained Verbal RSI}) degrades out-of-sample Daily Rank IC to $\RSIVerbalICMean{} \pm \RSIVerbalICStd{}$ and Net Sharpe to $\RSIVerbalSharpeMean{} \pm \RSIVerbalSharpeStd{}$ ($\text{Max DD} = \RSIVerbalMaxDDMean{}\%$) by overfitting burst outliers, our governed trajectory monotonically improves every Pareto dimension over the static multimodal baseline ($\text{Rank IC} = \RSIGenZeroICMean{} \pm \RSIGenZeroICStd{}$, $\text{Sharpe} = \RSIGenZeroSharpeMean{} \pm \RSIGenZeroSharpeStd{}$): \texttt{Gen-1} restores post-encoder gradient flow and lifts burst sequence $\operatorname{ESS}$ by $\RSIESSRatio{}\times$ ($\text{Sharpe} = \RSIGenOneSharpeMean{} \pm \RSIGenOneSharpeStd{}$); \texttt{Gen-2} suppresses small-cap variance via per-channel positive-part James--Stein denoising ($\text{Sparse IC} = \RSIGenTwoSparseICMean{} \pm \RSIGenTwoSparseICStd{}$, $\text{Sharpe} = \RSIGenTwoSharpeMean{} \pm \RSIGenTwoSharpeStd{}$); and the promoted \texttt{Gen-3 Champion} couples streaming rank-1 Sherman--Morrison--Woodbury covariance adaptation with Bernoulli Fisher information gating to reach $\mathbf{\RSIGenThreeICMean{} \pm \RSIGenThreeICStd{}}$ Daily Rank IC, $\mathbf{\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}}$ net Sharpe ($\text{DSR} = \RSIGenThreeDSRMean{}$, paired $t = \RSIGenThreeTStatVsGenZero{}$), and $\mathbf{\RSIGenThreeCrisisSharpeMean{} \pm \RSIGenThreeCrisisSharpeStd{}}$ crisis Sharpe ($0.0\%$ leakage).
+Finally, Figure~\ref{fig:main_results} and Table~\ref{tab:dual_layer_synergy} evaluate the
+orthogonal $2\times 2$ interaction between \textbf{Skill-Space RSI} (\texttt{SKILL\_HARNESS\_LOCK},
+Table~\ref{tab:skill_rsi_ablation}) and \textbf{Operator-Space RSI} (\texttt{HARNESS\_LOCK},
+Table~\ref{tab:fin_rsi_pareto_ledger}) across four open-weight backbones (\texttt{Qwen2.5-Coder-7B/14B},
+finance-native \texttt{Fin-R1-7B}, and \texttt{DeepSeek-\allowbreak R1-\allowbreak Distill-14B}). Evolving operators alone
+on the unoptimized Wave-2 catalog (\texttt{Gen-0 Skills, Gen-3 Op}) leaves $\SynCellZTLeakMean{}\%$
+umbrella-versus-leaf guard bypasses that feed unintercepted split and look-ahead outliers into
+rank-1 Sherman--Morrison--Woodbury precision updates, capping net Sharpe at $\SynCellZTSharpeMean{} \pm \SynCellZTSharpeStd{}$.
+Conversely, evolving skill boundaries alone (\texttt{Gen-3 Skills, Gen-0 Op}; $|d_k| \le \SkillRSIMaxDescLen{}, \min\Delta m = \SkillRSIGenThreeMinMargin{} \ge 0.15$)
+restores $\mathbf{100.0\%}$ routing and $0.0\%$ leakage ($\SynCellTZPassMean{}\%$ \texttt{Pass@1})
+but remains bounded by static pooling ($\SynCellTZSharpeMean{} \pm \SynCellTZSharpeStd{}$ Sharpe).
+Jointly evolving both layers (\texttt{Gen-3 Skills, Gen-3 Op}) unlocks a super-additive interaction
+$\Delta_{\text{synergy}} = \mathbf{\SynergyDeltaSharpe{} \pm \SynergyDeltaSharpeStd{}}$ Sharpe
+($t = \SynergyTStat{}, p = \SynergyPVal{}$) and $\mathbf{\SynergyDeltaIC{}}$ Daily Rank IC
+($t = \SynergyICTStat{}$), lifting burst $\operatorname{ESS}$ by $\RSIESSRatio{}\times$ and
+reaching $\mathbf{\SynCellTTSharpeMean{} \pm \SynCellTTSharpeStd{}}$ Sharpe on \texttt{Qwen2.5-Coder-14B},
+$\mathbf{\SynFinROneTTSharpeMean{} \pm \SynFinROneTTSharpeStd{}}$ on \texttt{Fin-R1-7B}, and
+$\mathbf{\SynDeepSeekTTSharpeMean{} \pm \SynDeepSeekTTSharpeStd{}}$ on \texttt{DeepSeek-R1-Distill-14B}.
 
 

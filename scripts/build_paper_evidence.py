@@ -25,9 +25,10 @@ def main():
         "benchmarks/FINANCE_NATIVE_MODEL_BENCHMARK.json",
         "benchmarks/FIN_RSI_PARETO_LEDGER_REPORT.json",
         "benchmarks/SKILL_RSI_EVOLUTION_REPORT.json",
+        "benchmarks/DUAL_LAYER_RSI_SYNERGY_RESULTS.json",
     ]
     data = [json.loads((ROOT / name).read_text(encoding="utf-8")) for name in sources]
-    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native, fin_rsi, skill_rsi = data
+    pilot, robustness, parity, kol, pred_audit, ablations, control, beacon, beacon_postfix, rag_vs_prog, fly_ablation, fly_gate_ctrl, rag_jev, fin_native, fin_rsi, skill_rsi, dual_synergy = data
     beacon_models = {}
     beacon_conditions = {}  # (model_short, condition) -> {accepted, planned, mean_tokens, mean_wall}
     postfix_summary = {}
@@ -421,6 +422,81 @@ def main():
         rsi_macros[f"{sprefix}JEVRecallThree"] = str(se["jev_system_one_calibrated_router_ours"]["recall_at_3"])
         rsi_macros[f"{sprefix}JEVRecallThreePct"] = f"{se['jev_system_one_calibrated_router_ours']['recall_at_3_rate']*100:.1f}"
 
+    # 2x2 Dual-Layer Fin-RSI Synergy Macros
+    syn_cells = dual_synergy["panel_2x2_evaluation"]["cells"]
+    syn_stats = dual_synergy["panel_2x2_evaluation"]["super_additive_synergy"]
+    syn_cell_map = {
+        "SynCellZZ": "Gen0_Skill_Gen0_Op",
+        "SynCellZT": "Gen0_Skill_Gen3_Op",
+        "SynCellTZ": "Gen3_Skill_Gen0_Op",
+        "SynCellTT": "Gen3_Skill_Gen3_Op",
+    }
+    for cprefix, ckey in syn_cell_map.items():
+        cd = syn_cells[ckey]
+        rsi_macros[f"{cprefix}TrigPct"] = f"{cd['routing_top1_trig_pct_mean']:.1f}"
+        rsi_macros[f"{cprefix}JEVPct"] = f"{cd['routing_top1_jev_pct_mean']:.1f}"
+        rsi_macros[f"{cprefix}PassMean"] = f"{cd['guard_pass_at_1_pct_mean']:.1f}"
+        rsi_macros[f"{cprefix}PassStd"] = f"{cd['guard_pass_at_1_pct_std']:.1f}"
+        rsi_macros[f"{cprefix}LeakMean"] = f"{cd['leakage_rate_pct_mean']:.1f}"
+        rsi_macros[f"{cprefix}ICMean"] = f"{cd['mean_daily_rank_ic_mean']:+.4f}"
+        rsi_macros[f"{cprefix}ICStd"] = f"{cd['mean_daily_rank_ic_std']:.4f}"
+        rsi_macros[f"{cprefix}IRMean"] = f"{cd['annualized_ic_ir_mean']:+.2f}"
+        rsi_macros[f"{cprefix}IRStd"] = f"{cd['annualized_ic_ir_std']:.2f}"
+        rsi_macros[f"{cprefix}SharpeMean"] = f"{cd['annualized_net_sharpe_mean']:+.2f}"
+        rsi_macros[f"{cprefix}SharpeStd"] = f"{cd['annualized_net_sharpe_std']:.2f}"
+        rsi_macros[f"{cprefix}MaxDDMean"] = f"{cd['max_drawdown_pct_mean']:.2f}"
+        rsi_macros[f"{cprefix}SparseICMean"] = f"{cd['sparse_ticker_n1_2_rank_ic_mean']:+.4f}"
+        rsi_macros[f"{cprefix}SparseICStd"] = f"{cd['sparse_ticker_n1_2_rank_ic_std']:.4f}"
+        rsi_macros[f"{cprefix}CrisisSharpeMean"] = f"{cd['crisis_2018_2022_sharpe_mean']:+.2f}"
+        rsi_macros[f"{cprefix}CrisisSharpeStd"] = f"{cd['crisis_2018_2022_sharpe_std']:.2f}"
+
+    sr_syn = syn_stats["annualized_net_sharpe"]
+    ic_syn = syn_stats["mean_daily_rank_ic"]
+    cr_syn = syn_stats["crisis_2018_2022_sharpe"]
+    sp_syn = syn_stats["sparse_ticker_n1_2_rank_ic"]
+    rsi_macros["SynergySkillOnlySharpe"] = f"{sr_syn['skill_only_gain_M30_minus_M00']:+.2f}"
+    rsi_macros["SynergyOpOnlySharpe"] = f"{sr_syn['operator_only_gain_M03_minus_M00']:+.2f}"
+    rsi_macros["SynergyJointSharpe"] = f"{sr_syn['joint_dual_layer_gain_M33_minus_M00']:+.2f}"
+    rsi_macros["SynergyDeltaSharpe"] = f"{sr_syn['super_additive_synergy_delta']:+.2f}"
+    rsi_macros["SynergyDeltaSharpeStd"] = f"{sr_syn['super_additive_synergy_std']:.2f}"
+    rsi_macros["SynergyTStat"] = f"{sr_syn['synergy_t_stat']:+.2f}"
+    rsi_macros["SynergyPVal"] = f"{sr_syn['synergy_p_value']:.4f}"
+    rsi_macros["SynergyJointTStat"] = f"{sr_syn['paired_t_33_vs_00']:+.2f}"
+    rsi_macros["SynergySkillOnlyIC"] = f"{ic_syn['skill_only_gain_M30_minus_M00']:+.4f}"
+    rsi_macros["SynergyOpOnlyIC"] = f"{ic_syn['operator_only_gain_M03_minus_M00']:+.4f}"
+    rsi_macros["SynergyJointIC"] = f"{ic_syn['joint_dual_layer_gain_M33_minus_M00']:+.4f}"
+    rsi_macros["SynergyDeltaIC"] = f"{ic_syn['super_additive_synergy_delta']:+.4f}"
+    rsi_macros["SynergyDeltaICStd"] = f"{ic_syn['super_additive_synergy_std']:.4f}"
+    rsi_macros["SynergyICTStat"] = f"{ic_syn['synergy_t_stat']:+.2f}"
+    rsi_macros["SynergyICPVal"] = f"{ic_syn['synergy_p_value']:.4f}"
+    rsi_macros["SynergyDeltaCrisisSharpe"] = f"{cr_syn['super_additive_synergy_delta']:+.2f}"
+    rsi_macros["SynergyCrisisTStat"] = f"{cr_syn['synergy_t_stat']:+.2f}"
+    rsi_macros["SynergyDeltaSparseIC"] = f"{sp_syn['super_additive_synergy_delta']:+.4f}"
+    rsi_macros["SynergySparseTStat"] = f"{sp_syn['synergy_t_stat']:+.2f}"
+
+    bb_eval = dual_synergy["multi_backbone_2x2_evaluation"]
+    bb_map = {
+        "SynQwenSeven": "Qwen2.5-Coder-7B",
+        "SynQwenFourteen": "Qwen2.5-Coder-14B",
+        "SynFinROne": "Fin-R1-7B",
+        "SynDeepSeek": "DeepSeek-R1-Distill-Qwen-14B",
+    }
+    for bprefix, bkey in bb_map.items():
+        bd = bb_eval[bkey]
+        rsi_macros[f"{bprefix}SynergyIC"] = f"{bd['synergy_ic']:+.4f}"
+        rsi_macros[f"{bprefix}SynergySharpe"] = f"{bd['synergy_sharpe']:+.2f}"
+        for cshort, ckey in (("ZZ", "Gen0_Skill_Gen0_Op"), ("ZT", "Gen0_Skill_Gen3_Op"), ("TZ", "Gen3_Skill_Gen0_Op"), ("TT", "Gen3_Skill_Gen3_Op")):
+            bc = bd[ckey]
+            rsi_macros[f"{bprefix}{cshort}TopOnePct"] = f"{bc['routing_top1_pct']:.1f}"
+            rsi_macros[f"{bprefix}{cshort}PassMean"] = f"{bc['guard_pass_at_1_pct']:.1f}"
+            rsi_macros[f"{bprefix}{cshort}PassStd"] = f"{bc['guard_pass_at_1_std']:.1f}"
+            rsi_macros[f"{bprefix}{cshort}LeakPct"] = f"{bc['leak_rate_pct']:.1f}"
+            rsi_macros[f"{bprefix}{cshort}ICMean"] = f"{bc['daily_rank_ic']:+.4f}"
+            rsi_macros[f"{bprefix}{cshort}ICStd"] = f"{bc['daily_rank_ic_std']:.4f}"
+            rsi_macros[f"{bprefix}{cshort}SharpeMean"] = f"{bc['net_sharpe']:+.2f}"
+            rsi_macros[f"{bprefix}{cshort}SharpeStd"] = f"{bc['net_sharpe_std']:.2f}"
+            rsi_macros[f"{bprefix}{cshort}MaxDDPct"] = f"{bc['max_dd_pct']:.2f}"
+
     macros.update(rsi_macros)
     for (mlab, clab), info in beacon_conditions.items():
         macros[f"Beacon{mlab}{clab}Accepted"] = info["accepted"]
@@ -460,6 +536,7 @@ def main():
         "fin_rsi_status": fin_rsi["pareto_gate_evaluation"]["status"],
         "fin_rsi_gen3_sharpe": rsi_arms["Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC"]["annualized_net_sharpe"],
         "skill_rsi_gen3_top1": s_gens["Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync"]["eval_triggers"]["top1_hits"],
+        "synergy_delta_sharpe": sr_syn["super_additive_synergy_delta"],
     }))
 
 
