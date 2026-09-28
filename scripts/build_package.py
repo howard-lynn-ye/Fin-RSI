@@ -50,7 +50,7 @@ HAND_WRITTEN = {"__init__.py", "fin_rsi.py"}  # kept as-is; everything else unde
 #   rag/ offline document retrieval, context assembly and caller-owned generation
 # A new layer is added here in the SAME commit that creates it, or the next regeneration
 # deletes it. --check enforces this.
-HAND_WRITTEN_DIRS = ("algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "mcp/", "model_zoo/", "rag/", "synthesis/", "tools/")
+HAND_WRITTEN_DIRS = ("algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "mcp/", "model_zoo/", "rag/", "skill_rsi/", "synthesis/", "tools/")
 
 
 def is_hand_written(rel: str) -> bool:

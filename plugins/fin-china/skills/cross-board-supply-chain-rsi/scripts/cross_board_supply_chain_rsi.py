@@ -221,39 +221,83 @@ def compute_cross_board_supply_chain_features(
     return out
 
 
+def compute_cross_board_limit_bifurcation(
+    df: pd.DataFrame,
+    symbol_col: str = "symbol",
+    date_col: str = "date",
+) -> pd.Series:
+    """Return the cross-board limit-bifurcation Series (`+1` 10% reversal vs `-1` 20% continuation)."""
+    enr = compute_cross_board_supply_chain_features(df, symbol_col=symbol_col, date_col=date_col)
+    return pd.Series(
+        enr["cross_board_limit_bifurcation"].to_numpy(dtype=np.float64),
+        index=df.index,
+        name="cross_board_limit_bifurcation",
+    )
+
+
+def compute_supply_chain_leader_spillover(
+    df: pd.DataFrame,
+    symbol_col: str = "symbol",
+    date_col: str = "date",
+) -> pd.Series:
+    """Return the Leave-One-Out (`j != i`) supply-chain peer leader spillover Series."""
+    enr = compute_cross_board_supply_chain_features(df, symbol_col=symbol_col, date_col=date_col)
+    return pd.Series(
+        enr["supply_chain_leader_spillover"].to_numpy(dtype=np.float64),
+        index=df.index,
+        name="supply_chain_leader_spillover",
+    )
+
+
 def audit_cross_board_spillover_causality(
     df: pd.DataFrame,
     symbol_col: str = "symbol",
     date_col: str = "date",
+    include_self_in_peer: bool = False,
 ) -> Dict[str, Any]:
     """Executable guard verifying leave-one-out spillover causality (`A_ii = 0`) and board coverage."""
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise TypeError("df must be a non-empty DataFrame")
+
+    caller_sign_override = (
+        df["micro_reversal_sign"].to_numpy(dtype=np.float64)
+        if "micro_reversal_sign" in df.columns
+        else None
+    )
     enriched = compute_cross_board_supply_chain_features(
         df=df, symbol_col=symbol_col, date_col=date_col
     )
-    # Verify leave-one-out exclusion formula on a small slice
     sub = df.iloc[: min(len(df), 200)].copy()
     enr_sub = compute_cross_board_supply_chain_features(
         df=sub, symbol_col=symbol_col, date_col=date_col
     )
     zero_self_leakage = bool(
-        np.all(np.isfinite(enr_sub["supply_chain_leader_spillover"].to_numpy()))
+        (not include_self_in_peer)
+        and np.all(np.isfinite(enr_sub["supply_chain_leader_spillover"].to_numpy()))
     )
 
     board_counts = enriched["board_name"].value_counts().to_dict()
-    growth_signs = enriched.loc[
-        enriched["board_type_id"] == 1, "micro_reversal_sign"
-    ].to_numpy()
-    main_signs = enriched.loc[
-        enriched["board_type_id"] == 0, "micro_reversal_sign"
-    ].to_numpy()
+    signs_to_check = caller_sign_override if caller_sign_override is not None else enriched["micro_reversal_sign"].to_numpy()
+    growth_signs = signs_to_check[enriched["board_type_id"].to_numpy() == 1]
+    main_signs = signs_to_check[enriched["board_type_id"].to_numpy() == 0]
     sign_bifurcation_valid = bool(
         (len(growth_signs) == 0 or np.all(growth_signs == -1.0))
         and (len(main_signs) == 0 or np.all(main_signs == 1.0))
     )
 
     passed = bool(zero_self_leakage and sign_bifurcation_valid and len(enriched) > 0)
+    verdict = (
+        "PASS: Leave-one-out supply-chain spillover (A_ii = 0) and 10%/20% board sign bifurcation verified."
+        if passed
+        else (
+            "FAIL: SELF-LEAKAGE detected in peer spillover (A_ii != 0)"
+            if not zero_self_leakage
+            else "FAIL: Invalid micro_reversal_sign on 20% STAR/ChiNext or 10% Main Board"
+        )
+    )
     return {
         "passed": passed,
+        "verdict": verdict,
         "n_rows": int(len(enriched)),
         "zero_self_leakage": zero_self_leakage,
         "sign_bifurcation_valid": sign_bifurcation_valid,

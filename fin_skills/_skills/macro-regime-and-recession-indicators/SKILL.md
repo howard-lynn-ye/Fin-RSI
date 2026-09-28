@@ -258,3 +258,7 @@ threshold-tolerance sweep, and the inversion record. numpy + pandas + scipy, see
   `../../../fin-market-data/skills/fundamental-and-macro-data/SKILL.md`.
 - Whether a regime-conditional result survives its own sample —
   `../../../fin-core/skills/regime-detection/scripts/regime_coverage.py`.
+
+## Related Skills
+
+- `macro-fx-industry-beta-shield` — [fin-macro] Convert a 1-D macro liquidity or USD/CNH FX shock into a causal cross-sectional equity shield by multiplying lagged stock-and-industry sensitivity beta by the regime impulse.

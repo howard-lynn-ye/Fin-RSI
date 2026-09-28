@@ -437,6 +437,49 @@ def build_panel_balance() -> dict:
     }
 
 
+def build_cross_board_spillover() -> dict:
+    clean_df = pd.DataFrame({
+        "symbol": ["SH600036", "SH601318", "SH688981", "SZ300750"],
+        "date": ["2025-06-02", "2025-06-02", "2025-06-02", "2025-06-02"],
+        "stock_excess_return_1d": [0.012, 0.015, 0.035, 0.028],
+        "northbound_net_buy_shares": [1.2e6, 1.5e6, 0.8e6, 1.1e6],
+        "margin_buy_ratio": [0.08, 0.09, 0.18, 0.16],
+        "overnight_gap_ratio": [0.004, 0.003, 0.019, 0.015],
+    })
+    return {
+        "clean": dict(panel=clean_df),
+        "defect": dict(panel=clean_df, include_self_in_peer=True),
+    }
+
+
+def build_macro_fx_beta_gate() -> dict:
+    rng = np.random.default_rng(19)
+    rows = []
+    for d in range(1, 15):
+        fx_shock = float(rng.normal(0.005, 0.01))
+        for sym, ind, b in (
+            ("SH688981", "Semiconductor", 0.9),
+            ("SH688041", "Semiconductor", 0.8),
+            ("SH600036", "Bank", -0.4),
+            ("SZ000001", "Bank", -0.35),
+        ):
+            rows.append({
+                "date": f"2025-03-{d:02d}",
+                "symbol": sym,
+                "industry": ind,
+                "ret_1d": float(b * fx_shock + rng.normal(0.0, 0.01)),
+                "macro_fx_shock": fx_shock,
+                "macro_policy_score": 0.2,
+            })
+    clean_df = pd.DataFrame(rows)
+    defect_df = clean_df.copy()
+    defect_df["uniform_macro"] = defect_df["macro_fx_shock"]
+    return {
+        "clean": dict(panel=clean_df),
+        "defect": dict(panel=defect_df, signal_col="uniform_macro"),
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict]] = {
     k[len("build_"):]: v for k, v in dict(globals()).items() if k.startswith("build_")}
 

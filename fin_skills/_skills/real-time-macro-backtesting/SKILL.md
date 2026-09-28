@@ -247,3 +247,7 @@ revision-size x window grid. numpy + pandas, seed 20260909, about 11 s, no netwo
 - Nowcasting the current quarter from a ragged edge — `../gdp-nowcasting-dynamic-factor/SKILL.md`.
 - Whether the surviving Sharpe is real at all —
   `../../../fin-core/skills/backtest-validation/SKILL.md`.
+
+## Related Skills
+
+- `macro-fx-industry-beta-shield` — [fin-macro] Convert a 1-D macro liquidity or USD/CNH FX shock into a causal cross-sectional equity shield by multiplying lagged stock-and-industry sensitivity beta by the regime impulse.

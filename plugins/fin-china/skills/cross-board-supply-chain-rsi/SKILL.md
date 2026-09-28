@@ -55,3 +55,4 @@ The reference implementation in `scripts/cross_board_supply_chain_rsi.py` (expor
 - `china-ashare-data` — Point-in-Time A-share data sourcing and adjustment traps.
 - `kol-credibility-registry` — Dynamic Brier-score KOL credibility weighting.
 - `signal-reconciler` — Multi-channel entropy-weighted signal conflict resolution.
+- `macro-fx-industry-beta-shield` — [fin-macro] Convert a 1-D macro liquidity or USD/CNH FX shock into a causal cross-sectional equity shield by multiplying lagged stock-and-industry sensitivity beta by the regime impulse.
