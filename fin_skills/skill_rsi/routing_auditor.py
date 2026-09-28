@@ -157,13 +157,23 @@ class RoutingAuditReport:
         }
 
 
+def _resolve_fin_skills_root(root: Path | None = None) -> Path:
+    if root is not None:
+        return root
+    cand = Path(__file__).resolve().parent.parent.parent
+    if (cand / "evals" / "queries.jsonl").exists():
+        return cand
+    fallback = Path("/usr/local/google/home/shwaihe/fin-skills")
+    return fallback if (fallback / "evals" / "queries.jsonl").exists() else cand
+
+
 def diagnose_query_collision(
     query: str,
     expected_skill: str,
     root: Path | None = None,
 ) -> dict[str, Any]:
     """Identify why a query misses or has a thin margin against competing skills."""
-    repo_root = root or Path(__file__).resolve().parent.parent.parent
+    repo_root = _resolve_fin_skills_root(root)
     skills, idf, _ = load_skill_routing_entries(repo_root)
     by_name = {s["name"]: s for s in skills}
     qt = tokenize_query(query)
@@ -205,7 +215,7 @@ def audit_catalog_routing(
     probe_queries: Sequence[dict[str, str]] | None = None,
 ) -> RoutingAuditReport:
     """Run full trigger + margin audit on `evals/queries.jsonl` plus optional probe queries."""
-    repo_root = root or Path(__file__).resolve().parent.parent.parent
+    repo_root = _resolve_fin_skills_root(root)
     skills, idf, xref = load_skill_routing_entries(repo_root)
     queries_path = repo_root / "evals" / "queries.jsonl"
     canonical_qs = [

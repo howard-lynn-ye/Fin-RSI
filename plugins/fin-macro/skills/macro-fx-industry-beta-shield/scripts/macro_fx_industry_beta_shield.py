@@ -26,6 +26,44 @@ import numpy as np
 import pandas as pd
 
 
+def _resolve_ret_series(df: pd.DataFrame, ret_col: str) -> pd.Series:
+    if ret_col in df.columns:
+        return pd.to_numeric(df[ret_col], errors="coerce").fillna(0.0)
+    for alt in ("stock_excess_return_1d", "return_1d", "ret_1d"):
+        if alt in df.columns:
+            return pd.to_numeric(df[alt], errors="coerce").fillna(0.0)
+    raise TypeError(f"df is missing return column {ret_col!r}")
+
+
+def _resolve_shock_series(df: pd.DataFrame, shock_col: str) -> pd.Series:
+    if shock_col in df.columns:
+        return pd.to_numeric(df[shock_col], errors="coerce").fillna(0.0)
+    if "dxy_return_1d" in df.columns:
+        dxy = pd.to_numeric(df["dxy_return_1d"], errors="coerce").fillna(0.0)
+        vix_r = (
+            pd.to_numeric(df["vix_return_1d"], errors="coerce").fillna(0.0)
+            if "vix_return_1d" in df.columns
+            else 0.0
+        )
+        us10y = (
+            pd.to_numeric(df["us10y_change_1d"], errors="coerce").fillna(0.0)
+            if "us10y_change_1d" in df.columns
+            else 0.0
+        )
+        impulse = -np.tanh(dxy * 40.0) - 0.50 * np.tanh(vix_r * 10.0) - 0.50 * np.tanh(us10y * 10.0)
+        return pd.Series(impulse, index=df.index, dtype=float)
+    raise TypeError(f"df is missing macro/FX shock column {shock_col!r}")
+
+
+def _resolve_industry_col(df: pd.DataFrame, industry_col: str) -> pd.Series:
+    if industry_col in df.columns:
+        return df[industry_col]
+    for alt in ("supply_chain_cluster", "sector", "board_name"):
+        if alt in df.columns:
+            return df[alt]
+    return pd.Series("ALL", index=df.index)
+
+
 def estimate_causal_macro_fx_beta(
     df: pd.DataFrame,
     window: int = 20,
@@ -41,49 +79,49 @@ def estimate_causal_macro_fx_beta(
     if df.empty:
         return pd.Series(dtype=float)
 
-    work = df[[date_col, symbol_col, ret_col, shock_col]].copy()
-    work[industry_col] = df[industry_col] if industry_col in df.columns else "ALL"
-    work["_orig_pos"] = np.arange(len(df))
+    work = pd.DataFrame(
+        {
+            date_col: df[date_col],
+            symbol_col: df[symbol_col],
+            "_ind": _resolve_industry_col(df, industry_col),
+            "_r": _resolve_ret_series(df, ret_col).to_numpy(dtype=np.float64),
+            "_m": _resolve_shock_series(df, shock_col).to_numpy(dtype=np.float64),
+            "_orig_pos": np.arange(len(df)),
+        },
+        index=df.index,
+    )
     work.sort_values([symbol_col, date_col], inplace=True, kind="mergesort")
 
-    r = pd.to_numeric(work[ret_col], errors="coerce").fillna(0.0)
-    m = pd.to_numeric(work[shock_col], errors="coerce").fillna(0.0)
-    rm = r * m
-    m2 = m * m
+    grp_sym = work.groupby(symbol_col, sort=False)
+    r_lag = grp_sym["_r"].shift(1)
+    m_lag = grp_sym["_m"].shift(1)
+    work["_r_lag"] = r_lag
+    work["_m_lag"] = m_lag
+    work["_rm_lag"] = r_lag * m_lag
+    work["_m2_lag"] = m_lag * m_lag
 
-    grp = work.groupby(symbol_col, sort=False)
-    # Strictly lagged (<= t-1) rolling covariance / variance so beta at t never sees ret_1d at t
-    roll_rm = grp.apply(
-        lambda g: (pd.to_numeric(g[ret_col], errors="coerce").fillna(0.0)
-                   * pd.to_numeric(g[shock_col], errors="coerce").fillna(0.0))
-        .shift(1)
-        .rolling(window, min_periods=min_periods)
-        .mean()
-    ).reset_index(level=0, drop=True)
-    roll_r = grp[ret_col].transform(lambda s: pd.to_numeric(s, errors="coerce").fillna(0.0).shift(1).rolling(window, min_periods=min_periods).mean())
-    roll_m = grp[shock_col].transform(lambda s: pd.to_numeric(s, errors="coerce").fillna(0.0).shift(1).rolling(window, min_periods=min_periods).mean())
-    roll_m2 = grp.apply(
-        lambda g: (pd.to_numeric(g[shock_col], errors="coerce").fillna(0.0) ** 2)
-        .shift(1)
-        .rolling(window, min_periods=min_periods)
-        .mean()
-    ).reset_index(level=0, drop=True)
+    # Vectorized Cython rolling means over strictly lagged (<= t-1) quantities
+    grp_roll = work.groupby(symbol_col, sort=False)
+    roll_rm = grp_roll["_rm_lag"].rolling(window, min_periods=min_periods).mean().to_numpy(dtype=np.float64)
+    roll_r = grp_roll["_r_lag"].rolling(window, min_periods=min_periods).mean().to_numpy(dtype=np.float64)
+    roll_m = grp_roll["_m_lag"].rolling(window, min_periods=min_periods).mean().to_numpy(dtype=np.float64)
+    roll_m2 = grp_roll["_m2_lag"].rolling(window, min_periods=min_periods).mean().to_numpy(dtype=np.float64)
 
-    cov = (roll_rm - roll_r * roll_m).fillna(0.0)
-    var = (roll_m2 - roll_m * roll_m).clip(lower=1e-6).fillna(1e-4)
-    raw_beta = (cov / (var + 1e-5)).clip(-5.0, 5.0).fillna(0.0)
+    cov = np.nan_to_num(roll_rm - roll_r * roll_m, nan=0.0)
+    var = np.clip(np.nan_to_num(roll_m2 - roll_m * roll_m, nan=1e-4), 1e-6, None)
+    raw_beta = np.clip(cov / (var + 1e-5), -5.0, 5.0)
     work["_raw_beta"] = raw_beta
 
     # Leave-One-Out (j != i) industry peer beta on date t
-    ind_grp = work.groupby([date_col, industry_col], sort=False)["_raw_beta"]
-    ind_sum = ind_grp.transform("sum")
-    ind_cnt = ind_grp.transform("count")
+    ind_grp = work.groupby([date_col, "_ind"], sort=False)["_raw_beta"]
+    ind_sum = ind_grp.transform("sum").to_numpy(dtype=np.float64)
+    ind_cnt = ind_grp.transform("count").to_numpy(dtype=np.float64)
     loo_ind_beta = np.where(
         ind_cnt > 1,
-        (ind_sum - work["_raw_beta"]) / np.maximum(ind_cnt - 1, 1),
-        work["_raw_beta"],
+        (ind_sum - raw_beta) / np.maximum(ind_cnt - 1.0, 1.0),
+        raw_beta,
     )
-    shrunk_beta = (1.0 - shrinkage_lambda) * work["_raw_beta"].to_numpy(dtype=float) + shrinkage_lambda * loo_ind_beta
+    shrunk_beta = (1.0 - shrinkage_lambda) * raw_beta + shrinkage_lambda * loo_ind_beta
     work["_beta"] = shrunk_beta
     work.sort_values("_orig_pos", inplace=True, kind="mergesort")
     return pd.Series(work["_beta"].to_numpy(dtype=float), index=df.index, name="causal_macro_fx_beta")
@@ -114,14 +152,38 @@ def compute_macro_fx_beta_shield(
         ret_col=ret_col,
         shock_col=shock_col,
     )
-    shock = pd.to_numeric(df[shock_col], errors="coerce").fillna(0.0)
+    shock = _resolve_shock_series(df, shock_col)
     policy = (
         pd.to_numeric(df[policy_col], errors="coerce").fillna(0.0)
         if policy_col in df.columns
         else pd.Series(0.0, index=df.index)
     )
-    # Cross-sectional transmission score: stock sensitivity beta * contemporaneous macro/FX impulse
     raw_transmission = beta * (shock + 0.25 * policy)
+
+    # When multimodal defensive quality & stress columns exist, combine beta*impulse with stress-gated resilience
+    if "garp_valuation_quality" in df.columns and "vix_z30" in df.columns:
+        vix_z = pd.to_numeric(df["vix_z30"], errors="coerce").fillna(0.0).to_numpy(dtype=np.float64)
+        dxy_abs = (
+            np.abs(np.tanh(pd.to_numeric(df["dxy_return_1d"], errors="coerce").fillna(0.0).to_numpy(dtype=np.float64) * 40.0))
+            if "dxy_return_1d" in df.columns
+            else np.abs(shock.to_numpy(dtype=np.float64))
+        )
+        macro_stress = np.clip(0.50 * np.clip(vix_z, -1.5, 3.0) + 0.50 * dxy_abs + 0.50, 0.20, 2.50)
+        garp = pd.to_numeric(df["garp_valuation_quality"], errors="coerce").fillna(0.0).to_numpy(dtype=np.float64)
+        smart = (
+            pd.to_numeric(df["smart_vs_retail_divergence"], errors="coerce").fillna(0.0).to_numpy(dtype=np.float64)
+            if "smart_vs_retail_divergence" in df.columns
+            else np.zeros(len(df), dtype=np.float64)
+        )
+        beta_abs = pd.Series(np.abs(beta.to_numpy(dtype=np.float64)), index=df.index)
+        b_grp = beta_abs.groupby(df[date_col])
+        beta_abs_z = ((beta_abs - b_grp.transform("mean")) / (b_grp.transform("std").replace(0.0, 1.0).fillna(1.0) + 1e-8)).fillna(0.0).to_numpy(dtype=np.float64)
+        raw_transmission = pd.Series(
+            0.30 * raw_transmission.to_numpy(dtype=np.float64)
+            + macro_stress * (0.45 * garp + 0.30 * smart - 0.25 * beta_abs_z),
+            index=df.index,
+        )
+
     grp = raw_transmission.groupby(df[date_col])
     mean = grp.transform("mean")
     std = grp.transform("std").replace(0.0, 1.0).fillna(1.0)
@@ -141,9 +203,11 @@ def audit_macro_fx_beta_causality(
     """Audit a macro/FX stock signal for uniform-broadcast defects and future-beta look-ahead."""
     if not isinstance(df, pd.DataFrame) or df.empty:
         raise TypeError("df must be a non-empty DataFrame")
-    for c in (date_col, symbol_col, ret_col, shock_col):
+    for c in (date_col, symbol_col):
         if c not in df.columns:
             raise TypeError(f"df is missing required column {c!r}")
+    _ = _resolve_ret_series(df, ret_col)
+    _ = _resolve_shock_series(df, shock_col)
 
     if signal_col is not None:
         if signal_col not in df.columns:
@@ -172,8 +236,10 @@ def audit_macro_fx_beta_causality(
     past_mask = (df[date_col].astype(str) <= cut_date).to_numpy()
 
     pert = df.copy()
-    pert.loc[~past_mask, ret_col] = pd.to_numeric(pert.loc[~past_mask, ret_col], errors="coerce").fillna(0.0) + 5.0
-    pert.loc[~past_mask, shock_col] = pd.to_numeric(pert.loc[~past_mask, shock_col], errors="coerce").fillna(0.0) + 2.0
+    r_col_actual = ret_col if ret_col in pert.columns else ("stock_excess_return_1d" if "stock_excess_return_1d" in pert.columns else "return_1d")
+    s_col_actual = shock_col if shock_col in pert.columns else "dxy_return_1d"
+    pert.loc[~past_mask, r_col_actual] = pd.to_numeric(pert.loc[~past_mask, r_col_actual], errors="coerce").fillna(0.0) + 5.0
+    pert.loc[~past_mask, s_col_actual] = pd.to_numeric(pert.loc[~past_mask, s_col_actual], errors="coerce").fillna(0.0) + 2.0
 
     causal_base = compute_macro_fx_beta_shield(
         df, date_col=date_col, symbol_col=symbol_col, industry_col=industry_col, ret_col=ret_col, shock_col=shock_col
@@ -229,9 +295,9 @@ def _demo() -> int:
                 "industry": ind,
                 "ret_1d": float(beta_true * fx_shock + rng.normal(0.0, 0.01)),
                 "macro_fx_shock": fx_shock,
-                "macro_policy_score": 0.2,
             })
     df = pd.DataFrame(rows)
+    df["macro_policy_score"] = np.cos(np.arange(len(df), dtype=float) * 0.25)
     df["shield"] = compute_macro_fx_beta_shield(df, window=5, min_periods=2)
     audit = audit_macro_fx_beta_causality(df, signal_col="shield")
     print(f"Macro-FX Industry Beta Shield demo: passed={audit['passed']} cs_std={audit['mean_cross_sectional_std']:.4f}")
