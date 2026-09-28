@@ -5,13 +5,13 @@ description: >-
   measure the two look-aheads that flatter its backtest. TRIGGER - time series momentum, TSMOM,
   Moskowitz Ooi Pedersen, 12-month momentum, trend following, managed futures, CTA replication;
   Donchian channel, turtle rules, breakout system, 20-day high, golden cross, 50/200 MA;
-  volatility targeting, vol scaling, ex-ante volatility, 40% vol target, risk parity across
-  futures, inverse-vol sizing, ATR sizing; "my trend backtest has a Sharpe of 3", "should I skip
-  the most recent month". SKIP for backtesting a moving average crossover on AAPL or SPY or
-  choosing the engine that runs the loop (backtesting-engines), for when a strategy has a Sharpe
-  of 4 and what to check (research-integrity-guards), for computing indicators
-  (signal-construction), for cross-sectional ranking (factor-and-timeseries-research), for
-  combining alphas (alpha-combination-and-neutralization), and for Kelly sizing
+  volatility targeting, vol scaling, ex-ante volatility, 40% vol target, futures inverse-vol
+  sizing, ATR sizing; skipping the most recent month. SKIP for moving average crossover backtests
+  on AAPL or SPY or choosing a backtest engine (backtesting-engines), for building risk parity
+  portfolios (portfolio-and-risk), for Sharpe audit checklists (research-integrity-guards), for
+  non-leaking time series cross-validation (backtest-validation), for indicators
+  (signal-construction), for cross-sectional ranking (factor-and-timeseries-research), for alpha
+  combination (alpha-combination-and-neutralization), and for Kelly sizing
   (position-sizing-kelly).
 license: MIT
 metadata:

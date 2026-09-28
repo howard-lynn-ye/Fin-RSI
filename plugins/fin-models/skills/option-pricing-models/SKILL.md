@@ -2,16 +2,15 @@
 name: option-pricing-models
 description: >-
   Implement an option pricing model correctly - closed form, tree, characteristic function, Monte
-  Carlo - and the four places each silently returns a plausible wrong number. TRIGGER - price an
-  American put or call option with dividends, Black-Scholes-Merton with dividend yield, binomial
-  tree, CRR, Cox-Ross-Rubinstein, American early exercise, Richardson extrapolation; Heston, "the
-  little Heston trap", branch cut, complex log, AnalyticHestonEngine, Gatheral vs
+  Carlo - and the four places each silently returns a plausible wrong number. TRIGGER - pricing
+  American put or call options with discrete or continuous dividends, Black-Scholes-Merton with
+  dividend yield, binomial tree, CRR, Cox-Ross-Rubinstein, American early exercise, Richardson
+  extrapolation; Heston, branch cut, complex log, AnalyticHestonEngine, Gatheral vs
   BranchCorrection; SABR, Hagan 2002, sabrVolatility, ATM 0/0, z/x(z); antithetic variates,
-  standard error, Euler discretisation bias; "my Heston price is wrong at long maturity", "my
-  Heston price is NaN", "my binomial tree will not converge", "my Monte Carlo error bar is tiny
-  but the price is wrong", "my tree does not match QuantLib". SKIP for choosing a pricing library,
-  Greek units and licences (derivatives-pricing), for fitting a whole surface
-  (implied-vol-surface), and for assignment, expiry and option lifecycle (options-backtesting).
+  standard error, Euler discretisation bias; Heston long-maturity or NaN errors, binomial tree
+  convergence, Monte Carlo vs QuantLib. SKIP for choosing a pricing library, Greek units and
+  licences (derivatives-pricing), for fitting a whole surface (implied-vol-surface), and for
+  assignment, expiry and option lifecycle (options-backtesting).
 license: MIT
 metadata:
   version: "0.1.0"

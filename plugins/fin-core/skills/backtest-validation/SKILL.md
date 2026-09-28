@@ -1,17 +1,17 @@
 ---
 name: backtest-validation
 description: >-
-  Decide whether a result survives the number of things you tried. TRIGGER - I tried 200 parameter
-  combinations and the best one has Sharpe 2.5, is this backtest result statistically real,
-  overfitting, p-hacking, data snooping, "is this statistically significant"; compute the deflated
-  sharpe ratio, DSR, PSR, the trial ledger; White's Reality Check, Hansen SPA, StepM, model
+  Decide whether a result survives the number of things you tried. TRIGGER - multiple testing
+  across many parameter combinations with high Sharpe, testing whether a backtest result is
+  statistically real, overfitting, p-hacking, data snooping, statistical significance; compute PSR
+  or deflated sharpe ratio, DSR, the trial ledger; White's Reality Check, Hansen SPA, StepM, model
   confidence set, arch.bootstrap; purged or combinatorial cross-validation, embargo, walk-forward,
-  how do I do cross validation on time series without leaking; a grid search, hyperopt or AutoML
-  picked a winner; triple-barrier labeling, meta-labeling, fractional differentiation, mlfinlab.
-  Load whenever a Sharpe ratio is offered as evidence for trading. SKIP for plain performance
-  metrics - Sharpe, Sortino, CAGR, drawdown (portfolio-and-risk); for PBO, CSCV and minimum
-  backtest length (backtest-overfitting); and for Bonferroni, Holm, BH or BY over a trial ledger
-  (multiple-testing-ledger).
+  non-leaking time series cross validation; grid search, hyperopt or AutoML winners;
+  triple-barrier labeling, meta-labeling, fractional differentiation, mlfinlab. Load whenever a
+  Sharpe ratio is offered as evidence for trading. SKIP for plain metrics - Sharpe, Sortino, CAGR,
+  drawdown (portfolio-and-risk); for pre-deployment strategy audit checklists on Sharpe
+  (research-integrity-guards); for PBO, CSCV and MinBTL (backtest-overfitting); and for
+  Bonferroni, Holm, BH or BY over a trial ledger (multiple-testing-ledger).
 license: MIT
 metadata:
   version: "0.1.0"

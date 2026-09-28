@@ -1,15 +1,15 @@
 ---
 name: backtesting-engines
 description: >-
-  Choose a backtesting engine and know what it silently models wrong. TRIGGER - "backtest this",
-  backtest a moving average crossover on AAPL or SPY, simulate a strategy, walk-forward, parameter
-  sweep, which backtesting library should I use for a multi asset portfolio strategy; comparing or
-  choosing backtest frameworks; vectorbt, backtesting.py, backtrader, zipline, PyBroker, bt,
-  nautilus_trader, LEAN, freqtrade, jesse; how an engine models fills, slippage, commissions; what
-  slippage or bid ask spread should I assume in my daily backtest, partial fills, margin, shorting
-  or delistings; "my strategy works in backtest but loses money live". Several engines fill at the
-  signal bar close by default. SKIP for judging whether a finished result is real
-  (backtest-validation), for A-share rules (china-trading-stack), for crypto funding
+  Choose a backtesting engine and know what it silently models wrong. TRIGGER - backtest a
+  strategy, moving average crossover backtests on equities (AAPL, SPY), simulate a strategy,
+  walk-forward, parameter sweep, selecting a backtesting library for a multi-asset or multi asset
+  portfolio strategy; comparing backtest frameworks; vectorbt, backtesting.py, backtrader,
+  zipline, PyBroker, bt, nautilus_trader, LEAN, freqtrade, jesse; how an engine models fills,
+  slippage, commissions; daily backtest slippage or bid ask spread assumptions, partial fills,
+  margin, shorting or delistings; when a strategy works in backtest yet loses live money. Several
+  engines fill at the signal bar close by default. SKIP for judging whether a finished result is
+  real (backtest-validation), for A-share rules (china-trading-stack), for crypto funding
   (crypto-data-and-execution), for options assignment and settlement (options-backtesting), and
   for measuring fills you already have (execution-cost-analysis).
 license: MIT

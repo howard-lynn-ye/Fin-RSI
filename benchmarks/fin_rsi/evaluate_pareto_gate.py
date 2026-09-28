@@ -23,7 +23,7 @@ def format_markdown_pareto_table(summary: dict, gate_res: dict) -> str:
         f"- **Campaign**: `{summary.get('campaign_name', 'fin_rsi_multimodal_alpha_campaign')}`",
         f"- **Compute Engine**: `{summary.get('device')}` | **Elapsed**: `{summary.get('elapsed_seconds', 0.0):.2f}s`",
         f"- **Harness SHA-256 Lock**: `{summary.get('frozen_harness_sha256', 'VERIFIED')}` (`zero_baseline_penalty_ast_verified = True`)",
-        f"- **Dual Sample Provenance**: `n_used = {summary.get('n_used'):,} / dataset_rows = {summary.get('dataset_rows'):,}` (`585` OOS trading dates, 2018–2026)",
+        f"- **Dual Sample Provenance**: `n_used = {summary.get('n_used'):,} / dataset_rows = {summary.get('dataset_rows'):,}` (`{summary.get('evaluated_dates', 799)}` OOS trading dates, 2018–2026)",
         f"- **Registered Disjoint Seeds ($M=5$)**: `{summary.get('registered_seeds')}`",
         f"- **Overall 3-Way Pareto Verdict**: **`{gate_res['status']}`** (`Candidate: {gate_res['candidate_arm']}`)",
         "",

@@ -3,14 +3,15 @@ name: lib-quantstats
 description: >-
   The tearsheet library whose cagr(rf=...) accepts your risk-free rate and silently discards it -
   "cagr" sits on an exclusion list inside _prepare_returns, which dispatches on the caller's
-  function name. TRIGGER - quantstats, quantstats cagr is ignoring my risk free rate, "import
-  quantstats as qs", qs.reports.html, qs.stats.sharpe, qs.stats.cagr, qs.stats.value_at_risk,
-  expected_shortfall, gain_to_pain_ratio, rolling_volatility, qs.extend_pandas, tearsheet,
-  quantstats-lumi; or a wildly negative Sharpe. Memory is stale on status and correctness - 0.0.81
-  shipped in a single-day hotfix burst on 2026-01-13 with no default-branch commits since, and the
-  cagr bug survived it. SKIP for optimizing against these measures (lib-riskfolio, lib-skfolio)
-  and for PSR/DSR, which it does not have (backtest-validation). SKIP when the question is WHICH
-  library to choose, or names no library at all - both belong to the domain skill.
+  function name. TRIGGER - quantstats, cagr ignoring risk-free or risk free rate parameters,
+  import quantstats as qs, qs.reports.html, qs.stats.sharpe, qs.stats.cagr,
+  qs.stats.value_at_risk, expected_shortfall, gain_to_pain_ratio, rolling_volatility,
+  qs.extend_pandas, tearsheet, quantstats-lumi; or a wildly negative Sharpe. Memory is stale on
+  status and correctness - 0.0.81 shipped in a single-day hotfix burst on 2026-01-13 with no
+  default-branch commits since, and the cagr bug survived it. SKIP for optimizing against these
+  measures (lib-riskfolio, lib-skfolio) and for PSR/DSR, which it does not have
+  (backtest-validation). SKIP when the question is WHICH library to choose, or names no library at
+  all - both belong to the domain skill.
 license: MIT
 metadata:
   version: "0.1.0"

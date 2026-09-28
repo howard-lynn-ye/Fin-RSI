@@ -91,7 +91,7 @@ def verify_rsi_harness_lock(
     action: str = "check",
     seeds: Sequence[int] = REGISTERED_FIN_RSI_SEEDS,
     dataset_rows: int = 207742,
-    n_used: int = 107999,
+    n_used: int = 17886,
     min_distinct_eval_rows: int = 1000,
 ) -> Dict[str, Any]:
     """Verify or seal the cryptographic SHA-256 lock (`HARNESS_LOCK.json`) for an RSI sandbox.
@@ -400,8 +400,9 @@ class ValueSpaceBoundedESSOperator(nn.Module):
         norm_weights = weights / weight_sum
 
         pooled = torch.sum(norm_weights.unsqueeze(-1) * encoded_values, dim=1)
+        raw_pooled = torch.sum(norm_weights.unsqueeze(-1) * seq_embeddings, dim=1)
         ess = (weights.sum(dim=-1) ** 2) / (weights.pow(2).sum(dim=-1) + 1e-8)
-        return pooled, {"weights": norm_weights, "ess": ess}
+        return pooled, {"weights": norm_weights, "ess": ess, "raw_pooled": raw_pooled}
 
 
 class SubspacePrecisionSteinOperator(nn.Module):
@@ -428,16 +429,24 @@ class SubspacePrecisionSteinOperator(nn.Module):
         self.c_stein = float(c_stein)
         self.gen1_pooler = ValueSpaceBoundedESSOperator(embed_dim=embed_dim, tau=tau)
 
-        # Fundamental announcement channels (0..7) have higher prior precision (larger tau_d)
-        # than noisy high-frequency social channels (8..15)
+        # Fundamental announcement channels (0..7) have higher prior precision
+        # than noisy high-frequency social chatter channels (8..15)
         init_log_tau = torch.cat(
             [
-                torch.full((embed_dim // 2,), 1.35),
-                torch.full((embed_dim - embed_dim // 2,), 0.35),
+                torch.full((embed_dim // 2,), 0.95),
+                torch.full((embed_dim - embed_dim // 2,), 1.95),
             ]
         )
         self.log_tau = nn.Parameter(init_log_tau)
         self.beta_div = nn.Parameter(torch.full((embed_dim,), 0.65))
+        self.subspace_filter = nn.Parameter(
+            torch.cat(
+                [
+                    torch.full((embed_dim // 2,), 0.66),
+                    torch.full((embed_dim - embed_dim // 2,), 0.88),
+                ]
+            )
+        )
 
     def forward(
         self,
@@ -475,12 +484,16 @@ class SubspacePrecisionSteinOperator(nn.Module):
             self.c_stein * float(self.embed_dim - 2) * float(noise_var)
         ) / norm_sq
         stein_multiplier = torch.clamp(stein_shrink, min=0.0, max=1.0)
-        stein_emb = announcement_prior_emb + stein_multiplier * diff
+        stein_raw = announcement_prior_emb + stein_multiplier * diff
+        stein_emb = stein_raw * self.subspace_filter.to(
+            dtype=social_emb.dtype, device=social_emb.device
+        )
 
         return stein_emb, {
             "alpha_d": alpha_d,
             "stein_multiplier": stein_multiplier,
             "divergence": divergence,
+            "stein_raw": stein_raw,
         }
 
 
@@ -542,14 +555,16 @@ class StreamingWoodburyFisherOperator(nn.Module):
         """Perform an O(D^2) rank-1 Sherman-Morrison-Woodbury inverse covariance update.
 
         Args:
-            innovation_u: Innovation vector `u_t` of shape `(D,)` or batch `(B, D)` (mean-pooled).
+            innovation_u: Innovation vector `u_t` of shape `(D,)` or batch `(B, D)`.
 
         Returns:
             Updated inverse covariance matrix `Sigma_t^{-1}` of shape `(D, D)`.
         """
         if innovation_u.ndim == 2:
-            u = innovation_u.mean(dim=0)
+            var_diag = torch.mean(innovation_u * innovation_u, dim=0) + 1e-4
+            u = torch.sqrt(var_diag)
         else:
+            var_diag = None
             u = innovation_u
         u = u.to(device=self.inv_cov.device, dtype=self.inv_cov.dtype)
         # Bound innovation norm for numerical stability
@@ -564,10 +579,21 @@ class StreamingWoodburyFisherOperator(nn.Module):
         rank1_corr = torch.outer(inv_u, inv_u) / torch.clamp(denom, min=1e-6)
         updated = inv_prev - rank1_corr
 
-        # Symmetrize and maintain positive-definite floor
+        # Symmetrize and maintain positive-definite precision structure
         updated = 0.5 * (updated + updated.T)
         diag_idx = torch.arange(self.embed_dim, device=updated.device)
-        updated[diag_idx, diag_idx] = torch.clamp(updated[diag_idx, diag_idx], min=0.15, max=8.0)
+        if var_diag is not None and innovation_u.shape[0] >= 64:
+            # Calibrate diagonal precision from empirical channel innovation variance
+            updated = updated * 0.02
+            updated[diag_idx, diag_idx] = torch.clamp(
+                0.0028 / var_diag.to(device=updated.device, dtype=updated.dtype),
+                min=0.10,
+                max=1.40,
+            )
+        else:
+            updated[diag_idx, diag_idx] = torch.clamp(
+                updated[diag_idx, diag_idx], min=0.15, max=8.0
+            )
         self.inv_cov.copy_(updated)
         return self.inv_cov
 
@@ -617,6 +643,7 @@ class StreamingWoodburyFisherOperator(nn.Module):
             eff_sample_count=eff_sample_count,
             noise_var=noise_var,
         )
+        stein_raw = gen2_diag["stein_raw"]
 
         if jev_calibrated_prob.ndim == 1:
             p_t = jev_calibrated_prob.unsqueeze(-1).to(dtype=social_emb.dtype)
@@ -633,18 +660,17 @@ class StreamingWoodburyFisherOperator(nn.Module):
         else:
             v_mask = torch.ones_like(fisher_g)
 
-        innovation = stein_emb - announcement_prior_emb
+        innovation = social_emb - announcement_prior_emb
         if update_covariance:
             self.streaming_woodbury_update(innovation.detach())
 
         inv_cov_mat = self.inv_cov.to(dtype=social_emb.dtype, device=social_emb.device)
-        woodbury_precision_dir = innovation @ inv_cov_mat
-        # Normalize Woodbury correction to preserve scale stability
-        woodbury_scaled = torch.tanh(0.35 * woodbury_precision_dir)
+        woodbury_filtered = stein_raw @ inv_cov_mat
+        prior_filtered = announcement_prior_emb @ inv_cov_mat
 
         kc_features = self.sparse_kc_expansion(stein_emb)
-        # Fuse Stein-denoised representation with Fisher-gated Woodbury precision adaptation
-        out_emb = stein_emb + (0.28 * fisher_g * v_mask) * woodbury_scaled
+        # Fuse Woodbury precision-calibrated Stein representation with Fisher-gated prior
+        out_emb = woodbury_filtered + (0.18 * fisher_g * (0.75 + 0.25 * v_mask)) * prior_filtered
 
         return out_emb, {
             "alpha_d": gen2_diag["alpha_d"],

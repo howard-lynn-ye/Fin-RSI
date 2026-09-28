@@ -2,14 +2,14 @@
 name: finance-agent-architectures
 description: >-
   How the mainstream finance agent systems are built, and how to stage a research-to-execution
-  pipeline whose gates are code. TRIGGER - build a multi agent trading system with analyst, trader
-  and risk manager roles; how the TradingAgents architecture is put together; the ai-hedge-fund
-  repo and how its pipeline works; RD-Agent for quant; Vibe-Trading; FinRobot vs FinGPT; FinMem
-  layered memory; a LangGraph, CrewAI, AutoGen or Claude Agent SDK pipeline for stock research;
-  bull-bear debate; an agent that reads 10-Ks and trades; how to stage a research to execution
-  pipeline that uses an LLM, human-in-the-loop gates, prompt injection through scraped filings,
-  agent reproducibility; 交易 agent 架构, 多智能体 pipeline. SKIP for whether you should build a
-  TradingAgents style multi agent trader at all or whether LLM news sentiment predicts returns
+  pipeline whose gates are code. TRIGGER - multi-agent or multi agent trading system design,
+  role-based analyst, risk-manager and trader agents; TradingAgents system architecture;
+  ai-hedge-fund repo pipeline mechanics; RD-Agent for quant; Vibe-Trading; FinRobot vs FinGPT;
+  FinMem layered memory; a LangGraph, CrewAI, AutoGen or Claude Agent SDK pipeline for stock
+  research; bull-bear debate; an agent that reads 10-Ks and trades; staging LLM
+  research-to-execution pipelines, human-in-the-loop gates, prompt injection through scraped
+  filings, agent reproducibility; 交易 agent 架构, 多智能体 pipeline. SKIP for evaluating whether to build
+  a TradingAgents-style trader at all or whether LLM news sentiment predicts returns
   (llm-finance-agents), choosing an MCP server (finance-mcp-servers), RL agents
   (rl-and-ml-trading), and order safety at the broker (broker-execution-apis).
 license: MIT

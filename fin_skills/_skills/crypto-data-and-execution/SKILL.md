@@ -1,16 +1,16 @@
 ---
 name: crypto-data-and-execution
 description: >-
-  TRIGGER - choose a crypto data or exchange client, download BTC perpetual funding rates from
-  binance, which crypto backtesting framework handles funding, how much funding will I pay holding
-  a long BTC perp for a month, liquidation price for a 5x long on a perpetual, annualize daily
-  crypto returns with 365 or 252, cash and carry basis trade between BTC spot and the quarterly
-  future; Bitcoin or Ethereum OHLCV, crypto order book feeds, ccxt, cryptofeed, python-binance,
-  freqtrade, jesse, hummingbot, OctoBot; exchange API pagination, testnet, sandbox, precision,
-  retries, or order safety. SKIP for token migrations, rebases and delisted universes
-  (crypto-token-events), AMM pools and impermanent loss (defi-and-amm-mechanics), equity brokers
-  (broker-execution-apis), RL agents (rl-and-ml-trading), and named-library calls such as use ccxt
-  to place a limit order (lib-ccxt, lib-freqtrade).
+  TRIGGER - choose a crypto data or exchange client, binance BTC perpetual funding rate downloads,
+  crypto backtesting frameworks handling funding, monthly funding cost on a long perp position,
+  perpetual leverage liquidation price calculation, annualize 365 vs 252 daily crypto returns,
+  cash-and-carry or cash and carry basis trades between spot BTC and quarterly futures; Bitcoin or
+  Ethereum OHLCV, crypto order book feeds, ccxt, cryptofeed, python-binance, freqtrade, jesse,
+  hummingbot, OctoBot; exchange API pagination, testnet, sandbox, precision, retries, or order
+  safety. SKIP for token migrations, rebases and delisted universes (crypto-token-events), AMM
+  pools and impermanent loss (defi-and-amm-mechanics), equity brokers (broker-execution-apis), RL
+  agents (rl-and-ml-trading), and named-library limit order calls in ccxt (lib-ccxt,
+  lib-freqtrade).
 license: MIT
 compatibility: Python 3.10+; offline examples use numpy and pandas; optional exchange clients.
 metadata:

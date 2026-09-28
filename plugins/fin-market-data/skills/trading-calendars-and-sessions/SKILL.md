@@ -4,7 +4,7 @@ description: >-
   TRIGGER - market sessions, early close, lunch break, holidays.US, exchange_calendars,
   pandas_market_calendars, DateOutOfBounds, resample has empty bars, aligning Tokyo to New York,
   交易日历, 休市. Pin session bounds, compare venue calendars, and aggregate against explicit sessions.
-  SKIP for NSE India trading calendar, settlement or lot-size rules (asia-pacific-markets), for
+  SKIP for NSE India trading calendars, settlement or lot-size rules (asia-pacific-markets), for
   vendor choice and price adjustments (market-data-sourcing), for stale closes and bad OHLC
   (data-quality-validation), for corporate events (corporate-actions-processing), and for storage
   and as-of joins (market-data-engineering).

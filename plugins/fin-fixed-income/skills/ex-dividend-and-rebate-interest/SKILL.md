@@ -3,13 +3,12 @@ name: ex-dividend-and-rebate-interest
 description: >-
   Handle bonds that trade ex-dividend, where accrued interest goes negative and the buyer is paid
   rebate interest instead of paying it. TRIGGER - gilt, UK gilt, ex-dividend, ex-div, ex-coupon,
-  exCouponPeriod, rebate interest, negative accrued interest, "my accrued interest is negative",
-  "accrued should be negative but isn't", seven business days before the coupon, quasi-coupon
-  date, DMO formulae, "Formulae for Calculating Gilt Prices from Yields", ql.FixedRateBond
-  exCouponPeriod, ql.Period(-7, ql.Days), record date vs ex-date on a bond, 3.5% War Loan, JGB and
-  gilt settlement. SKIP for pricing an American put option with dividends (option-pricing-models),
-  for a short call getting assigned before ex-dividend (options-backtesting), for ordinary
-  positive accrued and day-count choice (bond-conventions-and-accrued), for price-to-yield solving
+  exCouponPeriod, rebate interest, negative accrued interest, seven business days before the
+  coupon, quasi-coupon date, DMO formulae, ql.FixedRateBond exCouponPeriod, ql.Period(-7,
+  ql.Days), record date vs ex-date on a bond, 3.5% War Loan, JGB and gilt settlement. SKIP for
+  pricing American put options with dividends (option-pricing-models), for early assignment of
+  short calls before ex-dividend (options-backtesting), for ordinary positive accrued and
+  day-count choice (bond-conventions-and-accrued), for price-to-yield solving
   (yield-measures-and-bill-quotes), for index-linked gilt lags (term-structure-models), and for
   QuantLib evaluationDate (lib-quantlib).
 license: MIT

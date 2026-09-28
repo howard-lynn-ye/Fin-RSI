@@ -2,13 +2,13 @@
 name: factor-and-timeseries-research
 description: >-
   Judge whether a cross-sectional factor predicts returns, and forecast financial series. TRIGGER
-  - is my factor any good, compute the information coefficient, IC, quantile returns, factor
-  decay, turnover, alphalens; run a Fama-MacBeth regression on this panel, Fama-French, PanelOLS,
-  linearmodels, cross-sectional asset pricing; do an event study around earnings announcements,
-  abnormal returns, CAR, BHAR; Alpha101, Alpha158, symbolic alpha mining, gplearn; or forecasting
-  with ARIMA, GARCH, volatility models, arch, Nixtla, statsforecast, mlforecast, sktime, darts,
-  Prophet or a time-series foundation model. SKIP for computing the indicator itself
-  (signal-construction) and for portfolio weights or Sharpe (portfolio-and-risk).
+  - compute IC, information coefficient, factor quality, quantile returns, factor decay, turnover,
+  alphalens; run Fama-MacBeth regressions on a panel, Fama-French, PanelOLS, linearmodels,
+  cross-sectional asset pricing; earnings announcement event study, abnormal returns, CAR, BHAR;
+  Alpha101, Alpha158, symbolic alpha mining, gplearn; or forecasting with ARIMA, GARCH, volatility
+  models, arch, Nixtla, statsforecast, mlforecast, sktime, darts, Prophet or a time-series
+  foundation model. SKIP for computing the indicator itself (signal-construction) and for
+  portfolio weights or Sharpe (portfolio-and-risk).
 license: MIT
 metadata:
   version: "0.1.0"

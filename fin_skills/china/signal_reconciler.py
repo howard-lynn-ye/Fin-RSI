@@ -116,12 +116,10 @@ class SignalReconciler:
 
         # Compute Cross-Channel Disagreement Index (standard deviation of active scores)
         active_scores = [s.score for s in signals if abs(s.score) > 0.05]
-        if len(active_scores) >= 2:
-            mean_s = sum(active_scores) / len(active_scores)
-            variance = sum((x - mean_s) ** 2 for x in active_scores) / len(active_scores)
-            disagreement = min(1.0, round(math.sqrt(variance), 4))
-        else:
-            disagreement = 0.0
+        n_active = max(len(active_scores), 1)
+        mean_s = sum(active_scores) / n_active
+        variance = sum((x - mean_s) ** 2 for x in active_scores) / n_active if len(active_scores) >= 2 else sum((x - mean_s) ** 2 for x in active_scores)
+        disagreement = min(1.0, round(math.sqrt(variance), 4))
 
         # =====================================================================
         # ARCHETYPE 1: Hard Veto / Regulatory & Structural Circuit Breaker

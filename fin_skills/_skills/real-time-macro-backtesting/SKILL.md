@@ -4,11 +4,10 @@ description: >-
   Run a macro strategy twice - once on today's revised series and once on the vintage that existed
   at each decision date - and report both Sharpes. TRIGGER - real-time data, vintage data, data
   vintages, point-in-time macro, ALFRED, realtime_start, realtime_end, vintage_dates,
-  get_series_as_of_date, first release vs latest, initial estimate, "my macro backtest uses
-  revised data", "does this have look-ahead", payroll revisions, annual benchmark revision, QCEW
-  benchmark, restated macro history, as-of join on a macro series, "which number did I actually
-  see on the day". SKIP for needing GDP data without the later revisions, where to GET macro
-  series and fredapi bugs (fundamental-and-macro-data), for release times and embargo mechanics
+  get_series_as_of_date, first release vs latest, initial estimate, payroll revisions, annual
+  benchmark revision, QCEW benchmark, restated macro history, as-of join on a macro series. SKIP
+  for fetching unrevised GDP series without later revisions, where to GET macro series and fredapi
+  bugs (fundamental-and-macro-data), for release times and embargo mechanics
   (macro-release-calendar-and-embargo), for seasonal-adjustment revisions
   (seasonal-adjustment-and-x13), and for recession labels (macro-regime-and-recession-indicators).
 license: MIT

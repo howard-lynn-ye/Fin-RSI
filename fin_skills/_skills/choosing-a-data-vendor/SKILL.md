@@ -3,14 +3,13 @@ name: choosing-a-data-vendor
 description: >-
   Decide whether a data source may legally and factually serve a research question, before any
   fetch code is written. TRIGGER - choosing where to get point-in-time data before writing fetch
-  code; is the free tier enough and what does a key cost; comparing vendor terms, licences, rate
-  limits or paid tiers; "there are no delisted names on the free tier"; picking between yfinance,
-  Tiingo, Alpha Vantage, stooq, EODHD, Norgate, CRSP or Polygon. Automated by `python -m
-  fin_skills.data advise`. SKIP for whether I am allowed to redistribute this price data under US
-  market rules (us-market-rules), for which data provider to use for delisted tickers or how to
-  call a vendor (market-data-sourcing), for storing or joining data (market-data-engineering), for
-  EDGAR and macro vintages (fundamental-and-macro-data), and for A-share sources
-  (china-ashare-data).
+  code; free tier limits and API key costs; comparing vendor terms, licences, rate limits or paid
+  tiers; delisted names on free tiers; picking between yfinance, Tiingo, Alpha Vantage, stooq,
+  EODHD, Norgate, CRSP or Polygon. Automated by `python -m fin_skills.data advise`. SKIP for US
+  market rules on redistributing price data (us-market-rules), for which data provider supplies
+  delisted tickers or how to call a vendor (market-data-sourcing), for storing or joining data
+  (market-data-engineering), for EDGAR and macro vintages (fundamental-and-macro-data), and for
+  A-share sources (china-ashare-data).
 license: MIT
 metadata:
   version: "0.1.0"

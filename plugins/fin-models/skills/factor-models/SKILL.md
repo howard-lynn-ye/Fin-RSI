@@ -5,12 +5,12 @@ description: >-
   errors that survive serial correlation. TRIGGER - factor model, Fama-French, decile or quintile
   long-short sort, 2x3 sort, SMB and HML, value-weight vs equal-weight portfolio, characteristic
   sort, alpha t-stat, Newey-West, HAC standard errors, cov_type="HAC" maxlags, Ken French Data
-  Library, F-F_Research_Data_Factors, book-to-market, 11-1 momentum; "my factor has a t-stat of
-  15", "should I lag the signal", "my HML does not match Ken French", "joining monthly factors to
-  daily returns". SKIP for running a Fama-MacBeth regression on a panel, scoring one alpha signal
-  with alphalens, IC decay or event studies (factor-and-timeseries-research), for covariance
-  matrices (covariance-and-risk-models), for portfolio weights (portfolio-optimizers), and for
-  counting tried specifications (backtest-validation).
+  Library, F-F_Research_Data_Factors, book-to-market, 11-1 momentum; lagging signals, matching Ken
+  French HML, joining monthly factors to daily returns. SKIP for running Fama-MacBeth regressions
+  on a panel, scoring one alpha signal with alphalens, IC decay or event studies
+  (factor-and-timeseries-research), for covariance matrices (covariance-and-risk-models), for
+  portfolio weights (portfolio-optimizers), and for counting tried specifications
+  (backtest-validation).
 license: MIT
 metadata:
   version: "0.1.0"

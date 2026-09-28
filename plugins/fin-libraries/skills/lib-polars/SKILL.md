@@ -2,10 +2,10 @@
 name: lib-polars
 description: >-
   The polars wheel is now an empty 865 KB py3-none-any shim hard-pinned to polars-runtime-32, so a
-  lockfile listing only polars does not pin the engine. TRIGGER - polars, polars join_asof gave
-  wrong rows silently, "import polars as pl", LazyFrame, scan_parquet, collect(), pl.col,
-  join_asof, group_by, with_columns, polars-runtime-32, polars-runtime-64, polars-lts-cpu, polars
-  2.0.0rc1, "pip download polars", vendored or air-gapped polars install, polars wheel has no
+  lockfile listing only polars does not pin the engine. TRIGGER - polars, join_asof returning
+  wrong rows silently on unsorted keys, import polars as pl, LazyFrame, scan_parquet, collect(),
+  pl.col, join_asof, group_by, with_columns, polars-runtime-32, polars-runtime-64, polars-lts-cpu,
+  polars 2.0.0rc1, pip download polars, vendored or air-gapped polars install, polars wheel has no
   compiled code, porting pandas merge_asof to polars.join_asof, polars sortedness. The runtime
   split landed at 1.34.0b2 on 2025-09-26, so install matrices, wheel audits and lockfiles written
   from memory are wrong. SKIP for market-data-engineering, the skill for storage formats and

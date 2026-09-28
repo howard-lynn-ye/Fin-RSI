@@ -3,15 +3,15 @@ name: execution-cost-analysis
 description: >-
   Measure what your execution actually cost instead of assuming a number - implementation
   shortfall, benchmark choice, impact models, and the gap between the cost you assumed and the
-  cost you paid. TRIGGER - transaction cost analysis, TCA, compute implementation shortfall on
-  these fills, arrival price, decision price, slippage analysis, execution quality, fill quality,
-  did my execution beat VWAP or did it cost us money, TWAP benchmark, participation rate, POV,
+  cost you paid. TRIGGER - transaction cost analysis, TCA, computing implementation shortfall on
+  trade fills, arrival price, decision price, slippage analysis, execution quality, fill quality;
+  evaluating whether execution beat VWAP or cost money, TWAP benchmark, participation rate, POV,
   percentage of volume, child orders, order slicing; market impact, temporary vs permanent impact,
-  square-root law, Almgren-Chriss, price reversion after my order; how much size can this strategy
-  take before impact eats it, capacity, alpha decay with size; is my cost assumption realistic,
-  "is 2 bps plausible". SKIP for a slippage assumption inside a backtest and for "works in
-  backtest, loses live" with no measured fills (backtesting-engines), for whether the edge
-  survives it (backtest-validation), and for broker order types (broker-execution-apis).
+  square-root law, Almgren-Chriss, price reversion after an order; strategy size and capacity
+  before market impact eats alpha, alpha decay with size; cost assumption realism. SKIP for a
+  slippage assumption inside a backtest and for backtest-to-live degradation with no measured
+  fills (backtesting-engines), for whether the edge survives it (backtest-validation), and for
+  broker order types (broker-execution-apis).
 license: MIT
 metadata:
   version: "0.1.0"

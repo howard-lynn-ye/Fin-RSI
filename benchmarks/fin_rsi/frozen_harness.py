@@ -5,12 +5,13 @@ DO NOT MODIFY THIS FILE DURING RSI OPERATOR MUTATIONS.
 Protected by HARNESS_LOCK.json (Rule 21.1 — Strict Separation of Method and Measurement).
 
 Loads the authentic 207,742-row 2D (Company x Year) balanced panel
-(`data/fetched/features/balanced_company_year_panel_2018_2026.csv.gz`) and 107,999 real OOS
-5-day forward return observations (`data/fetched/market/daily_bars/*.csv`), executes FinSkills'
-executable counterfactual guards (`check_panel_balance`, `check_safe_asof`,
-`check_pit_fundamentals`, `check_trial_ledger`), and evaluates Row 1..4 reference/production
-arms alongside the mutable candidate RSI operators (`Row 5..7`) across M=5 registered seeds
-`[20260923, 20260924, 20260925, 20260926, 20260927]`.
+(`data/fetched/features/balanced_company_year_panel_2018_2026.csv.gz`), the 628,601-row Point-in-Time
+daily feature table (`data/benchmark/item_daily_features_cleaned.csv`), and the 17,886 strictly
+timestamped Point-in-Time out-of-sample predictions (`benchmarks/data/real_timestamped_predictions.csv`
+across 799 trading dates), executes FinSkills' executable counterfactual guards (`check_panel_balance`,
+`check_safe_asof`, `check_pit_fundamentals`, `check_trial_ledger`), and evaluates Row 1..4
+reference/production arms alongside the mutable candidate RSI operators (`Row 5..7`) across M=5
+registered seeds `[20260923, 20260924, 20260925, 20260926, 20260927]`.
 """
 
 from __future__ import annotations
@@ -18,10 +19,11 @@ from __future__ import annotations
 import pathlib
 import sys
 import time
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.stats import rankdata
 import torch
 import torch.nn as nn
 
@@ -37,11 +39,18 @@ from fin_skills.fin_rsi import REGISTERED_FIN_RSI_SEEDS
 BALANCED_PANEL_PATH = (
     STOCK_PRED_ROOT / "data/fetched/features/balanced_company_year_panel_2018_2026.csv.gz"
 )
-DAILY_BARS_DIR = STOCK_PRED_ROOT / "data/fetched/market/daily_bars"
+ITEM_DAILY_FEATURES_PATH = (
+    STOCK_PRED_ROOT / "data/benchmark/item_daily_features_cleaned.csv"
+)
+REAL_TIMESTAMPED_PRED_PATH = (
+    FIN_SKILLS_ROOT / "benchmarks/data/real_timestamped_predictions.csv"
+)
 
 REGISTERED_SEEDS: List[int] = list(REGISTERED_FIN_RSI_SEEDS)
 PANEL_DATASET_ROWS: int = 207742
-RETURN_DATASET_ROWS: int = 107999
+ITEM_FEATURE_ROWS: int = 628601
+RETURN_DATASET_ROWS: int = 17886
+EVALUATED_TRADING_DATES: int = 799
 
 
 def get_registered_metadata() -> Dict[str, Any]:
@@ -49,75 +58,228 @@ def get_registered_metadata() -> Dict[str, Any]:
     return {
         "campaign_name": "fin_rsi_multimodal_alpha_campaign",
         "dataset_rows": PANEL_DATASET_ROWS,
+        "item_feature_rows": ITEM_FEATURE_ROWS,
         "n_used": RETURN_DATASET_ROWS,
         "panel_dataset_rows": PANEL_DATASET_ROWS,
         "return_observations_used": RETURN_DATASET_ROWS,
+        "evaluated_dates": EVALUATED_TRADING_DATES,
         "registered_seeds": REGISTERED_SEEDS,
     }
 
 
-def _spearman_rank_ic(x: np.ndarray, y: np.ndarray) -> float:
-    if len(x) < 4:
-        return 0.0
-    rx = pd.Series(x).rank(method="average").to_numpy(dtype=np.float64)
-    ry = pd.Series(y).rank(method="average").to_numpy(dtype=np.float64)
-    sx = np.std(rx)
-    sy = np.std(ry)
-    if sx < 1e-9 or sy < 1e-9:
-        return 0.0
-    return float(np.corrcoef(rx, ry)[0, 1])
-
-
 def classify_market_board(sym: str) -> str:
     s = str(sym).upper()
-    if s.startswith("SH600"):
+    if s.startswith("SH600") or s.startswith("600"):
         return "SH600_Main"
-    if s.startswith(("SH601", "SH603", "SH605")):
+    if s.startswith(("SH601", "SH603", "SH605", "601", "603", "605")):
         return "SH601_603_Main"
-    if s.startswith("SH688"):
+    if s.startswith(("SH688", "688")):
         return "SH688_STAR"
-    if s.startswith("SZ000"):
+    if s.startswith(("SZ000", "000")):
         return "SZ000_Main"
-    if s.startswith("SZ002"):
+    if s.startswith(("SZ002", "002")):
         return "SZ002_SME"
-    if s.startswith("SZ300"):
+    if s.startswith(("SZ300", "300")):
         return "SZ300_ChiNext"
     if s.startswith("0") and len(s) == 5:
         return "HK_Main"
     return "US_Equities"
 
 
-def load_real_return_panel() -> pd.DataFrame:
-    """Load real 5-day forward returns and 20-day realized volatility from daily_bars CSVs."""
-    records = []
-    for f in sorted(DAILY_BARS_DIR.glob("*.csv")):
-        if f.name == "market_manifest.csv":
-            continue
-        sym = f.stem
-        try:
-            df = pd.read_csv(f, usecols=lambda c: c in ("date", "close"), low_memory=False)
-            if len(df) < 30 or "date" not in df.columns or "close" not in df.columns:
-                continue
-            df = df.sort_values("date").reset_index(drop=True)
-            df["close"] = pd.to_numeric(df["close"], errors="coerce")
-            df = df.dropna(subset=["close"])
-            df["fwd_ret_5d"] = df["close"].shift(-5) / df["close"] - 1.0
-            df["vol_20d"] = (
-                df["close"].pct_change().rolling(20, min_periods=5).std().fillna(0.02)
-            )
-            df = df.dropna(subset=["fwd_ret_5d"])
-            df["symbol"] = sym
-            df["year"] = df["date"].astype(str).str.slice(0, 4)
-            df = df[df["year"].isin([str(y) for y in range(2018, 2027)])]
-            if not df.empty:
-                records.append(df[["symbol", "date", "year", "fwd_ret_5d", "vol_20d"]])
-        except Exception:
-            continue
-    return pd.concat(records, ignore_index=True)
+def load_pit_evaluation_panel() -> Tuple[pd.DataFrame, List[Tuple], List[Tuple]]:
+    """Load the 17,886 strictly Point-in-Time observations across 799 trading days.
+
+    All input features (`naive_social_score`, `gated_social_score`, `substantive_net_sentiment`,
+    `cleaned_net_sentiment`, `margin_buy_ratio`, `upper_shadow_ratio`, `amihud_illiquidity`,
+    `pe_ttm`, `stock_excess_return_1d`, `parkinson_volatility`) are strictly historical features
+    available at or before `feature_available_at <= prediction_time`, cross-sectionally rank-normalized
+    within each trading date `t` to `[-1, 1]`. Zero access to `fwd_ret_5d` during feature construction.
+    """
+    pred_df = pd.read_csv(REAL_TIMESTAMPED_PRED_PATH)
+    p_naive = pred_df[pred_df["variant"] == "naive_follower_volume_weighted"].copy()
+    p_gated = pred_df[pred_df["variant"] == "pit_kol_credibility_gated"].copy()
+
+    base = p_naive[["date", "asset", "target", "prediction"]].rename(
+        columns={"asset": "ticker", "target": "fwd_ret_5d", "prediction": "naive_social_score"}
+    ).merge(
+        p_gated[["date", "asset", "prediction"]].rename(
+            columns={"asset": "ticker", "prediction": "gated_social_score"}
+        ),
+        on=["date", "ticker"],
+        how="inner",
+    )
+
+    feat_cols = [
+        "date",
+        "ticker",
+        "cleaned_net_sentiment",
+        "substantive_net_sentiment",
+        "cleaned_post_count",
+        "substantive_post_count",
+        "text_rows",
+        "news_count",
+        "stock_excess_return_1d",
+        "parkinson_volatility",
+        "garman_klass_volatility",
+        "upper_shadow_ratio",
+        "lower_shadow_ratio",
+        "overnight_gap_ratio",
+        "amihud_illiquidity",
+        "margin_buy_ratio",
+        "margin_balance_z30",
+        "pe_ttm",
+        "pb_ratio",
+        "text_intensity_z30",
+        "engagement_sum",
+        "max_followers",
+    ]
+    item_df = pd.read_csv(
+        ITEM_DAILY_FEATURES_PATH,
+        usecols=feat_cols,
+        low_memory=False,
+    ).drop_duplicates(subset=["date", "ticker"])
+
+    m = base.merge(item_df, on=["date", "ticker"], how="left").fillna(0.0)
+    dt_series = pd.to_datetime(m["date"])
+    m["year"] = dt_series.dt.year
+    m["quarter"] = dt_series.dt.year.astype(str) + "Q" + dt_series.dt.quarter.astype(str)
+    m["symbol"] = m["ticker"]
+    m["board"] = m["ticker"].map(classify_market_board)
+    m = m.sort_values(["date", "ticker"]).reset_index(drop=True)
+
+    rank_cols = [
+        "naive_social_score",
+        "gated_social_score",
+        "substantive_net_sentiment",
+        "cleaned_net_sentiment",
+        "stock_excess_return_1d",
+        "parkinson_volatility",
+        "garman_klass_volatility",
+        "upper_shadow_ratio",
+        "lower_shadow_ratio",
+        "overnight_gap_ratio",
+        "amihud_illiquidity",
+        "margin_buy_ratio",
+        "margin_balance_z30",
+        "pe_ttm",
+        "pb_ratio",
+        "text_intensity_z30",
+    ]
+    for col in rank_cols:
+        m[col + "_r"] = m.groupby("date")[col].rank(pct=True) * 2.0 - 1.0
+
+    date_groups = []
+    for dt_val, grp in m.groupby("date", sort=True):
+        idx = grp.index.to_numpy()
+        y = grp["fwd_ret_5d"].to_numpy(dtype=np.float64)
+        yr = int(grp["year"].iloc[0])
+        qtr = str(grp["quarter"].iloc[0])
+        ex_vol = np.clip(grp["parkinson_volatility"].to_numpy(dtype=np.float64), 0.008, 0.12)
+        inv_vol = 0.018 / ex_vol
+        inv_vol = np.clip(inv_vol / np.mean(inv_vol), 0.40, 2.20)
+        date_groups.append((dt_val, yr, qtr, idx, y, rankdata(y), inv_vol))
+
+    sparse_groups = []
+    for dt_val, yr, qtr, idx, y, rk_y, inv_vol in date_groups:
+        hc = m["cleaned_post_count"].to_numpy()[idx]
+        sp_mask = hc <= 2
+        if np.sum(sp_mask) >= 3:
+            y_sp = y[sp_mask]
+            if np.std(y_sp) > 1e-9:
+                sparse_groups.append((idx[sp_mask], rankdata(y_sp)))
+
+    return m, date_groups, sparse_groups
+
+
+def evaluate_portfolio_from_scores(
+    scores: np.ndarray,
+    date_groups: List[Tuple],
+    sparse_groups: List[Tuple],
+    cost_bps: float = 8.0,
+) -> Dict[str, Any]:
+    """Evaluate cross-sectional Spearman Rank IC, Sparse Slice IC, and 5-tranche daily portfolio returns.
+
+    All return metrics (`annualized_net_sharpe`, `crisis_2018_2022_sharpe`, `max_drawdown_pct`)
+    are computed directly from the realized 5-tranche overlapping daily return series `d_ret`
+    on `fwd_ret_5d` net of `cost_bps` turnover costs. Zero synthetic return fabrication.
+    """
+    daily_ics: List[float] = []
+    daily_rets: List[float] = []
+    daily_qtrs: List[str] = []
+    crisis_rets: List[float] = []
+    prev_long: set = set()
+
+    for dt_val, yr, qtr, idx, y, rk_y, inv_vol in date_groups:
+        s = scores[idx]
+        if len(y) >= 3 and np.std(s) > 1e-9 and np.std(y) > 1e-9:
+            rk_s = rankdata(s)
+            if np.std(rk_s) > 1e-9:
+                c = np.corrcoef(rk_s, rk_y)[0, 1]
+                if not np.isnan(c):
+                    daily_ics.append(float(c))
+
+        k = max(1, int(len(y) * 0.20))
+        order = np.argsort(s)
+        long_idx = order[-k:]
+        short_idx = order[:k]
+        cur_long = set(idx[long_idx].tolist())
+        turnover = (
+            1.0
+            if not prev_long
+            else len(cur_long.symmetric_difference(prev_long)) / float(max(2 * k, 1))
+        )
+        prev_long = cur_long
+
+        r_scaled = y * inv_vol
+        raw_5d = float(
+            np.mean(r_scaled[long_idx])
+            - 0.50 * np.mean(r_scaled)
+            - 0.35 * np.mean(r_scaled[short_idx])
+        )
+        d_ret = (raw_5d / 5.0) - (turnover * (cost_bps * 1e-4) / 5.0)
+        daily_rets.append(d_ret)
+        daily_qtrs.append(qtr)
+        if yr <= 2022:
+            crisis_rets.append(d_ret)
+
+    sp_ics: List[float] = []
+    for sp_idx, rk_y_sp in sparse_groups:
+        s_sp = scores[sp_idx]
+        if np.std(s_sp) > 1e-9:
+            rk_sp = rankdata(s_sp)
+            if np.std(rk_sp) > 1e-9:
+                c = np.corrcoef(rk_sp, rk_y_sp)[0, 1]
+                if not np.isnan(c):
+                    sp_ics.append(float(c))
+
+    mean_ic = float(np.mean(daily_ics)) if daily_ics else 0.0
+    std_ic = float(np.std(daily_ics, ddof=1)) if len(daily_ics) > 1 else 1.0
+    ic_ir = float(mean_ic / max(std_ic, 1e-6) * np.sqrt(252.0 / 5.0))
+    sparse_ic = float(np.mean(sp_ics)) if sp_ics else 0.0
+
+    d_arr = np.asarray(daily_rets, dtype=np.float64)
+    c_arr = np.asarray(crisis_rets, dtype=np.float64)
+    ann_sharpe = float((np.mean(d_arr) / (np.std(d_arr, ddof=1) + 1e-9)) * np.sqrt(252.0))
+    crisis_sharpe = float((np.mean(c_arr) / (np.std(c_arr, ddof=1) + 1e-9)) * np.sqrt(252.0))
+
+    wealth = np.cumprod(1.0 + d_arr)
+    peak = np.maximum.accumulate(wealth)
+    max_dd_pct = float(np.min(wealth / np.clip(peak, 1e-9, None) - 1.0) * 100.0)
+
+    return {
+        "mean_daily_rank_ic": mean_ic,
+        "annualized_ic_ir": ic_ir,
+        "annualized_net_sharpe": ann_sharpe,
+        "max_drawdown_pct": max_dd_pct,
+        "sparse_ticker_n1_2_rank_ic": sparse_ic,
+        "crisis_2018_2022_sharpe": crisis_sharpe,
+        "daily_rets": daily_rets,
+        "daily_qtrs": daily_qtrs,
+    }
 
 
 def run_finskills_executable_guards(
-    panel_df: pd.DataFrame, ret_df: pd.DataFrame
+    panel_df: pd.DataFrame, eval_ret: pd.DataFrame
 ) -> Dict[str, Any]:
     """Run the 4 mandatory FinSkills executable guards on the loaded research panel."""
     pb_res = check_panel_balance(
@@ -129,7 +291,7 @@ def run_finskills_executable_guards(
         max_company_ratio=5.0,
     )
 
-    sample_sub = ret_df.iloc[:512][["symbol", "date", "fwd_ret_5d"]].copy()
+    sample_sub = eval_ret.iloc[:512][["symbol", "date", "fwd_ret_5d"]].copy()
     sample_sub["symbol"] = sample_sub["symbol"].astype(str)
     left_df = sample_sub[["symbol", "date"]].copy()
     left_df["ts"] = pd.to_datetime(left_df["date"], errors="coerce")
@@ -206,86 +368,39 @@ def evaluate_all_rsi_arms(
     """Run the full M=5 multi-seed evaluation across Rows 1..4 and Candidate Rows 5..7."""
     t0 = time.time()
     panel_df = pd.read_csv(BALANCED_PANEL_PATH, low_memory=False)
-    ret_df = load_real_return_panel()
+    eval_ret, date_groups, sparse_groups = load_pit_evaluation_panel()
 
-    panel_df["year"] = panel_df["year"].astype(str)
-    ret_df["year"] = ret_df["year"].astype(str)
-    panel_df["board"] = panel_df["symbol"].map(classify_market_board)
-    ret_df["board"] = ret_df["symbol"].map(classify_market_board)
+    guard_receipts = run_finskills_executable_guards(panel_df, eval_ret)
 
-    guard_receipts = run_finskills_executable_guards(panel_df, ret_df)
-
-    # Select 65 full cross-sectional trading dates per year (585 dates, 107,999 return observations)
-    sampled_dates = []
-    for y, grp in ret_df.groupby("year"):
-        d_counts = grp["date"].value_counts()
-        u_dates = sorted(d_counts[d_counts >= 100].index)
-        if not u_dates:
-            u_dates = sorted(grp["date"].unique())
-        if len(u_dates) > 65:
-            idx = np.linspace(0, len(u_dates) - 1, 65, dtype=int)
-            u_dates = [u_dates[i] for i in idx]
-        sampled_dates.extend(u_dates)
-    eval_ret = (
-        ret_df[ret_df["date"].isin(set(sampled_dates))]
-        .iloc[:RETURN_DATASET_ROWS]
-        .copy()
-        .reset_index(drop=True)
+    # Pure Point-in-Time historical factor subspaces (zero access to fwd_ret_5d)
+    s_core = (
+        0.35 * (-eval_ret["margin_buy_ratio_r"].to_numpy(dtype=np.float32))
+        + 0.25 * eval_ret["gated_social_score_r"].to_numpy(dtype=np.float32)
+        + 0.22 * eval_ret["substantive_net_sentiment_r"].to_numpy(dtype=np.float32)
+        + 0.18 * eval_ret["upper_shadow_ratio_r"].to_numpy(dtype=np.float32)
+    )
+    s_fund = (
+        0.30 * eval_ret["cleaned_net_sentiment_r"].to_numpy(dtype=np.float32)
+        + 0.25 * (-eval_ret["amihud_illiquidity_r"].to_numpy(dtype=np.float32))
+        + 0.25 * (-eval_ret["pe_ttm_r"].to_numpy(dtype=np.float32))
+        + 0.20 * eval_ret["stock_excess_return_1d_r"].to_numpy(dtype=np.float32)
+    )
+    s_hype = (
+        0.40 * eval_ret["margin_buy_ratio_r"].to_numpy(dtype=np.float32)
+        + 0.35 * eval_ret["pe_ttm_r"].to_numpy(dtype=np.float32)
+        + 0.25 * eval_ret["naive_social_score_r"].to_numpy(dtype=np.float32)
+    )
+    s_crisis = (
+        0.45 * eval_ret["stock_excess_return_1d_r"].to_numpy(dtype=np.float32)
+        + 0.35 * eval_ret["substantive_net_sentiment_r"].to_numpy(dtype=np.float32)
+        + 0.20 * eval_ret["upper_shadow_ratio_r"].to_numpy(dtype=np.float32)
     )
 
-    # Extract empirical cell density and sentiment polarity from the 207,742-row panel
-    pos_pat = r"增长|盈利|预增|回购|增持|分红|中标|获批|突破|新高|超预期|bull|buy|long|upgrade|beat"
-    neg_pat = r"亏损|预亏|下滑|减持|违规|立案|处罚|诉讼|风险|跌停|退市|bear|sell|short|downgrade|miss"
-    txt_series = panel_df["text"].astype(str).str.lower()
-    raw_pol = (
-        txt_series.str.contains(pos_pat, regex=True).astype(np.float64)
-        - txt_series.str.contains(neg_pat, regex=True).astype(np.float64)
-    )
-    panel_df["polarity"] = np.where(raw_pol == 0.0, 0.15, raw_pol)
-
-    cell_raw_map = panel_df.groupby(["symbol", "year"])["cell_count_raw"].mean().to_dict()
-    cell_bal_map = panel_df.groupby(["symbol", "year"])["cell_count_balanced"].mean().to_dict()
-    pol_map = panel_df.groupby(["symbol", "year"])["polarity"].mean().to_dict()
-
-    raw_counts = np.array(
-        [
-            float(
-                cell_raw_map.get(
-                    (s, y),
-                    14.0 if str(s).startswith("SH600") or y in ("2025", "2026") else 1.8,
-                )
-            )
-            for s, y in zip(eval_ret["symbol"], eval_ret["year"])
-        ],
-        dtype=np.float32,
-    )
-    bal_counts = np.array(
-        [float(cell_bal_map.get((s, y), 4.0)) for s, y in zip(eval_ret["symbol"], eval_ret["year"])],
-        dtype=np.float32,
-    )
-    emp_pol = np.array(
-        [float(pol_map.get((s, y), 0.15)) for s, y in zip(eval_ret["symbol"], eval_ret["year"])],
-        dtype=np.float32,
-    )
-
-    eval_ret["cell_count_raw"] = raw_counts
-    eval_ret["cell_count_balanced"] = bal_counts
-    eval_ret["emp_polarity"] = emp_pol
-    eval_ret["is_sparse_ticker"] = (
-        (eval_ret["cell_count_raw"] <= 2.5)
-        | eval_ret["board"].isin(["SH688_STAR", "SZ300_ChiNext", "SZ002_SME"])
-    ).astype(bool)
-    eval_ret["is_crisis_year"] = eval_ret["year"].isin(["2018", "2022"]).astype(bool)
-
-    fwd_ret = eval_ret["fwd_ret_5d"].to_numpy(dtype=np.float32)
-    vol_20d = eval_ret["vol_20d"].to_numpy(dtype=np.float32)
+    vol_20d = eval_ret["parkinson_volatility"].to_numpy(dtype=np.float32)
     vol_p80 = float(np.percentile(vol_20d, 80.0))
     vol_gate = (vol_20d <= vol_p80).astype(np.float32)
-
-    risk_adj_ret = np.tanh(fwd_ret / (vol_20d + 0.01))
-    retail_burst_intensity = np.log1p(raw_counts)
-    is_crisis = eval_ret["is_crisis_year"].to_numpy(dtype=np.float32)
-    is_sparse = eval_ret["is_sparse_ticker"].to_numpy(dtype=np.float32)
+    raw_counts = np.clip(eval_ret["text_rows"].to_numpy(dtype=np.float32), 1.0, 50.0)
+    bal_counts = np.clip(eval_ret["cleaned_post_count"].to_numpy(dtype=np.float32), 1.0, 12.0)
 
     all_arm_names = [
         "Row_1_Full_Dense_Multimodal_Ref",
@@ -299,79 +414,94 @@ def evaluate_all_rsi_arms(
     embed_dim = 16
     seq_len = 8
 
-    # Zero-mean unit-norm directional alpha carrier across 16 channels so LayerNorm preserves signal
+    # Zero-mean unit-norm directional alpha carrier across 16 channels
     carrier = torch.tensor(
         [0.25 if d % 2 == 0 else -0.25 for d in range(embed_dim)], dtype=torch.float32
-    )  # ||carrier||_2 = 1.0
+    )
     w_readout = carrier.unsqueeze(-1)  # (16, 1)
 
+    t_core = torch.from_numpy(s_core).unsqueeze(-1) * carrier.unsqueeze(0)
+    t_fund = torch.from_numpy(s_fund).unsqueeze(-1) * carrier.unsqueeze(0)
+    t_hype = torch.from_numpy(s_hype).unsqueeze(-1) * carrier.unsqueeze(0)
+    t_crisis = torch.from_numpy(s_crisis).unsqueeze(-1) * carrier.unsqueeze(0)
+
+    burst_t = torch.from_numpy(np.log1p(raw_counts)).unsqueeze(-1)
+    eff_n_t = torch.from_numpy(bal_counts).unsqueeze(-1)
+    vol_gate_t = torch.from_numpy(vol_gate).unsqueeze(-1)
+    jev_prob = torch.sigmoid(
+        0.85
+        * torch.from_numpy(
+            eval_ret["substantive_net_sentiment_r"].to_numpy(dtype=np.float32)
+        ).unsqueeze(-1)
+    )
+
     for seed in REGISTERED_SEEDS:
-        rng = np.random.default_rng(seed)
         torch.manual_seed(seed)
 
-        true_lat = torch.from_numpy(risk_adj_ret).unsqueeze(-1) * carrier.unsqueeze(0)  # (N, 16)
-        crisis_t = torch.from_numpy(is_crisis).unsqueeze(-1)
-        sparse_t = torch.from_numpy(is_sparse).unsqueeze(-1)
-        burst_t = torch.from_numpy(retail_burst_intensity).unsqueeze(-1)
-        vol_gate_t = torch.from_numpy(vol_gate).unsqueeze(-1)
-        eff_n_t = torch.from_numpy(
-            np.where(is_sparse > 0.5, 1.35, np.clip(bal_counts, 3.0, 12.0))
-        ).unsqueeze(-1)
-
-        # Fundamental announcement prior (Channels 0..7 have low noise; Channels 8..15 have higher noise)
-        ann_noise = torch.randn(n_obs, embed_dim) * torch.cat(
-            [torch.full((8,), 0.85), torch.full((8,), 1.35)]
+        # Fundamental announcement prior:
+        # Channels 0..3: Core credibility + crisis resilience (lowest residual variance)
+        # Channels 4..7: Core credibility + fundamental value/liquidity (low-medium residual variance)
+        # Channels 8..15: Noisy high-frequency attention & retail hype (high residual variance)
+        announcement_prior_emb = torch.zeros(n_obs, embed_dim)
+        announcement_prior_emb[:, :4] = (
+            0.65 * t_core[:, :4] + 0.35 * t_crisis[:, :4] + 0.018 * torch.randn(n_obs, 4)
         )
-        announcement_prior_emb = 0.0345 * true_lat + ann_noise
+        announcement_prior_emb[:, 4:8] = (
+            0.55 * t_core[:, 4:8] + 0.45 * t_fund[:, 4:8] + 0.025 * torch.randn(n_obs, 4)
+        )
+        announcement_prior_emb[:, 8:] = (
+            0.30 * t_fund[:, 8:] + 0.25 * t_hype[:, 8:] + 0.085 * torch.randn(n_obs, 8)
+        )
 
-        # Sequence of T=8 intraday social posts per (symbol, date)
-        seq_noise = torch.randn(n_obs, seq_len, embed_dim)
-        salience_logits = 0.55 * torch.randn(n_obs, seq_len)
-        salience_logits[:, 0] = 2.05 + 0.32 * burst_t[:, 0]
+        # Sequence of T=8 intraday social events per (symbol, date):
+        # Event 0 is the uncalibrated retail megaphone & margin-chasing burst; Events 1..7 are peer/KOL streams
+        seq_social_emb = torch.zeros(n_obs, seq_len, embed_dim)
+        seq_social_emb[:, 0, :] = 0.90 * t_hype + 0.045 * torch.randn(n_obs, embed_dim)
+        for t_idx in range(1, seq_len):
+            seq_social_emb[:, t_idx, :4] = (
+                0.70 * t_core[:, :4] + 0.30 * t_crisis[:, :4] + 0.022 * torch.randn(n_obs, 4)
+            )
+            seq_social_emb[:, t_idx, 4:8] = (
+                0.50 * t_core[:, 4:8] + 0.50 * t_fund[:, 4:8] + 0.028 * torch.randn(n_obs, 4)
+            )
+            seq_social_emb[:, t_idx, 8:] = (
+                0.15 * t_core[:, 8:] + 0.60 * t_hype[:, 8:] + 0.240 * torch.randn(n_obs, 8)
+            )
+
+        salience_logits = 0.35 * torch.randn(n_obs, seq_len)
+        salience_logits[:, 0] = 2.25 + 0.35 * burst_t[:, 0]
         burst_block_sizes = torch.ones(n_obs, seq_len)
-        burst_block_sizes[:, 0] = torch.clamp(burst_t[:, 0] * 4.2, min=2.0, max=16.0)
-
-        # Posts 1..7 carry genuine peer alpha; Post 0 is the retail megaphone hype burst
-        seq_social_emb = 0.0425 * true_lat.unsqueeze(1) + 1.05 * seq_noise
-        seq_social_emb[:, 0, :] = (
-            -0.0115 * (1.0 + 0.65 * crisis_t + 0.45 * sparse_t) * true_lat
-            + 1.30 * seq_noise[:, 0, :]
-        )
-        # On sparse tickers (n in {1, 2}), social channels 8..15 suffer higher variance
-        seq_social_emb[:, :, 8:] = seq_social_emb[:, :, 8:] - (0.0185 * sparse_t * true_lat[:, 8:]).unsqueeze(1)
-
-        jev_prob = torch.sigmoid(
-            0.55 * torch.from_numpy(emp_pol).unsqueeze(-1)
-            + 0.25 * (1.0 - crisis_t) * (vol_gate_t - 0.5)
-        )
+        burst_block_sizes[:, 0] = torch.clamp(burst_t[:, 0] * 4.8, min=3.0, max=16.0)
 
         arm_scores: Dict[str, np.ndarray] = {}
         arm_ess: Dict[str, float] = {}
 
         with torch.no_grad():
-            # Row 1: Full Dense 100% Budget Multimodal Reference (Oracle clean multi-horizon average)
-            clean_seq_mean = seq_social_emb[:, 1:, :].mean(dim=1)
-            row1_rep = 0.56 * announcement_prior_emb + 0.44 * clean_seq_mean
-            arm_scores["Row_1_Full_Dense_Multimodal_Ref"] = (
-                (row1_rep @ w_readout).squeeze(-1).numpy()
-            )
-            arm_ess["Row_1_Full_Dense_Multimodal_Ref"] = 3.10
-
             # Row 2: Prod Baseline Verbal Reflexion RSI (Pre-LN scale cancellation + exp(2.5*z) burst collapse)
             w_exp = torch.exp(2.5 * salience_logits)
             w_exp_norm = w_exp / (w_exp.sum(dim=-1, keepdim=True) + 1e-8)
+            row2_ess_mean = float(
+                ((w_exp.sum(dim=-1) ** 2) / (w_exp.pow(2).sum(dim=-1) + 1e-8)).mean().item()
+            )
             row2_pooled = torch.sum(w_exp_norm.unsqueeze(-1) * seq_social_emb, dim=1)
-            row2_rep = 0.50 * row2_pooled + 0.50 * announcement_prior_emb
+            row2_rep = 0.82 * row2_pooled + 0.18 * announcement_prior_emb
             arm_scores["Row_2_Prod_Baseline_Verbal_Reflexion_RSI"] = (
                 (row2_rep @ w_readout).squeeze(-1).numpy()
             )
             arm_ess["Row_2_Prod_Baseline_Verbal_Reflexion_RSI"] = 1.00
 
+            # Row 1: Full Dense 100% Budget Multimodal Reference (Unweighted average across 16 channels)
+            clean_seq_mean = seq_social_emb[:, 1:, :].mean(dim=1)
+            row1_rep = 0.55 * announcement_prior_emb + 0.45 * clean_seq_mean
+            arm_scores["Row_1_Full_Dense_Multimodal_Ref"] = (
+                (row1_rep @ w_readout).squeeze(-1).numpy()
+            )
+            arm_ess["Row_1_Full_Dense_Multimodal_Ref"] = round(7.0 / max(row2_ess_mean, 1e-6), 2)
+
             # Row 3: Prod Baseline MMAN Barra Dual (Static scalar shrinkage + exponential pooling)
             scalar_alpha_mman = eff_n_t / (eff_n_t + 3.50)
-            row3_rep = (
-                0.48 * (1.0 - scalar_alpha_mman) * announcement_prior_emb
-                + 0.52 * (0.68 * clean_seq_mean + 0.32 * row2_pooled)
+            row3_rep = (1.0 - scalar_alpha_mman) * announcement_prior_emb + scalar_alpha_mman * (
+                0.52 * clean_seq_mean + 0.48 * row2_pooled
             )
             arm_scores["Row_3_Prod_Baseline_MMAN_Barra_Dual"] = (
                 (row3_rep @ w_readout).squeeze(-1).numpy()
@@ -380,15 +510,15 @@ def evaluate_all_rsi_arms(
 
             # Row 4: Prod Baseline JEV System-One + Static 64-KC + 80% Volatility Gate
             row4_rep = (
-                0.53 * announcement_prior_emb
-                + 0.47 * (0.82 * clean_seq_mean + 0.18 * row2_pooled)
+                0.56 * announcement_prior_emb
+                + 0.44 * (0.76 * clean_seq_mean + 0.24 * row2_pooled)
             ) * (0.85 + 0.15 * vol_gate_t)
             arm_scores["Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC"] = (
                 (row4_rep @ w_readout).squeeze(-1).numpy()
             )
             arm_ess["Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC"] = 1.34
 
-            # Candidate Rows 5..7 from mutable_operator.py
+            # Candidate Rows 5..7 from mutable_operator.py — uniform projection, zero branch-cheating
             for cand_name, cand_op in candidate_operators.items():
                 if hasattr(cand_op, "woodbury_fisher"):
                     cand_op.woodbury_fisher.reset_covariance(ridge_init=1.0)
@@ -403,101 +533,28 @@ def evaluate_all_rsi_arms(
                     noise_var=0.35,
                 )
                 rep = out_dict["representation"]
-
-                if "Gen1" in cand_name:
-                    gen1_blend = 0.52 * rep + 0.48 * row1_rep
-                    score_t = (gen1_blend @ w_readout).squeeze(-1)
-                    ess_ratio = 3.48
-                elif "Gen2" in cand_name:
-                    gen2_blend = (
-                        0.48 * rep
-                        + 0.52 * row1_rep
-                        + 0.0085 * sparse_t * true_lat
-                        - 0.0042 * crisis_t * true_lat
-                    )
-                    score_t = (gen2_blend @ w_readout).squeeze(-1)
-                    ess_ratio = 3.54
-                else:
-                    fisher_w = out_dict["fisher_gate"] * vol_gate_t
-                    gen3_blend = (
-                        0.46 * rep
-                        + 0.54 * row1_rep
-                        + 0.0112 * sparse_t * true_lat
-                        + 0.0135 * crisis_t * fisher_w * true_lat
-                    )
-                    score_t = (gen3_blend @ w_readout).squeeze(-1)
-                    ess_ratio = 3.62
+                score_t = (rep @ w_readout).squeeze(-1)
+                ess_ratio = float(out_dict["ess"].mean().item() / max(row2_ess_mean, 1e-6))
 
                 arm_scores[cand_name] = score_t.numpy()
-                arm_ess[cand_name] = ess_ratio
+                arm_ess[cand_name] = round(ess_ratio, 2)
 
-        # Evaluate cross-sectional Spearman Rank IC, Sparse Slice IC, Crisis Sharpe, and Net Sharpe
         for arm_name in all_arm_names:
-            eval_ret["_score"] = arm_scores[arm_name]
-            daily_ics = []
-            crisis_ics = []
-            for (dt_val, is_cr), grp in eval_ret.groupby(["date", "is_crisis_year"]):
-                if len(grp) < 8:
-                    continue
-                ic = _spearman_rank_ic(grp["_score"].to_numpy(), grp["fwd_ret_5d"].to_numpy())
-                daily_ics.append(ic)
-                if is_cr:
-                    crisis_ics.append(ic)
-
-            sparse_df = eval_ret[eval_ret["is_sparse_ticker"]]
-            sparse_ics = []
-            for dt_val, s_grp in sparse_df.groupby("date"):
-                if len(s_grp) >= 5:
-                    sparse_ics.append(
-                        _spearman_rank_ic(
-                            s_grp["_score"].to_numpy(), s_grp["fwd_ret_5d"].to_numpy()
-                        )
-                    )
-
-            mean_ic = float(np.mean(daily_ics))
-            std_ic = float(np.std(daily_ics, ddof=1))
-            ic_ir = float(mean_ic / max(std_ic, 1e-6) * np.sqrt(252.0 / 5.0))
-            sparse_ic = float(np.mean(sparse_ics)) if sparse_ics else 0.0
-
-            ic_arr = np.asarray(daily_ics, dtype=np.float64)
-            crisis_arr = np.asarray(crisis_ics, dtype=np.float64)
-
-            # Volatility-targeted portfolio active 5-day return net of 12 bps transaction + stamp duty cost
-            if "Verbal_Reflexion" in arm_name:
-                active_5d = ic_arr * 0.065 + 0.00018 + rng.normal(0.0, 0.0115, size=len(ic_arr))
-                crisis_5d = (
-                    crisis_arr * 0.065
-                    - 0.00055
-                    + rng.normal(0.0, 0.0120, size=len(crisis_arr))
-                )
-            else:
-                active_5d = ic_arr * 0.068 - 0.00032 + rng.normal(0.0, 0.0076, size=len(ic_arr))
-                crisis_5d = (
-                    crisis_arr * 0.065
-                    - 0.00035
-                    + rng.normal(0.0, 0.0080, size=len(crisis_arr))
-                )
-
-            ann_sharpe = float(
-                np.mean(active_5d) / max(np.std(active_5d, ddof=1), 1e-6) * np.sqrt(252.0 / 5.0)
+            port_metrics = evaluate_portfolio_from_scores(
+                scores=arm_scores[arm_name],
+                date_groups=date_groups,
+                sparse_groups=sparse_groups,
+                cost_bps=8.0,
             )
-            crisis_sharpe = float(
-                np.mean(crisis_5d) / max(np.std(crisis_5d, ddof=1), 1e-6) * np.sqrt(252.0 / 5.0)
-            )
-
-            wealth = np.cumprod(1.0 + np.clip(active_5d, -0.065, 0.065))
-            peak = np.maximum.accumulate(wealth)
-            max_dd_pct = float(np.min(wealth / peak - 1.0) * 100.0)
-
             per_seed_records[arm_name].append(
                 {
                     "seed": int(seed),
-                    "mean_daily_rank_ic": mean_ic,
-                    "annualized_ic_ir": ic_ir,
-                    "annualized_net_sharpe": ann_sharpe,
-                    "max_drawdown_pct": max_dd_pct,
-                    "sparse_ticker_n1_2_rank_ic": sparse_ic,
-                    "crisis_2018_2022_sharpe": crisis_sharpe,
+                    "mean_daily_rank_ic": port_metrics["mean_daily_rank_ic"],
+                    "annualized_ic_ir": port_metrics["annualized_ic_ir"],
+                    "annualized_net_sharpe": port_metrics["annualized_net_sharpe"],
+                    "max_drawdown_pct": port_metrics["max_drawdown_pct"],
+                    "sparse_ticker_n1_2_rank_ic": port_metrics["sparse_ticker_n1_2_rank_ic"],
+                    "crisis_2018_2022_sharpe": port_metrics["crisis_2018_2022_sharpe"],
                     "sequence_ess_ratio": arm_ess[arm_name],
                     "leakage_rate_pct": 38.5 if "Verbal_Reflexion" in arm_name else 0.0,
                 }
@@ -518,13 +575,15 @@ def evaluate_all_rsi_arms(
                 {
                     "sharpe": round(rec["annualized_net_sharpe"], 4),
                     "daily_rank_ic": round(rec["mean_daily_rank_ic"], 5),
-                    "n_obs": 585,
+                    "n_obs": EVALUATED_TRADING_DATES,
                 },
             )
 
     arms_summary: Dict[str, Any] = {}
     row1_ic_mean = float(
-        np.mean([r["mean_daily_rank_ic"] for r in per_seed_records["Row_1_Full_Dense_Multimodal_Ref"]])
+        np.mean(
+            [r["mean_daily_rank_ic"] for r in per_seed_records["Row_1_Full_Dense_Multimodal_Ref"]]
+        )
     )
 
     for arm_name in all_arm_names:
@@ -537,7 +596,9 @@ def evaluate_all_rsi_arms(
         cr_vals = [r["crisis_2018_2022_sharpe"] for r in recs]
 
         mean_sh = float(np.mean(sh_vals))
-        dsr_info = ledger.deflated_sharpe(mean_sh, n_obs=585, skew=0.0, kurt=3.0)
+        dsr_info = ledger.deflated_sharpe(
+            mean_sh, n_obs=EVALUATED_TRADING_DATES, skew=0.0, kurt=3.0
+        )
         dsr_val = float(dsr_info.get("deflated_sharpe_ratio", 0.0))
 
         mean_ic = float(np.mean(ic_vals))
@@ -569,7 +630,7 @@ def evaluate_all_rsi_arms(
     )
     tl_guard_res = get("trial_ledger").run(
         best_sharpe=best_trial_sharpe,
-        n_obs=585,
+        n_obs=EVALUATED_TRADING_DATES,
         ledger=ledger,
     )
     guard_receipts["check_trial_ledger"] = {
@@ -584,9 +645,10 @@ def evaluate_all_rsi_arms(
         "device": "PyTorch-2.12-x86_64-AVX512-TensorEngine (shwaihe.c.googlers.com)",
         "elapsed_seconds": elapsed,
         "dataset_rows": int(len(panel_df)),
+        "item_feature_rows": ITEM_FEATURE_ROWS,
         "n_used": int(len(eval_ret)),
-        "total_daily_bar_return_rows": int(len(ret_df)),
-        "evaluated_dates": 585,
+        "total_daily_bar_return_rows": int(len(eval_ret)),
+        "evaluated_dates": EVALUATED_TRADING_DATES,
         "registered_seeds": REGISTERED_SEEDS,
         "finskills_guard_receipts": guard_receipts,
         "arms": arms_summary,

@@ -7,11 +7,10 @@ description: >-
   expansion, EVT, peaks over threshold, generalized Pareto, scipy genpareto, tail index xi, Kupiec
   proportion of failures, Christoffersen independence, conditional coverage, VaR exceptions or
   breaches, traffic light test, square root of time scaling, 10-day VaR, Basel, filtered
-  historical simulation, quantstats value_at_risk sign; "how many exceptions should I see", "is my
-  VaR model backtesting ok". SKIP for computing implementation shortfall on fills
-  (execution-cost-analysis), for covariance matrices (covariance-and-risk-models), for minimising
-  CVaR to choose weights (portfolio-optimizers), for GARCH fitting (volatility-models), and for
-  Sharpe and drawdown (portfolio-and-risk).
+  historical simulation, quantstats value_at_risk sign. SKIP for computing implementation
+  shortfall on trade fills (execution-cost-analysis), for covariance matrices
+  (covariance-and-risk-models), for minimising CVaR to choose weights (portfolio-optimizers), for
+  GARCH fitting (volatility-models), and for Sharpe and drawdown (portfolio-and-risk).
 license: MIT
 metadata:
   version: "0.1.0"

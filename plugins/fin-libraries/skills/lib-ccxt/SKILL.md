@@ -2,16 +2,16 @@
 name: lib-ccxt
 description: >-
   The unified MIT client for 100+ crypto venues - and not a backtester, with an OHLCV endpoint
-  that silently truncates and returns an unclosed final bar. TRIGGER - use ccxt to place a limit
-  order, import ccxt, import ccxt.pro, import ccxt.async_support, pip install ccxt, fetch_ohlcv,
+  that silently truncates and returns an unclosed final bar. TRIGGER - limit order placement with
+  ccxt, import ccxt, import ccxt.pro, import ccxt.async_support, pip install ccxt, fetch_ohlcv,
   fetchOHLCV, load_markets, fetch_markets, create_order, watchOrderBook, watchTicker,
   watchMyTrades, set_sandbox_mode, enableRateLimit, amount_to_precision, price_to_precision,
-  exchange.has, options defaultType, parse8601, implicit methods like fapiPrivateGetPositionRisk,
-  CCXT Pro subscription expiry, funding rate history; an order rejected on precision or
-  min-notional, fewer candles returned than requested. Memory is stale here: CCXT Pro was merged
-  into the free MIT package at v1.95, prediction markets landed at 4.5.66, and 4.5.77 shipped
-  2026-09-01. SKIP for equity and futures brokers (broker-execution-apis) and for choosing which
-  crypto backtesting framework handles funding (crypto-data-and-execution).
+  exchange.has, options defaultType, parse8601, fapiPrivateGetPositionRisk, CCXT Pro subscription
+  expiry, funding rate history; order rejected on precision or min-notional, fewer candles
+  returned than requested. Memory is stale here: CCXT Pro merged into the MIT package at v1.95,
+  prediction markets landed at 4.5.66, and 4.5.77 shipped 2026-09-01. SKIP for equity and futures
+  brokers (broker-execution-apis), for 365 vs 252 daily crypto return annualization and crypto
+  backtesting frameworks handling funding (crypto-data-and-execution).
 license: MIT
 metadata:
   version: "0.1.0"

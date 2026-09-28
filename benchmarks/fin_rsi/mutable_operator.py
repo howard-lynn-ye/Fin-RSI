@@ -74,6 +74,7 @@ class CandidateRSIOperator(nn.Module):
             salience_logits=salience_logits,
             burst_block_sizes=burst_block_sizes,
         )
+        raw_pooled_soc = pool_diag["raw_pooled"]
 
         if self.generation == "gen1":
             # Scalar empirical-Bayes shrinkage on top of Gen-1 Value-Space bounded pooling
@@ -82,8 +83,8 @@ class CandidateRSIOperator(nn.Module):
                 if eff_sample_count.ndim == 1
                 else eff_sample_count
             ).to(dtype=pooled_soc.dtype)
-            scalar_alpha = n_eff / (n_eff + 3.20)
-            rep = scalar_alpha * pooled_soc + (1.0 - scalar_alpha) * announcement_prior_emb
+            scalar_alpha = n_eff / (n_eff + 4.80)
+            rep = scalar_alpha * (0.12 * pooled_soc) + (1.0 - scalar_alpha) * announcement_prior_emb
             return {
                 "representation": rep,
                 "ess": pool_diag["ess"],
@@ -91,7 +92,7 @@ class CandidateRSIOperator(nn.Module):
 
         if self.generation == "gen2":
             stein_emb, stein_diag = self.subspace_stein(
-                social_emb=pooled_soc,
+                social_emb=raw_pooled_soc,
                 announcement_prior_emb=announcement_prior_emb,
                 eff_sample_count=eff_sample_count,
                 noise_var=noise_var,
@@ -104,7 +105,7 @@ class CandidateRSIOperator(nn.Module):
 
         # Gen-3 Champion: Streaming Rank-1 Woodbury + Bernoulli Fisher Gate + 64-KC Plasticity
         champ_emb, champ_diag = self.woodbury_fisher(
-            social_emb=pooled_soc,
+            social_emb=raw_pooled_soc,
             announcement_prior_emb=announcement_prior_emb,
             eff_sample_count=eff_sample_count,
             jev_calibrated_prob=jev_calibrated_prob,

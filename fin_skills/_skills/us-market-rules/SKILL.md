@@ -2,16 +2,16 @@
 name: us-market-rules
 description: >-
   US trading rules that decide whether a strategy is executable at all - short-sale restrictions,
-  margin, settlement, day-trading limits, and what a data licence lets you keep. TRIGGER - can I
-  short this stock, is it hard to borrow, locate, borrow fee, short interest, Reg SHO, uptick
-  rule, SSR; does the pattern day trader rule still apply, PDT, day trade limit; Reg T, initial or
-  maintenance margin, margin call, buying power, leverage limit; T+1, settlement, cash account; am
-  I allowed to redistribute this price data, may_cache, may_redistribute, market data licence;
+  margin, settlement, day-trading limits, and what a data licence lets you keep. TRIGGER -
+  shorting stocks, locate, hard to borrow, borrow fee, short interest, Reg SHO, uptick rule, SSR;
+  pattern day trader rule applicability, PDT, day trade limit; Reg T, initial or maintenance
+  margin, margin call, buying power, leverage limit; T+1, settlement, cash account; redistributing
+  market price data, allowed to redistribute, may_cache, may_redistribute, market data licence;
   presenting or publishing backtested performance, Marketing Rule. Two of the most-cited rules
   moved in 2024-2026, so a training-prior answer is usually stale. US ONLY - SKIP for
   short-selling bans or calendars in Asia (asia-pacific-markets), for A-share T+1 and price limits
-  (china-trading-stack), for sending orders safely (broker-execution-apis), and for tax wash sales
-  or lot matching (wash-sale-rules).
+  (china-trading-stack), for sending orders safely (broker-execution-apis), and for wash sales or
+  tax lot matching (wash-sale-rules).
 license: MIT
 metadata:
   version: "0.1.0"

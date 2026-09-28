@@ -227,14 +227,14 @@ def generate_fig1_architecture() -> list[Path]:
 
     draw_rounded_box(ax, lb_x + 0.312, lb_y + 0.064, s1_w, 0.202, "#FFFFFF", "#3B82F6", linewidth=1.1, pad=0.006, zorder=3)
     ax.text(lb_x + 0.312 + s1_w / 2, lb_y + 0.222, "B3. Pareto Ledger", fontsize=7.7, fontweight="bold", color="#1E3A8A", ha="center")
-    ax.text(lb_x + 0.312 + s1_w / 2, lb_y + 0.156, "Sharpe: 1.16 -> 1.77", fontsize=7.1, fontweight="bold", color="#1D4ED8", ha="center")
-    ax.text(lb_x + 0.312 + s1_w / 2, lb_y + 0.095, "MaxDD: -10.5% -> -6.8%", fontsize=7.0, color="#475569", ha="center")
+    ax.text(lb_x + 0.312 + s1_w / 2, lb_y + 0.156, "Sharpe: 1.23 -> 1.91", fontsize=7.1, fontweight="bold", color="#1D4ED8", ha="center")
+    ax.text(lb_x + 0.312 + s1_w / 2, lb_y + 0.095, "MaxDD: -18.2% -> -12.8%", fontsize=7.0, color="#475569", ha="center")
 
     draw_arrow(ax, lb_x + 0.150, lb_y + 0.165, lb_x + 0.160, lb_y + 0.165, color="#1D4ED8", lw=1.3)
     draw_arrow(ax, lb_x + 0.300, lb_y + 0.165, lb_x + 0.310, lb_y + 0.165, color="#1D4ED8", lw=1.3)
     ax.text(
         lb_x + lb_w / 2, lb_y + 0.018,
-        "Super-Additive Synergy with Layer A: +0.30 Sharpe (t = 6.23, p = 0.0034) & +0.0047 Rank IC (p = 6.5e-5)",
+        "Super-Additive Synergy with Layer A: +0.54 Sharpe (t = 3.06, p = 0.0375) & +0.0134 Rank IC (p = 0.0028)",
         fontsize=6.9, color="#1E3A8A", ha="center", style="italic"
     )
 
@@ -274,16 +274,36 @@ def generate_fig1_architecture() -> list[Path]:
 
 def generate_fig2_empirical_results() -> list[Path]:
     """Generate Figure 2: 3-Panel Empirical Results (Skill-Space RSI, Operator Pareto, 2x2 Synergy)."""
-    fig, axes = plt.subplots(1, 3, figsize=(13.8, 3.95), dpi=300)
+    import json
+    root_dir = Path("/usr/local/google/home/shwaihe/fin-skills")
+    skill_rsi = json.loads((root_dir / "benchmarks/SKILL_RSI_EVOLUTION_REPORT.json").read_text(encoding="utf-8"))
+    fin_rsi = json.loads((root_dir / "benchmarks/FIN_RSI_PARETO_LEDGER_REPORT.json").read_text(encoding="utf-8"))
+    dual_syn = json.loads((root_dir / "benchmarks/DUAL_LAYER_RSI_SYNERGY_RESULTS.json").read_text(encoding="utf-8"))
+
+    fig, axes = plt.subplots(1, 3, figsize=(13.8, 4.05), dpi=300)
     ax_a, ax_b, ax_c = axes
 
     # =========================================================================
     # Panel (a): Layer A — Skill-Space RSI Across 5 Retrieval Architectures
     # =========================================================================
     encoders = ["Lexical\nTrigger", "BM25S\nRetriever", "FinBERT\nDense", "BGE-m3\nDense", "JEV-64KC\nRouter"]
-    gen0_acc = [66.7, 65.7, 76.9, 80.6, 86.1]
-    gen1_acc = [95.4, 92.6, 93.5, 95.4, 96.3]
-    gen3_acc = [100.0, 100.0, 100.0, 99.1, 100.0]
+    g0 = skill_rsi["generations"]["Gen-0_Unoptimized_Wave2_Catalog"]
+    g1 = skill_rsi["generations"]["Gen-1_Contrastive_TRIGGER_Amplification"]
+    g3 = skill_rsi["generations"]["Gen-3_Champion_1Hop_Xref_Graph_and_Package_Sync"]
+
+    def _get_enc_accs(gen_dict: dict) -> list[float]:
+        me = gen_dict["multi_encoder_routing"]
+        return [
+            round(gen_dict["eval_triggers"]["top1_accuracy"] * 100.0, 1),
+            round(me["bm25s_lexical_baseline"]["top1_shuffled_rate"] * 100.0, 1),
+            round(me["finbert_financial_encoder"]["top1_shuffled_rate"] * 100.0, 1),
+            round(me["bge_reranker_v2_m3"]["top1_shuffled_rate"] * 100.0, 1),
+            round(me["jev_system_one_calibrated_router_ours"]["top1_shuffled_rate"] * 100.0, 1),
+        ]
+
+    gen0_acc = _get_enc_accs(g0)
+    gen1_acc = _get_enc_accs(g1)
+    gen3_acc = _get_enc_accs(g3)
 
     x = np.arange(len(encoders))
     width = 0.25
@@ -292,7 +312,7 @@ def generate_fig2_empirical_results() -> list[Path]:
     bars1 = ax_a.bar(x, gen1_acc, width, label="Gen-1 Anchor Expansion", color="#60A5FA", edgecolor="#1D4ED8", linewidth=0.7, zorder=3)
     bars3 = ax_a.bar(x + width, gen3_acc, width, label="Gen-3 RSI Champion", color="#059669", edgecolor="#065F46", linewidth=0.8, zorder=3)
 
-    ax_a.set_ylim(55.0, 109.5)
+    ax_a.set_ylim(20.0, 113.5)
     ax_a.set_xticks(x)
     ax_a.set_xticklabels(encoders, fontsize=7.8)
     ax_a.set_ylabel("Top-1 Routing Accuracy (%)", fontsize=8.5, fontweight="bold", color="#0F172A")
@@ -303,24 +323,33 @@ def generate_fig2_empirical_results() -> list[Path]:
 
     for b in bars0:
         h = b.get_height()
-        ax_a.text(b.get_x() + b.get_width() / 2, h + 0.8, f"{h:.0f}%", ha="center", va="bottom", fontsize=6.5, color="#475569")
+        ax_a.text(b.get_x() + b.get_width() / 2, h + 1.0, f"{h:.0f}%", ha="center", va="bottom", fontsize=6.4, color="#475569")
     for b in bars3:
         h = b.get_height()
-        ax_a.text(b.get_x() + b.get_width() / 2, h + 0.8, f"{h:.0f}%", ha="center", va="bottom", fontsize=6.8, fontweight="bold", color="#065F46")
+        ax_a.text(b.get_x() + b.get_width() / 2, h + 1.0, f"{h:.0f}%", ha="center", va="bottom", fontsize=6.7, fontweight="bold", color="#065F46")
 
-    ax_a.legend(loc="lower right", frameon=True, facecolor="white", edgecolor="#CBD5E1", fontsize=7.2)
+    ax_a.legend(loc="lower right", frameon=True, facecolor="white", edgecolor="#CBD5E1", fontsize=7.0)
 
     # =========================================================================
     # Panel (b): Layer B — Operator-Space RSI Pareto Frontier (M=5 Seeds)
     # =========================================================================
+    arms = fin_rsi["arms"]
+    r1 = arms["Row_1_Full_Dense_Multimodal_Ref"]
+    r2 = arms["Row_2_Prod_Baseline_Verbal_Reflexion_RSI"]
+    r3 = arms["Row_3_Prod_Baseline_MMAN_Barra_Dual"]
+    r4 = arms["Row_4_Prod_Baseline_JEV_SystemOne_Static_64KC"]
+    r5 = arms["Row_5_RSI_Gen1_ValueSpace_BoundedESS"]
+    r6 = arms["Row_6_RSI_Gen2_Subspace_Precision_Stein"]
+    r7 = arms["Row_7_RSI_Gen3_Streaming_Woodbury_Fisher_JEV_64KC"]
+
     methods = [
-        ("Verbal Reflexion\n(38.5% Leak)", 22.47, 0.182, 0.233, "#DC2626", "X", 75),
-        ("1/N Equal-Weight", 15.86, 0.654, 0.220, "#64748B", "s", 55),
-        ("12-1M Momentum\n+ Vol-Target", 12.14, 0.892, 0.242, "#475569", "D", 55),
-        ("Gen-0 Static\nJEV-64KC", 10.53, 1.160, 0.216, "#2563EB", "o", 65),
-        ("Gen-1 Empirical-\nBayes Shrinkage", 8.91, 1.356, 0.246, "#0284C7", "^", 68),
-        ("Gen-2 Fisher-Ridge\n+ Confidence Gate", 7.82, 1.568, 0.296, "#0D9488", "v", 72),
-        ("Gen-3 Woodbury +\nFisher Champion", 6.84, 1.766, 0.338, "#059669", "*", 145),
+        ("Verbal Reflexion", abs(r2["max_drawdown_pct"]), r2["annualized_net_sharpe"], r2["annualized_net_sharpe_std"], "#DC2626", "X", 75),
+        ("MMAN Barra Dual", abs(r3["max_drawdown_pct"]), r3["annualized_net_sharpe"], r3["annualized_net_sharpe_std"], "#64748B", "s", 55),
+        ("Full Dense Ref", abs(r1["max_drawdown_pct"]), r1["annualized_net_sharpe"], r1["annualized_net_sharpe_std"], "#475569", "D", 58),
+        ("Gen-0 Static JEV-64KC", abs(r4["max_drawdown_pct"]), r4["annualized_net_sharpe"], r4["annualized_net_sharpe_std"], "#2563EB", "o", 65),
+        ("Gen-1 Bounded-ESS", abs(r5["max_drawdown_pct"]), r5["annualized_net_sharpe"], r5["annualized_net_sharpe_std"], "#0284C7", "^", 68),
+        ("Gen-2 Precision-Stein", abs(r6["max_drawdown_pct"]), r6["annualized_net_sharpe"], r6["annualized_net_sharpe_std"], "#0D9488", "v", 72),
+        ("Gen-3 Woodbury+Fisher", abs(r7["max_drawdown_pct"]), r7["annualized_net_sharpe"], r7["annualized_net_sharpe_std"], "#059669", "*", 145),
     ]
 
     gen_dd = [m[1] for m in methods[3:]]
@@ -332,30 +361,37 @@ def generate_fig2_empirical_results() -> list[Path]:
         ax_b.scatter([dd], [sh], color=col, marker=marker, s=sz, edgecolors="#0F172A", linewidths=0.7, zorder=4)
 
     # Direct non-overlapping labels
-    ax_b.annotate("Verbal Reflexion\n(0.18, -22.5% DD)", xy=(22.47, 0.182), xytext=(21.6, 0.62),
-                  fontsize=6.9, color="#991B1B", fontweight="bold", ha="center",
+    ax_b.annotate(f"Verbal Reflexion\n({r2['annualized_net_sharpe']:+.2f}, {r2['max_drawdown_pct']:.1f}% DD)",
+                  xy=(abs(r2["max_drawdown_pct"]), r2["annualized_net_sharpe"]), xytext=(31.2, -0.12),
+                  fontsize=6.8, color="#991B1B", fontweight="bold", ha="center",
                   arrowprops=dict(arrowstyle="->", color="#DC2626", lw=0.8))
-    ax_b.annotate("1/N (0.65)", xy=(15.86, 0.654), xytext=(16.1, 1.04),
-                  fontsize=6.9, color="#475569", ha="center", va="center",
+    ax_b.annotate(f"MMAN Barra\n({r3['annualized_net_sharpe']:+.2f})",
+                  xy=(abs(r3["max_drawdown_pct"]), r3["annualized_net_sharpe"]), xytext=(25.5, 0.52),
+                  fontsize=6.8, color="#475569", ha="center", va="center",
                   arrowprops=dict(arrowstyle="->", color="#64748B", lw=0.7))
-    ax_b.annotate("Mom+Vol\n(0.89)", xy=(12.14, 0.892), xytext=(14.4, 0.88),
-                  fontsize=6.9, color="#334155", ha="center", va="center",
-                  arrowprops=dict(arrowstyle="->", color="#475569", lw=0.7))
-    ax_b.annotate("Gen-0 Static\n(1.16)", xy=(10.53, 1.160), xytext=(13.2, 1.24),
-                  fontsize=7.1, color="#1E40AF", fontweight="bold", ha="center",
+    ax_b.annotate(f"Gen-0 Static\n({r4['annualized_net_sharpe']:+.2f})",
+                  xy=(abs(r4["max_drawdown_pct"]), r4["annualized_net_sharpe"]), xytext=(26.2, 1.18),
+                  fontsize=7.0, color="#1E40AF", fontweight="bold", ha="center",
                   arrowprops=dict(arrowstyle="->", color="#2563EB", lw=0.8))
-    ax_b.annotate("Gen-1 (1.36)", xy=(8.91, 1.356), xytext=(11.8, 1.50),
-                  fontsize=6.9, color="#0369A1", ha="center",
+    ax_b.annotate(f"Gen-1 ({r5['annualized_net_sharpe']:+.2f})",
+                  xy=(abs(r5["max_drawdown_pct"]), r5["annualized_net_sharpe"]), xytext=(23.8, 1.56),
+                  fontsize=6.8, color="#0369A1", ha="center",
                   arrowprops=dict(arrowstyle="->", color="#0284C7", lw=0.7))
-    ax_b.annotate("Gen-2 (1.57)", xy=(7.82, 1.568), xytext=(10.8, 1.74),
-                  fontsize=6.9, color="#0F766E", ha="center",
+    ax_b.annotate(f"Full Dense ({r1['annualized_net_sharpe']:+.2f})",
+                  xy=(abs(r1["max_drawdown_pct"]), r1["annualized_net_sharpe"]), xytext=(22.5, 1.92),
+                  fontsize=6.8, color="#334155", ha="center",
+                  arrowprops=dict(arrowstyle="->", color="#475569", lw=0.7))
+    ax_b.annotate(f"Gen-2 ({r6['annualized_net_sharpe']:+.2f})",
+                  xy=(abs(r6["max_drawdown_pct"]), r6["annualized_net_sharpe"]), xytext=(25.2, 0.85),
+                  fontsize=6.8, color="#0F766E", ha="center",
                   arrowprops=dict(arrowstyle="->", color="#0D9488", lw=0.7))
-    ax_b.annotate("Gen-3 Champion\n(1.77, -6.8% DD)", xy=(6.84, 1.766), xytext=(10.2, 2.06),
-                  fontsize=7.3, color="#065F46", fontweight="bold", ha="center",
+    ax_b.annotate(f"Gen-3 Champion\n({r7['annualized_net_sharpe']:+.2f}, {r7['max_drawdown_pct']:.1f}% DD)",
+                  xy=(abs(r7["max_drawdown_pct"]), r7["annualized_net_sharpe"]), xytext=(15.2, 2.22),
+                  fontsize=7.2, color="#065F46", fontweight="bold", ha="center",
                   arrowprops=dict(arrowstyle="->", color="#059669", lw=1.0))
 
-    ax_b.set_xlim(24.5, 4.8)
-    ax_b.set_ylim(-0.15, 2.34)
+    ax_b.set_xlim(36.5, 9.5)
+    ax_b.set_ylim(-1.05, 2.55)
     ax_b.set_xlabel("Max Drawdown Magnitude (%) [Lower / Right is Safer]", fontsize=8.1, fontweight="bold", color="#0F172A")
     ax_b.set_ylabel("OOS Annualized Net Sharpe (M=5)", fontsize=8.5, fontweight="bold", color="#0F172A")
     ax_b.set_title("(b) Layer B: Operator-Space RSI Pareto Frontier", fontsize=8.8, fontweight="bold", color="#0F172A", pad=8)
@@ -364,15 +400,22 @@ def generate_fig2_empirical_results() -> list[Path]:
     ax_b.spines["right"].set_visible(False)
 
     # =========================================================================
-    # Panel (c): 2x2 Dual-Layer Fin-RSI Synergy Across 4 Backbones (M=5)
+    # Panel (c): 2x2 Dual-Layer Fin-RSI Synergy Across 4 Architectures (M=5)
     # =========================================================================
-    backbones = ["Qwen2.5-\nCoder-7B", "Qwen2.5-\nCoder-14B", "Fin-R1-7B\n(Finance)", "DeepSeek-R1-\nDistill-14B"]
-    s00 = [0.72, 0.85, 0.96, 1.01]
-    s03 = [0.94, 1.16, 1.24, 1.29]
-    s30 = [1.08, 1.16, 1.22, 1.28]
-    s33 = [1.64, 1.77, 1.84, 1.91]
-    s33_err = [0.26, 0.34, 0.31, 0.29]
-    syn_deltas = [0.34, 0.30, 0.34, 0.35]
+    bb_eval = dual_syn["multi_backbone_2x2_evaluation"]
+    arch_keys = [
+        ("BM25S-\nLexical", "BM25S-Lexical"),
+        ("FinBERT-\n110M", "ProsusAI/finbert (110M)"),
+        ("BGE-v2-m3\n(568M)", "BAAI/bge-reranker-v2-m3 (568M)"),
+        ("JEV+DeepSeek-\nR1-1.5B", "JEV System-One + DeepSeek-R1-Distill-1.5B"),
+    ]
+    backbones = [k[0] for k in arch_keys]
+    s00 = [bb_eval[k[1]]["Gen0_Skill_Gen0_Op"]["net_sharpe"] for k in arch_keys]
+    s03 = [bb_eval[k[1]]["Gen0_Skill_Gen3_Op"]["net_sharpe"] for k in arch_keys]
+    s30 = [bb_eval[k[1]]["Gen3_Skill_Gen0_Op"]["net_sharpe"] for k in arch_keys]
+    s33 = [bb_eval[k[1]]["Gen3_Skill_Gen3_Op"]["net_sharpe"] for k in arch_keys]
+    s33_err = [bb_eval[k[1]]["Gen3_Skill_Gen3_Op"]["net_sharpe_std"] for k in arch_keys]
+    syn_deltas = [bb_eval[k[1]]["synergy_sharpe"] for k in arch_keys]
 
     xb = np.arange(len(backbones))
     w4 = 0.185
@@ -391,14 +434,14 @@ def generate_fig2_empirical_results() -> list[Path]:
         ax_c.text(
             b.get_x() + b.get_width() / 2, h + s33_err[idx] + 0.04,
             f"{h:.2f}\n(+{syn_deltas[idx]:.2f})",
-            ha="center", va="bottom", fontsize=6.4, fontweight="bold", color="#065F46"
+            ha="center", va="bottom", fontsize=6.3, fontweight="bold", color="#065F46"
         )
 
-    ax_c.set_ylim(0.0, 2.92)
+    ax_c.set_ylim(0.0, 2.75)
     ax_c.set_xticks(xb)
     ax_c.set_xticklabels(backbones, fontsize=7.6)
     ax_c.set_ylabel("OOS Annualized Net Sharpe", fontsize=8.5, fontweight="bold", color="#0F172A")
-    ax_c.set_title("(c) 2x2 Dual-Layer Fin-RSI Synergy (p = 0.0034)", fontsize=8.8, fontweight="bold", color="#0F172A", pad=8)
+    ax_c.set_title("(c) 2x2 Dual-Layer Fin-RSI Synergy (p = 0.0375)", fontsize=8.8, fontweight="bold", color="#0F172A", pad=8)
     ax_c.grid(axis="y", linestyle="--", linewidth=0.5, color="#CBD5E1", alpha=0.8, zorder=0)
     ax_c.spines["top"].set_visible(False)
     ax_c.spines["right"].set_visible(False)

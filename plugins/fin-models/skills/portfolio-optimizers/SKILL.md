@@ -5,10 +5,9 @@ description: >-
   to your estimation error on the way. TRIGGER - Markowitz QP solver internals, SLSQP or linprog
   weight constraints, Black-Litterman tau and Omega views matrix P and Q, equal risk contribution
   ERC solver, Rockafellar-Uryasev CVaR linear program, 1/N benchmark, DeMiguel Garlappi Uppal,
-  weight turnover; "my optimizer puts 90% in one asset", "the weights change completely every
-  month". SKIP for general requests to optimize portfolio weights with mean variance, build a risk
-  parity portfolio, choose an optimizer library or compute Sharpe and drawdown
-  (portfolio-and-risk), for which backtesting library to use for a multi asset portfolio strategy
+  weight turnover; extreme corner solutions or monthly weight instability. SKIP for general
+  mean-variance or risk parity portfolio construction, library selection, or computing Sharpe and
+  drawdown (portfolio-and-risk), for multi-asset portfolio backtesting libraries
   (backtesting-engines), for covariance matrices (covariance-and-risk-models), for expected
   returns (factor-models), for VaR/ES (risk-measures-var-cvar), and for HRPOpt or PyPortfolioOpt
   API traps (lib-pyportfolioopt).

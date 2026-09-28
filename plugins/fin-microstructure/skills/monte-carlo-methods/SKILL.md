@@ -4,13 +4,13 @@ description: >-
   Make a Monte Carlo converge to the RIGHT number - variance reduction with measured factors,
   Longstaff-Schwartz LSM simulation, scrambled-Sobol QMC, and discretisation bias. TRIGGER -
   variance reduction, antithetic variates, control variate, stratified sampling, importance
-  sampling, "how many paths do I need", standard error of a Monte Carlo simulation;
-  Longstaff-Schwartz, LSM, least-squares Monte Carlo, regression on in-the-money paths,
-  continuation value; quasi-Monte Carlo, QMC, Sobol, scipy.stats.qmc, scrambling, low discrepancy,
-  "power of 2" warning; discretely monitored barrier, continuity correction, "more paths did not
-  help". SKIP for pricing an American put option with dividends, Heston, SABR, trees or Euler bias
-  on a GBM (option-pricing-models), for VaR and expected shortfall from simulated portfolios
-  (risk-measures-var-cvar), and for copula dependence structures (copulas-and-dependence).
+  sampling, path count and standard error of a Monte Carlo simulation; Longstaff-Schwartz, LSM,
+  least-squares Monte Carlo, regression on in-the-money paths, continuation value; quasi-Monte
+  Carlo, QMC, Sobol, scipy.stats.qmc, scrambling, low discrepancy, power-of-2 warning; discretely
+  monitored barrier, continuity correction. SKIP for pricing American put options with dividends,
+  Heston, SABR, trees or Euler bias on a GBM (option-pricing-models), for VaR and expected
+  shortfall from simulated portfolios (risk-measures-var-cvar), and for copula dependence
+  structures (copulas-and-dependence).
 license: MIT
 metadata:
   version: "0.1.0"

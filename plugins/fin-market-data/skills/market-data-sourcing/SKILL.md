@@ -2,14 +2,14 @@
 name: market-data-sourcing
 description: >-
   Choose a market price or reference data vendor or data provider and use it without silently
-  corrupting the numbers. TRIGGER - download, fetch or load OHLCV, prices, quotes or bars; which
-  data provider to use if I need delisted tickers; how do I avoid survivorship bias in my
-  universe; compare vendors on cost, coverage or free-tier limits; prices from yahooquery and
-  yfinance do not match around a split; hitting 429 rate limits; split and dividend adjustment.
-  Covers yfinance, yahooquery, defeatbeta, EODHD, Tiingo, Twelve Data, Finnhub, Alpha Vantage,
-  Polygon/Massive, Databento, openbb, findatapy, financetoolkit, exchange_calendars, and 拉美股 ETF
-  的历史日线数据. SKIP for yfinance KeyError Adj Close after upgrade or plotting SPY moving average with
-  yfinance (lib-yfinance), option chains (options-backtesting), Asian calendars
+  corrupting the numbers. TRIGGER - download, fetch, pull or load OHLCV, prices, quotes, bars or a
+  ticker universe; which data provider supplies delisted tickers; avoid survivorship bias in
+  universe construction; compare vendors on cost, coverage or free-tier limits; yahooquery and
+  yfinance price discrepancies around splits; hitting 429 rate limits; split and dividend
+  adjustment. Covers yfinance, yahooquery, defeatbeta, EODHD, Tiingo, Twelve Data, Finnhub, Alpha
+  Vantage, Polygon/Massive, Databento, openbb, findatapy, financetoolkit, exchange_calendars, and
+  拉取美股 ETF 历史日线数据. SKIP for yfinance KeyError on Adj Close after upgrade or plotting SPY moving
+  averages (lib-yfinance), option chains (options-backtesting), Asian calendars
   (asia-pacific-markets), joining data (market-data-engineering), EDGAR/CIK/macro
   (fundamental-and-macro-data), and A-share 退市 tickers (china-ashare-data).
 license: MIT

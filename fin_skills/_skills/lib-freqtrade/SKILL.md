@@ -2,15 +2,15 @@
 name: lib-freqtrade
 description: >-
   freqtrade is a live-first crypto bot with the best bias detectors in the field and a backtester
-  that assumes zero slippage always. TRIGGER - freqtrade, freqtrade stoploss filled exactly at my
-  stop price, "freqtrade backtesting", freqtrade trade/hyperopt/download-data, lookahead-analysis,
-  recursive-analysis, startup_candle_count, IStrategy, populate_indicators, populate_entry_trend,
-  populate_exit_trend, custom_stoploss, stoploss_on_exchange, minimal_roi, trailing_stop,
-  VolumePairList, StaticPairList, dry_run, dry_run_wallet, config.json, user_data/strategies,
-  FreqAI, freqtrade GPL. Monthly YYYY.M releases have renamed the strategy callbacks repeatedly,
-  so remembered method names are usually the old ones. SKIP for backtesting-engines, the skill for
-  equity and futures bar engines. SKIP when the question is WHICH library to choose, or names no
-  library at all - both belong to the domain skill.
+  that assumes zero slippage always. TRIGGER - freqtrade, stoploss fills at exact stop price
+  without slippage, freqtrade backtesting, freqtrade trade/hyperopt/download-data,
+  lookahead-analysis, recursive-analysis, startup_candle_count, IStrategy, populate_indicators,
+  populate_entry_trend, populate_exit_trend, custom_stoploss, stoploss_on_exchange, minimal_roi,
+  trailing_stop, VolumePairList, StaticPairList, dry_run, dry_run_wallet, config.json,
+  user_data/strategies, FreqAI, freqtrade GPL. Monthly YYYY.M releases have renamed the strategy
+  callbacks repeatedly, so remembered method names are usually the old ones. SKIP for
+  backtesting-engines, the skill for equity and futures bar engines. SKIP when the question is
+  WHICH library to choose, or names no library at all - both belong to the domain skill.
 license: MIT
 metadata:
   version: "0.1.0"

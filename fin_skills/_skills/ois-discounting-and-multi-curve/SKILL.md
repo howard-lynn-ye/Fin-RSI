@@ -4,12 +4,12 @@ description: >-
   Price a swap with separate projection and discount curves, and catch the single-curve bug that
   the standard par-reprice check cannot see. TRIGGER - OIS discounting, CSA discounting,
   collateral discounting, multi-curve, dual curve, projection curve vs discount curve, tenor
-  basis, "my swap reprices at par but the PV01 is wrong", swap annuity, fixedLegBPS,
-  DiscountingSwapEngine, RelinkableYieldTermStructureHandle, linkTo, exogenous discounting rate
-  helpers, bootstrapping a SOFR curve against an OIS discount curve, swaption numeraire, forward
-  premium. SKIP for freqtrade stoploss filled at stop price (lib-freqtrade), for QuantLib NPV
-  returning 0.0 (lib-quantlib), for compounded SOFR fixing (sofr-and-rfr-compounding), for legacy
-  LIBOR fallbacks (libor-transition-and-fallbacks), for bond duration and DV01
+  basis, swap par repricing vs PV01, swap annuity, fixedLegBPS, DiscountingSwapEngine,
+  RelinkableYieldTermStructureHandle, linkTo, exogenous discounting rate helpers, bootstrapping a
+  SOFR curve against an OIS discount curve, swaption numeraire, forward premium. SKIP for
+  freqtrade stoploss fill assumptions at stop price (lib-freqtrade), for QuantLib NPV returning
+  0.0 (lib-quantlib), for compounded SOFR fixing (sofr-and-rfr-compounding), for legacy LIBOR
+  fallbacks (libor-transition-and-fallbacks), for bond duration and DV01
   (duration-convexity-and-dv01), and for curve bootstrapping (term-structure-models).
 license: MIT
 metadata:

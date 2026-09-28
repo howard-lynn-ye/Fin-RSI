@@ -4,14 +4,14 @@ description: >-
   Quote a two-sided market and survive the inventory - Avellaneda-Stoikov reservation price and
   optimal spread, and the adverse selection the model does not price. TRIGGER - Avellaneda
   Stoikov, market making model, optimal market making, reservation price, indifference price,
-  inventory skew, quoting strategy, "how wide should I quote", skew my quotes, inventory risk,
-  gamma risk aversion market maker; order arrival intensity, A exp(-k delta), Poisson fill model,
-  fill probability vs distance from mid; adverse selection, informed flow, toxic flow, getting
-  picked off, Glosten-Milgrom, order flow toxicity, VPIN. SKIP for what bid ask spread I should
-  assume in my daily backtest (backtesting-engines), for measuring realized and effective spreads
-  from quotes and trades (intraday-microstructure), for working a parent order
-  (execution-algorithms), for what a fill cost you (execution-cost-analysis), and for exchange
-  connectivity (broker-execution-apis).
+  inventory skew, quoting strategy, quote width, skewing quotes, inventory risk, gamma risk
+  aversion market maker; order arrival intensity, A exp(-k delta), Poisson fill model, fill
+  probability vs distance from mid; adverse selection, informed flow, toxic flow, getting picked
+  off, Glosten-Milgrom, order flow toxicity, VPIN. SKIP for daily backtest bid ask spread
+  assumptions (backtesting-engines), for measuring realized and effective spreads on quote and
+  trade ticks (intraday-microstructure), for working a parent order (execution-algorithms), for
+  what a fill cost you (execution-cost-analysis), and for exchange connectivity
+  (broker-execution-apis).
 license: MIT
 metadata:
   version: "0.1.0"

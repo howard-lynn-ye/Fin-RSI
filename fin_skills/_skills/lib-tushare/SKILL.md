@@ -2,12 +2,12 @@
 name: lib-tushare
 description: >-
   tushare is the cheapest source of genuinely point-in-time A-share fundamentals, and it sends
-  your token over plaintext HTTP. TRIGGER - tushare, tushare qfq prices change when I change
-  end_date, tushare pro, "import tushare as ts", ts.pro_api, pro_bar, adj="qfq", stock_basic,
-  list_status, daily_basic, adj_factor, income, balancesheet, f_ann_date, ann_date, update_flag,
-  报告期, 公告日, tushare token, 积分, waditu, api.waditu.com, "抱歉，您没有接口访问权限", tushare 权限不够. The public
+  your token over plaintext HTTP. TRIGGER - tushare, qfq forward-adjusted prices changing when
+  end_date changes, tushare pro, import tushare as ts, ts.pro_api, pro_bar, adj="qfq",
+  stock_basic, list_status, daily_basic, adj_factor, income, balancesheet, f_ann_date, ann_date,
+  update_flag, 报告期, 公告日, tushare token, 积分, waditu, api.waditu.com, tushare 权限不够. The public
   GitHub repo has been idle since 2024-03 while PyPI kept shipping through 2026, so recalled
-  behaviour does not match the installed wheel. SKIP for akshare vs tushare comparison
+  behaviour does not match the installed wheel. SKIP for akshare vs tushare selection
   (china-ashare-data) and for lib-akshare, the skill for breadth of free Chinese coverage. SKIP
   when no library is named.
 license: MIT

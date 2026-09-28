@@ -1,13 +1,13 @@
 ---
 name: derivatives-pricing
 description: >-
-  Choose a derivatives pricing library and get its Greek units and conventions right. TRIGGER - my
-  vega is 100x off between two libraries, QuantLib, py_vollib, py_vollib_vectorized, mibian,
-  opstrat, FinancePy; choosing an option or rates pricing library, reconciling Greek conventions
-  (per-1% vs per-1.0 vol, per-day vs per-year theta), day-count conventions, Actual/365 vs
-  Actual/252, licence traps (QuantLib BSD vs py_vollib GPL derivs). SKIP for implementing
-  Black-Scholes, trees, Heston or SABR yourself (option-pricing-models), for fitting an SVI smile
-  or vol surface (implied-vol-surface), for bootstrapping a yield curve from swap rates
+  Choose a derivatives pricing library and get its Greek units and conventions right. TRIGGER -
+  vega off by 100x between two pricing libraries, QuantLib, py_vollib, py_vollib_vectorized,
+  mibian, opstrat, FinancePy; choosing an option or rates pricing library, reconciling Greek
+  conventions (per-1% vs per-1.0 vol, per-day vs per-year theta), day-count conventions,
+  Actual/365 vs Actual/252, licence traps (QuantLib BSD vs py_vollib GPL derivs). SKIP for
+  implementing Black-Scholes, trees, Heston or SABR yourself (option-pricing-models), for fitting
+  an SVI smile or vol surface (implied-vol-surface), for swap curve bootstrapping
   (term-structure-models), for QuantLib NPV returning 0.0 (lib-quantlib), and for option
   assignment or expiry backtesting (options-backtesting).
 license: MIT

@@ -6,11 +6,11 @@ description: >-
   from ib_async import IB, pip install ib_async, ib.connect, clientId, ports 7496 7497 4001 4002,
   reqHistoricalData, reqMktData, reqTickersAsync, placeOrder, managedAccounts, reqPositions,
   reqOpenOrders, reqExecutions, Master Client ID, Read-Only API, orderRef, ibflex, ibapi,
-  ib_insync; "Enable ActiveX and Socket Clients", pacing violations, error 1102, a DU or U account
+  ib_insync; Enable ActiveX and Socket Clients, pacing violations, error 1102, a DU or U account
   prefix. Memory is stale here: ib_insync was archived 2024-03-14, ib_async 2.1.0 (2025-12-08) is
-  the successor and does not wrap ibapi. SKIP for TWS paper trading port keeps refusing the
-  connection, connecting to Interactive Brokers to read positions, non-IB brokers and general
-  order-safety patterns (broker-execution-apis).
+  the successor and does not wrap ibapi. SKIP for TWS paper trading port connection refusal,
+  generic Interactive Brokers position queries, non-IB brokers and general order-safety patterns
+  (broker-execution-apis).
 license: MIT
 metadata:
   version: "0.1.0"

@@ -6,12 +6,11 @@ description: >-
   migration matrix, credit migration, cohort estimator, duration estimator, Aalen-Johansen,
   Nelson-Aalen generator, matrix power P^5, matrix root, square root of a transition matrix,
   six-month transition matrix, scipy.linalg.logm, expm, embedding problem, generator of a Markov
-  chain, "negative probability in my transition matrix", negative off-diagonal from logm,
-  structural zero, AAA never defaults, withdrawn rating, NR, rating withdrawal, notching,
-  cumulative default rate, "5 times the one-year PD", transitionMatrix, pyratings. SKIP for HRPOpt
-  nonsense weights (lib-pyportfolioopt), for default probability or hazard rates
-  (credit-risk-models), for CDS quotes (cds-mechanics-and-upfront), and for bond spreads
-  (credit-spread-measures).
+  chain, negative off-diagonal probabilities from logm, structural zero, AAA never defaults,
+  withdrawn rating, NR, rating withdrawal, notching, cumulative default rate, transitionMatrix,
+  pyratings. SKIP for HRPOpt nonsense weights (lib-pyportfolioopt), for default probability or
+  hazard rates (credit-risk-models), for CDS quotes (cds-mechanics-and-upfront), and for bond
+  spreads (credit-spread-measures).
 license: MIT
 metadata:
   version: "0.1.0"

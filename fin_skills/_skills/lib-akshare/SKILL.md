@@ -2,13 +2,13 @@
 name: lib-akshare
 description: >-
   akshare is the widest free Chinese-market scraper (1,103 public interfaces) and it purges its
-  own PyPI history, so you cannot pin it. TRIGGER - akshare, "import akshare as ak", pip install
+  own PyPI history, so you cannot pin it. TRIGGER - akshare, import akshare as ak, pip install
   akshare, stock_zh_a_hist, stock_zh_a_daily, index_stock_cons_csindex, stock_zt_pool_em,
-  stock_zh_a_stop_em, adjust="qfq"/"hfq", 涨跌停, 东方财富, 新浪财经, 沪深300成分股, "No matching distribution
-  found for akshare==", akshare 报错, akshare 封 IP. akshare ships roughly 2.3 releases a week and
-  deletes the old ones, so any signature, column name or version pin you remember is probably
-  already gone. SKIP for 获取 A 股日线数据并做前复权 or choosing between akshare vs tushare
-  (china-ashare-data), and for point-in-time fundamentals (lib-tushare).
+  stock_zh_a_stop_em, adjust="qfq"/"hfq", 涨跌停, 东方财富, 新浪财经, 沪深300成分股, akshare 报错, akshare 封 IP.
+  akshare ships roughly 2.3 releases a week and deletes the old ones, so any signature, column
+  name or version pin you remember is probably already gone. SKIP for A 股日线数据获取与前复权 or choosing
+  between akshare vs tushare (china-ashare-data), and for point-in-time fundamentals
+  (lib-tushare).
 license: MIT
 metadata:
   version: "0.1.0"

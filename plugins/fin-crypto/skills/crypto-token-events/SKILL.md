@@ -4,7 +4,7 @@ description: >-
   TRIGGER - token swap, redenomination, migration, same ticker changed units, hard fork,
   airdropped fork coin, rebase, elastic supply, balance changed but price did not, wrapped or
   bridged token, delisted crypto pair, reconstruct a historical top-N crypto universe, a -90% day
-  caused by a token conversion. SKIP for how to avoid survivorship bias in my equity universe
+  caused by a token conversion. SKIP for avoiding equity universe survivorship bias
   (market-data-sourcing), for funding and liquidation (perpetuals-and-funding), for AMM pools and
   LP losses (defi-and-amm-mechanics), for 24/7 calendars and stablecoin depegs
   (crypto-market-structure), and for exchange clients and OHLCV fetching

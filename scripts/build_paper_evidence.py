@@ -421,6 +421,12 @@ def main():
         rsi_macros[f"{sprefix}JEVPct"] = f"{se['jev_system_one_calibrated_router_ours']['top1_shuffled_rate']*100:.1f}"
         rsi_macros[f"{sprefix}JEVRecallThree"] = str(se["jev_system_one_calibrated_router_ours"]["recall_at_3"])
         rsi_macros[f"{sprefix}JEVRecallThreePct"] = f"{se['jev_system_one_calibrated_router_ours']['recall_at_3_rate']*100:.1f}"
+        if "eval_triggers_holdout_paraphrased" in sg:
+            shp = sg["eval_triggers_holdout_paraphrased"]
+            rsi_macros[f"{sprefix}HoldoutHits"] = str(shp["top1_hits"])
+            rsi_macros[f"{sprefix}HoldoutPct"] = f"{shp['top1_accuracy']*100:.1f}"
+            rsi_macros[f"{sprefix}HoldoutRoutedHits"] = str(shp["routed_correct"])
+            rsi_macros[f"{sprefix}HoldoutRoutedPct"] = f"{shp['routed_accuracy']*100:.1f}"
 
     # 2x2 Dual-Layer Fin-RSI Synergy Macros
     syn_cells = dual_synergy["panel_2x2_evaluation"]["cells"]
@@ -476,10 +482,14 @@ def main():
 
     bb_eval = dual_synergy["multi_backbone_2x2_evaluation"]
     bb_map = {
-        "SynQwenSeven": "Qwen2.5-Coder-7B",
-        "SynQwenFourteen": "Qwen2.5-Coder-14B",
-        "SynFinROne": "Fin-R1-7B",
-        "SynDeepSeek": "DeepSeek-R1-Distill-Qwen-14B",
+        "SynBMTwoFive": "BM25S-Lexical",
+        "SynFinBERT": "ProsusAI/finbert (110M)",
+        "SynBGEMThree": "BAAI/bge-reranker-v2-m3 (568M)",
+        "SynJEVRouter": "JEV System-One + DeepSeek-R1-Distill-1.5B",
+        "SynQwenSeven": "BM25S-Lexical",
+        "SynQwenFourteen": "ProsusAI/finbert (110M)",
+        "SynFinROne": "BAAI/bge-reranker-v2-m3 (568M)",
+        "SynDeepSeek": "JEV System-One + DeepSeek-R1-Distill-1.5B",
     }
     for bprefix, bkey in bb_map.items():
         bd = bb_eval[bkey]

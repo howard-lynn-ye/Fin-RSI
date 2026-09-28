@@ -3,8 +3,8 @@ name: crypto-market-structure
 description: >-
   TRIGGER - weekend returns, 24/7 market, calendar-day rolling windows, exchange daily close
   timezone, cross-venue price dispersion, no consolidated tape, venue outage, auto-deleveraging,
-  ADL, socialised losses, stablecoin depeg or quote-currency conversion. SKIP for annualizing
-  daily crypto returns with 365 or 252 and choosing exchange clients or fetching data
+  ADL, socialised losses, stablecoin depeg or quote-currency conversion. SKIP for annualizing 365
+  vs 252 daily crypto returns and choosing exchange clients or fetching data
   (crypto-data-and-execution), for token events and delisting universes (crypto-token-events), for
   perpetual funding and liquidation (perpetuals-and-funding), and for AMM pools
   (defi-and-amm-mechanics).

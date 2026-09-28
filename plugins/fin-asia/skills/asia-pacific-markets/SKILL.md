@@ -1,11 +1,13 @@
 ---
 name: asia-pacific-markets
 description: >-
-  TRIGGER - get Hong Kong stock data and handle the lot size, korean stock delisted list and short
-  selling ban dates, NSE India trading calendar; choose an Asia-Pacific data or trading stack
-  outside mainland China, compare Asian venues, multi-market calendars, regional survivorship and
-  currency alignment; HKEX board lot, KRX KOSPI KOSDAQ pykrx, NSE BSE Nifty. SKIP for mainland
-  A-shares (china-ashare-data, china-trading-stack).
+  TRIGGER - choose an Asia-Pacific data or trading stack outside mainland China, Hong Kong
+  equities, stock data and board lot size rules, Korean delisted stock lists, short-selling or
+  short selling bans and dates, NSE India trading calendar, compare Asian venues, multi-market
+  calendars, regional survivorship and currency alignment. SKIP for Japan (japan-markets), Hong
+  Kong or Connect (hong-kong-markets), India (india-markets), Korea or Taiwan
+  (korea-taiwan-markets), Southeast Asia (asean-markets), and mainland A-shares
+  (china-ashare-data, china-trading-stack).
 license: MIT
 compatibility: Read-only market selection; linked offline scripts require Python 3.10+.
 metadata:

@@ -4,13 +4,13 @@ description: >-
   Build the timestamp at which a macro number becomes tradeable - release date, clock time,
   timezone - and know where the release mechanics changed under your sample. TRIGGER - release
   calendar, economic calendar, release date vs reference date, available_at, as-of join on a macro
-  series, "when was this number published", 8:30 ET, embargo, press lock-up, media lockup,
-  pre-release access, WASDE noon, EIA Wednesday 10:30, natural gas storage Thursday, holiday
-  release schedule, "why is my macro feature one day early", forward-fill a monthly series onto
-  daily bars, DST offset on a release time, event-study window around a print. SKIP for joining a
-  signal table to a quote table at the right timestamp (market-data-engineering), for vintages and
-  revisions (real-time-macro-backtesting), for where the series live (fundamental-and-macro-data),
-  for exchange sessions (us-market-rules), and for measuring fills (execution-cost-analysis).
+  series, 8:30 ET, embargo, press lock-up, media lockup, pre-release access, WASDE noon, EIA
+  Wednesday 10:30, natural gas storage Thursday, holiday release schedule, forward-fill a monthly
+  series onto daily bars, DST offset on a release time, event-study window around a print. SKIP
+  for joining signal tables and quote tables at timestamps (market-data-engineering), for vintages
+  and revisions (real-time-macro-backtesting), for where the series live
+  (fundamental-and-macro-data), for exchange sessions (us-market-rules), and for measuring fills
+  (execution-cost-analysis).
 license: MIT
 metadata:
   version: "0.1.0"
