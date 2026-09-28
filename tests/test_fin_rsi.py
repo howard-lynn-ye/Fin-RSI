@@ -391,3 +391,56 @@ def test_fin_rsi_family_presets_and_live_scoring() -> None:
             assert 0.10 <= res["p_up_20d"] <= 0.90
             assert res["sequence_ess"] >= 1.0
             assert 0.50 <= res["gamma_dd"] <= 1.05
+
+
+def test_skill_130_cross_board_supply_chain_rsi() -> None:
+    import pandas as pd
+    from fin_skills.china.cross_board_supply_chain_rsi import (
+        audit_cross_board_spillover_causality,
+        classify_board_microstructure_regime,
+        compute_cross_board_supply_chain_features,
+    )
+
+    sh_main = classify_board_microstructure_regime("SH600036")
+    star_board = classify_board_microstructure_regime("SH688981")
+    chinext_board = classify_board_microstructure_regime("SZ300750")
+    hk_us = classify_board_microstructure_regime("BEKE")
+
+    assert sh_main.price_limit_pct == 0.10 and sh_main.micro_reversal_sign == 1.0
+    assert star_board.price_limit_pct == 0.20 and star_board.micro_reversal_sign == -1.0
+    assert chinext_board.price_limit_pct == 0.20 and chinext_board.micro_reversal_sign == -1.0
+    assert hk_us.board_type_id == 2 and hk_us.settlement_rule == "T+0"
+
+    df = pd.DataFrame(
+        {
+            "symbol": ["SH600036", "SH600519", "SH688981", "SH688012", "SZ300750", "SZ300014"],
+            "date": ["2026-09-28"] * 6,
+            "stock_excess_return_1d": [0.012, 0.018, 0.045, 0.038, 0.032, -0.015],
+            "northbound_net_buy_shares": [1.5e6, 2.1e6, 0.8e6, 1.2e6, 1.9e6, 0.5e6],
+            "kol_weighted_engagement": [120.0, 95.0, 210.0, 165.0, 180.0, 85.0],
+            "margin_buy_ratio": [0.08, 0.09, 0.19, 0.17, 0.16, 0.05],
+            "margin_balance_z30": [-0.5, -0.2, 1.4, 1.1, 0.8, -0.9],
+            "overnight_gap_ratio": [0.005, 0.004, 0.022, 0.019, 0.018, -0.012],
+            "upper_shadow_ratio": [0.010, 0.012, 0.018, 0.015, 0.014, 0.006],
+            "lower_shadow_ratio": [0.004, 0.005, 0.008, 0.007, 0.006, 0.015],
+            "pe_ttm": [8.5, 22.0, 48.0, 55.0, 25.0, 32.0],
+            "pb_ratio": [0.9, 6.5, 4.2, 5.1, 3.8, 2.9],
+            "parkinson_volatility": [0.012, 0.015, 0.032, 0.029, 0.026, 0.028],
+            "amihud_illiquidity": [0.001, 0.001, 0.004, 0.003, 0.003, 0.002],
+        }
+    )
+    enriched = compute_cross_board_supply_chain_features(df)
+    for col in (
+        "supply_chain_leader_spillover",
+        "smart_vs_retail_divergence",
+        "cross_board_limit_bifurcation",
+        "intraday_candle_asymmetry",
+        "garp_valuation_quality",
+    ):
+        assert col in enriched.columns
+
+    guard = audit_cross_board_spillover_causality(df)
+    assert guard["passed"] is True
+    assert guard["zero_self_leakage"] is True
+    assert guard["sign_bifurcation_valid"] is True
+

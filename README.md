@@ -20,7 +20,7 @@ Current changes, validation and Beacon jobs are listed in the
 <div align="center">
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/howard-lynn-ye/fin-skills/releases)
-[![Skills](https://img.shields.io/badge/Agent_Skills-129_Verified-emerald.svg)](#6-complete-skill-catalog-129-skills)
+[![Skills](https://img.shields.io/badge/Agent_Skills-130_Verified-emerald.svg)](#6-complete-skill-catalog-130-skills)
 [![Executable Guards](https://img.shields.io/badge/Executable_Guards-36_Guards-purple.svg)](#2-executable-audit-engine-fin_skillsapi)
 [![Leak Benchmark](https://img.shields.io/badge/Leak_Benchmark-12%2F12_Caught_(0_FP)-success.svg)](#5-empirical-benchmarks--maturity-status)
 [![Unit Tests](https://img.shields.io/badge/Tests-pytest-brightgreen.svg)](#5-empirical-benchmarks--maturity-status)
@@ -54,7 +54,7 @@ python3 research/production/web_dashboard.py --port 8088
 
 ## 🎯 1. What This Repo Does (Executive Summary)
 
-**129 [Agent Skills](https://agentskills.io/specification) for Claude Code and coding agents that tell an LLM which Python quant-finance library to use, what each one silently gets wrong, and whether a backtest result is real.** 105 domain skills, plus 24 optional per-library deep dives you install only if you want them.
+**130 [Agent Skills](https://agentskills.io/specification) for Claude Code and coding agents that tell an LLM which Python quant-finance library to use, what each one silently gets wrong, and whether a backtest result is real.** 106 domain skills, plus 24 optional per-library deep dives you install only if you want them.
 
 ### Why Does This Exist?
 The AI-for-finance ecosystem is saturated at two extremes—**API wrappers** (how to fetch a price) and **textbook dumps** (what is Black-Scholes)—but nearly vacant at **research integrity and library implementation traps**. Pre-trained LLMs routinely write backtest code with fatal, silent defects because popular Python libraries harbor unintuitive defaults:
@@ -75,8 +75,8 @@ The AI-for-finance ecosystem is saturated at two extremes—**API wrappers** (ho
 
 ```mermaid
 flowchart TD
-    subgraph TIER1 ["1. 🧠 Source-Verified Knowledge Layer (129 Agent Skills)"]
-        D1["105 Domain Skills (16 Plugins)<br/>Task Routing & Methodology"] --> D2["24 Library Skills (fin-libraries)<br/>Source-Code Traps & Version Drift"] --> D3["75 Reference Deep-Dives<br/>Formulas, Rulebooks & Tables"]
+    subgraph TIER1 ["1. 🧠 Source-Verified Knowledge Layer (130 Agent Skills)"]
+        D1["106 Domain Skills (16 Plugins)<br/>Task Routing & Methodology"] --> D2["24 Library Skills (fin-libraries)<br/>Source-Code Traps & Version Drift"] --> D3["75 Reference Deep-Dives<br/>Formulas, Rulebooks & Tables"]
     end
 
     subgraph TIER2 ["2. 🛡️ Executable Research Integrity Engine (fin_skills.api)"]
@@ -103,8 +103,8 @@ flowchart TD
 
 | Dimension | Current Milestone / Metric | Verification & Engineering Status |
 | :--- | :--- | :--- |
-| **Knowledge Coverage** | **129 Agent Skills** across **17 Plugins** | **100% Validated** against the portable 6-field Agent Skills specification (`scripts/validate.py`). Covers Equities, A-Shares, Crypto, Options, Fixed Income, Credit, Macro, Microstructure, ML, and Tax. |
-| **Executable Code Guards** | **36 Unified Guards** (`fin_skills.api`)<br>**125 Standalone Scripts** | **Callable and tested.** Every guard returns a structured `GuardResult(passed, summary, metrics)`. Features newly added Pre-Trade Defense guards: `qdii_premium`, `board_lot_feasibility`, and `cash_drag`. |
+| **Knowledge Coverage** | **130 Agent Skills** across **17 Plugins** | **100% Validated** against the portable 6-field Agent Skills specification (`scripts/validate.py`). Covers Equities, A-Shares, Crypto, Options, Fixed Income, Credit, Macro, Microstructure, ML, and Tax. |
+| **Executable Code Guards** | **36 Unified Guards** (`fin_skills.api`)<br>**126 Standalone Scripts** | **Callable and tested.** Every guard returns a structured `GuardResult(passed, summary, metrics)`. Features newly added Pre-Trade Defense guards: `qdii_premium`, `board_lot_feasibility`, and `cash_drag`. |
 | **Empirical Leak Benchmark (`leak_bench`)** | **12 / 12 Planted Defects Caught**<br>**0 False Positives** on the clean fixture | **Development regression** ([`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)). Tested on a 1,825-day synthetic world with delistings and splits; timings are recorded in the generated benchmark output. These cases do not establish detection accuracy on unseen defects. |
 | **Agent Routing (`eval_blind`)** | **92/108 historical-label matches; 16/16 new-capability queries** | Independent listing-only evaluation on 2026-09-14. Old labels include superseded broad routes; the new set is a small smoke test. [Inputs, answers and limitations](evals/2026-09-14/README.md). |
 | **Test Suite & CI Rigor** | **Repository-wide default test suite** | Run `pytest -q`; current measured results are recorded in the [acceptance audit](docs/COMPLETION_AUDIT.md). Zero drift enforced between `SKILL.md` sources, `catalog/index.json`, README counts, and generated Python modules. |
@@ -171,7 +171,7 @@ c.pip_value("USDJPY", notional=100_000, price=150.25).value_usd     # Exact FX p
 ```python
 import fin_skills
 
-fin_skills.catalog()                           # List all 129 skills: name, plugin, summary
+fin_skills.catalog()                           # List all 130 skills: name, plugin, summary
 fin_skills.load("research-integrity-guards")   # Read full SKILL.md markdown text
 fin_skills.references("options-backtesting")   # Dict of reference files {filename: text}
 fin_skills.find("survivorship", "universe")    # Search skills mentioning both terms
@@ -301,7 +301,7 @@ Full reproducible benchmark output: [`benchmarks/RESULTS.md`](benchmarks/RESULTS
 
 ---
 
-## 📚 6. Complete Skill Catalog (129 Skills across 17 Plugins)
+## 📚 6. Complete Skill Catalog (130 Skills across 17 Plugins)
 
 ### Plugin Architecture Overview
 
@@ -345,6 +345,7 @@ Full reproducible benchmark output: [`benchmarks/RESULTS.md`](benchmarks/RESULTS
 | `fin-asia` | [`korea-taiwan-markets`](plugins/fin-asia/skills/korea-taiwan-markets/SKILL.md) | TRIGGER - KRX, KOSPI, KOSDAQ, 韓國 공매도, TWSE, TPEX, 台股, 漲跌停, limit-up queue, Korea foreign registration, Taiwan ticks, pykrx, FinanceDataReader, FinMind, shioaji. | 0 | 1 |
 | `fin-china` | [`china-ashare-data`](plugins/fin-china/skills/china-ashare-data/SKILL.md) | Get China A-share and Greater China market data without the ecosystem's silent traps. | 4 | 0 |
 | `fin-china` | [`china-trading-stack`](plugins/fin-china/skills/china-trading-stack/SKILL.md) | Backtest and execute Chinese-market strategies under the rules a Western engine gets wrong. | 3 | 11 |
+| `fin-china` | [`cross-board-supply-chain-rsi`](plugins/fin-china/skills/cross-board-supply-chain-rsi/SKILL.md) | [fin-china] Route cross-board price-limit microstructure sign bifurcations (10% Main Board reversal vs 20% STAR 688 and ChiNext 300 high-threshold continuation) and synthesize leav | 0 | 1 |
 | `fin-china` | [`kol-credibility-registry`](plugins/fin-china/skills/kol-credibility-registry/SKILL.md) | [fin-china] Score and calibrate financial KOL credibility across Xueqiu and StockTwits using Bayesian win-rate updating, Brier scores, and contrarian inversion. | 0 | 2 |
 | `fin-china` | [`signal-reconciler`](plugins/fin-china/skills/signal-reconciler/SKILL.md) | [fin-china] Resolve conflicting bullish and bearish signals across macro, fundamental, technical, and social sentiment sources using entropy-weighted evidence combination. | 0 | 1 |
 | `fin-core` | [`backtest-overfitting`](plugins/fin-core/skills/backtest-overfitting/SKILL.md) | Decide whether an edge that passed every mechanical check is still just the best of N tries. | 0 | 1 |

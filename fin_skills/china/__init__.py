@@ -6,6 +6,7 @@ Module -> owning skill:
     board_lot_guard              china-trading-stack
     cash_yield_optimizer         china-trading-stack
     core_satellite_advisor       china-trading-stack
+    cross_board_supply_chain_rsi cross-board-supply-chain-rsi
     data_cleaning_filter         china-trading-stack
     kol_credibility_registry     kol-credibility-registry
     kol_registry                 kol-credibility-registry
@@ -23,6 +24,7 @@ __all__ = [
     'board_lot_guard',
     'cash_yield_optimizer',
     'core_satellite_advisor',
+    'cross_board_supply_chain_rsi',
     'data_cleaning_filter',
     'kol_credibility_registry',
     'kol_registry',
