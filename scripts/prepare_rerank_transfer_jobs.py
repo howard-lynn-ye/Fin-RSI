@@ -10,13 +10,16 @@ from prepare_rag_ablation_jobs import BASE,MODELS,LAUNCHER
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('name');p.add_argument('--family',choices=MODELS)
-    p.add_argument('--afterok',required=True);a=p.parse_args()
+    p.add_argument('--afterok',required=True)
+    p.add_argument('--qualification-root',required=True)
+    a=p.parse_args()
     bundle=Path('runs')/('beacon-campaign-'+a.name);bundle.mkdir(exist_ok=False)
     source=bundle/'source';source.mkdir()
     for f in ('finqa_reuse.py','finqa_rag_ablation.py','finqa_rerank_transfer.py','transformers_chat.py'):
         shutil.copyfile(Path('benchmarks/agent_study')/f,source/f)
     shutil.copyfile('plugins/fin-market-data/skills/fundamental-and-macro-data/SKILL.md',source/'skill.md')
     shutil.copyfile('paper/FINQA_RERANK_TRANSFER_PROTOCOL_20260923.md',source/'protocol.md')
+    shutil.copyfile('paper/FINQA_INTERFACE_CORRECTION_20260928.md',source/'interface-correction.md')
     with tarfile.open(source/'library.tar.gz','w:gz') as archive:
         for f in sorted(Path('fin_skills').rglob('*')):
             if f.is_file() and '__pycache__' not in f.parts and f.suffix!='.pyc': archive.add(f,arcname=f.as_posix())
@@ -32,7 +35,7 @@ def main():
     template=LAUNCHER
     lines=[l for l in template.splitlines() if 'finqa_memory_study.py' not in l and not l.startswith('export HF_HUB_CACHE=')]
     lines+=['mkdir "$r/source/library"','tar -xzf "$r/source/library.tar.gz" -C "$r/source/library"',
-            f'export PYTHONPATH="$r/source/library:{BASE}/fin-skills-campaign-finqa-rag-qualification-20260923-v1/deps"']
+            f'export PYTHONPATH="$r/source/library:{a.qualification_root}/deps"']
     if a.family:
         lines.append(f'export HF_HUB_CACHE={cache} HUGGINGFACE_HUB_CACHE={cache}')
         env='fin-skills-campaign-reuse-bootstrap-20260923-v2'

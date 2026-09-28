@@ -1,29 +1,68 @@
-\section{Evaluating use, retention, and adaptation}
+\section{Library evaluation: defects, execution, and numerical parity}
 \label{sec:capability_eval}
-We evaluate agent research capability across three dimensions:
+We evaluate the financial library at three boundaries: detecting invalid research inputs,
+executing declared interfaces, and reproducing numerical references. Table~\ref{tab:core}
+summarizes the observed evidence. Each row has its own unit and denominator.
 
-\paragraph{Method selection and task quality.}
-Tasks present distinct quantitative problems, requiring the agent to select tools,
-set parameters, and interpret numerical outputs. We evaluate whether chosen algorithms
-match input data properties (e.g., stationarity, regime type, asset universe).
-Measuring method choice alongside returns separates sound reasoning from fortunate
-price paths. Matched controls isolate the contributions of raw price tables, text
-guidance, fixed tool outputs, and autonomous execution.
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.12\textwidth}p{0.26\textwidth}p{0.27\textwidth}p{0.26\textwidth}}
+\toprule
+Study & Endpoint & Observed result & Scope \\
+\midrule
+E1: guards & Planted-defect detection &
+\CaughtInstances{}/\DefectInstances{} detected (100\%); no clean-reference false alarms &
+12 defect families in three seeded worlds; 13 core guards exercised \\
+E2: execution & Valid decisions and successful tool requests &
+64/64 valid decisions across four conditions; 43 successful autonomous tool requests &
+16 autonomous decisions; requests include discovery, reading, advice, and computation \\
+E2: audit & Artifact validation and reporting fidelity &
+Reference submission accepted; pilot Opus Sharpe gap \OpusBase{} to \OpusLibrary{} &
+Historical pilot; self-reported guard use is not an execution receipt \\
+E3: parity & Agreement with numerical references &
+\ParityPassed{}/\ParityCount{} checks within case-specific tolerances &
+Selected primitives; maximum absolute error $1.18\times10^{-8}$ \\
+\bottomrule
+\end{tabular}
+\caption{Core library evidence. Detection, executable completion, audit acceptance, and
+numerical agreement are different endpoints. No row establishes universal correctness or
+profitable trading.}
+\label{tab:core}
+\end{table*}
 
-\paragraph{Context retention.}
-Holding the base model, input data, and tool interfaces fixed, we compare full context,
-recency truncation, and HiSTrim selective routing. We measure portfolio decision
-quality, retention of critical price and instruction tokens, KV-cache memory footprint,
-and generation latency. This determines whether pruning past interaction turns degrades
-reasoning accuracy.
+\paragraph{E1: detecting research defects.}
+The benchmark plants 12 defect families, including temporal leakage, unadjusted corporate
+actions, and universe-selection errors, in three synthetic worlds. The suite records
+\CaughtInstances{}/\DefectInstances{} detections and no false alarms on its clean
+references. This is suite-level recall: a defect may be caught by another applicable
+guard even when one intended check misses it. Repeating a family across seeds does not
+create a new defect type. Appendix~\ref{app:audit} describes the independent oracle and
+the distinction between diagnosis and agent repair.
 
-\paragraph{Experience and adaptation.}
-Holding tool access and context budgets fixed, we evaluate sequential adaptation by
-comparing unaugmented models, frozen-memory baselines, and our multi-timescale memory
-module. All agents receive identical cleared returns. We track how tool choices shift
-following losses, measuring turnover costs and performance across regime changes.
-Factorial comparisons test interactions between context pruning and memory updates.
+\paragraph{E2: execution and audit compliance.}
+We count actual dispatches and final artifacts rather than statements that a check ran.
+The exploratory portfolio study completed all 64 decisions, including 16 with autonomous
+tool access, and logged 43 successful requests in that arm. These requests include
+catalog lookup and guidance retrieval as well as numerical algorithms. In the separate
+audit feasibility study, optional guards and mandatory enforcement have different
+acceptance outcomes. Mandatory rejection protects the submission boundary but does not
+constitute successful repair: the 14B model reached its turn limit in all three mandatory
+cells. The reference submission passed the public checks and independent grading.
 
-Evaluation metrics include forecast accuracy, portfolio Sharpe ratio, turnover, and
-token cost. All model outputs and portfolio weights are saved and frozen prior to
-scoring.
+\paragraph{E3: numerical parity.}
+Eight checks compare equal weighting, inverse-volatility weighting, minimum-variance
+optimization, normal and historical VaR/ES, historical volatility, fractional-difference
+weights, and an augmented Dickey--Fuller statistic with closed forms or independent
+NumPy, SciPy, pandas, and statsmodels references. All meet their recorded tolerances;
+the largest absolute difference is $1.18\times10^{-8}$ for the optimization weights.
+The optimization case allows $10^{-3}$ while other cases have their own tighter
+tolerances. This supports agreement for the tested calculations, not exact equality
+or validation of all catalog entries.
+
+\paragraph{Auxiliary integrations.}
+The context and memory studies test optional consumers of the library's results.
+Their methods and outcomes appear in the appendices. The public FinQA RAG and reranking
+runs retain their original scores; frequent missing or malformed final answers prevent
+those low scores from isolating retrieval quality. Interface corrections require a new
+versioned comparison rather than retrospective replacement of the recorded grades.

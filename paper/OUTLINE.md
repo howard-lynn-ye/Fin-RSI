@@ -1,11 +1,12 @@
 # Paper outline / 论文大纲
 
-> **2026-09-22 framing update:** The current manuscript follows
-> [professional tools and experience-based capability](FRAMING_TOOLS_MEMORY_ZH.md).
-> The audit-focused outline below is retained for the supporting audit study and its
-> historical writing decisions; its title and central argument no longer govern the paper.
+> **2026-09-28 framing correction:** The manuscript centers on `fin-skills`: professional
+> financial knowledge, executable research guards, and numerical reliability. E1 covers
+> planted-defect detection, E2 execution and audit compliance, and E3 numerical parity.
+> HiSTrim and memory are auxiliary integrations. The historical outline below and the
+> September 22 memory-centered framing are superseded by the current `latex_naacl/main.tex`.
 
-Working title: **FAST: A Financial Agent Skill Tester and Verified Execution Engine**
+Working title: **Fin-Skills: Executable Financial Knowledge and Research Guards for Financial Agents**
 (Former working title: Verified Execution and Autonomous Tool Use for Financial Research Agents)
 
 Updated: 2026-09-22. Working Resource/Benchmark outline for an AI/NLP conference
@@ -14,9 +15,8 @@ distinguished below. The experimental design follows the revised [study protocol
 
 Shared manuscript: https://www.overleaf.com/project/6aad9a03f27c3c07a182965d
 
-The current LaTeX draft uses the title *Verified Execution and Autonomous Tool Use for
-Financial Research Agents*. FAST remains the audit study's working name in this outline;
-the final title needs a single author-approved choice. The library description includes
+FAST remains the audit study's historical working name in this outline.
+The library description includes
 skills, retrieval, collection storage and model interfaces. Audit, autonomous tool use
 and exploratory memory learning have separate experiments and evidence requirements.
 Manuscript delivery follows [SYNC.md](SYNC.md).

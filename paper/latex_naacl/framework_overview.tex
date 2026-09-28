@@ -1,17 +1,17 @@
-\section{Framework: tools, context, and memory}
+\section{Library architecture: knowledge, computation, and verification}
 \label{sec:framework}
-We define research capability as the ability to choose appropriate quantitative methods,
-interpret their outputs, and adapt future choices based on realized outcomes.
-Counting API calls alone does not measure this capability. Our framework separates
-tool execution, within-task context selection, and cross-episode memory.
+\textsc{fin-skills} connects three reusable layers. Skills describe financial assumptions
+and library conventions. Numerical interfaces execute methods against declared inputs.
+Research guards return structured findings that a controller can require before accepting
+an artifact. A successful algorithm call alone does not imply that the required audit ran.
 
-\paragraph{Decision and learning cycle.}
-Let $q_t$ be the task prompt, $\mathcal{D}_{\le t}$ the market data available at time $t$,
-and $M_t$ the persistent memory state. An attention routing mechanism prunes interaction
-history to fit the context budget. The agent uses the pruned context and a readout of
-$M_t$ to select a tool, execute it with chosen parameters, and produce an asset
-allocation. When the trade clears at settlement $t+T$, the realized return updates
-$M_t$, provided it passes validation checks.
+\paragraph{Guarded research workflow.}
+For a task and its available data, an agent selects a skill, inspects a numerical
+interface, and proposes an artifact. A controller executes the relevant checks on that
+artifact. Failures return actionable findings; missing required evidence remains
+incomplete. The controller accepts only artifacts meeting its declared policy and saves
+the associated execution records. This workflow is distinct from offering an agent
+optional tool access and trusting its claim to have validated the output.
 
 \begin{table*}[t]
 \centering\small
@@ -20,30 +20,29 @@ $M_t$, provided it passes validation checks.
 \toprule
 Component & Role in research workflow & Target question & Implementation and validation \\
 \midrule
-\textsc{fin-skills} & Document conventions and execute quantitative algorithms &
-Which methods does the model select, and how are outputs applied? &
-129 skills, 48 backends; evaluated on 64 portfolio decisions \\
-HiSTrim & Prune historical KV cache while preserving task instructions &
-Which interaction tokens can be dropped without harming decisions? &
-Dynamic routing with sign preservation; evaluated on sequential tasks \\
-Persistent memory & Update associative weights from completed episode returns &
-Does past experience improve future method selection across regimes? &
-Multi-timescale mushroom-body model; evaluated on delayed return series \\
-Execution checks & Bind verification to code artifacts and filter invalid feedback &
-Are execution outputs and learning signals free of look-ahead leaks? &
-36 guards; evaluated against 12 planted defect families \\
+Financial skills & Route tasks and document dated conventions &
+What assumptions and failure modes apply? & 129 skill documents \\
+Numerical interfaces & Discover and execute quantitative methods &
+Do selected computations agree with references? & 48 catalog entries; E3 tests eight primitives \\
+Executable guards & Diagnose data, accounting, and validation defects &
+Which required checks passed, failed, or lack inputs? & 36 registered guards; E1 exercises 13 \\
+Execution records & Bind verification to the submitted artifacts &
+Did the required checks actually run on this code and data? & Explicit pass, fail, and incomplete states \\
+Optional extensions & Select context and retain verified experience &
+How do auxiliary context and memory services affect tasks? & HiSTrim and persistent memory; separate studies \\
 \bottomrule
 \end{tabular}
-\caption{System components, roles, and validation scope within the financial agent framework.}
+\caption{Core financial library components and optional context and memory integrations.}
 \label{tab:framework}
 \end{table*}
 
-\paragraph{Two distinct memory mechanisms.}
+\paragraph{Optional experience services.}
 HiSTrim operates within a single session by evicting tokens from the KV cache during
 generation. Persistent memory operates across sessions by storing parameter updates in an
 external module. The two mechanisms operate on different timescales: context pruning
 controls what the model attends to right now, whereas persistent memory retains summary
-statistics of what happened in previous episodes.
+statistics of what happened in previous episodes. Neither service is required to run
+the library's guards or reproduce its numerical primitives.
 
 \paragraph{Grounded feedback updates.}
 When an episode concludes, the agent records the market context, the chosen tool, and the

@@ -11,8 +11,8 @@ import sys
 import time
 import traceback
 
-from finqa_rag_ablation import (BASE,TASKS,UPSTREAM,contexts,episode,evaluator,pack,
-                               parsed_answer,read,sha,write)
+from finqa_rag_ablation import (ANSWER_FORMAT,BASE,TASKS,UPSTREAM,answer_diagnostics,
+                               contexts,episode,evaluator,pack,parsed_answer,read,sha,write)
 
 
 def verify(root):
@@ -108,7 +108,8 @@ def answer(root):
     guidance=(root/'source/skill.md').read_text(encoding='utf-8')
     write(root/'protocol.json',dict(plan=plan,ranking_receipt_sha256=sha(parent/'ranking-receipt.json'),
         task_ids=[c['id'] for c in cases],generated_conditions=['bge','kev'],
-        max_responses=6,max_response_tokens=512,paired_with='same-seed rag_api from FinQA RAG ablation',
+        max_responses=6,max_response_tokens=512,answer_format=ANSWER_FORMAT,
+        paired_with='Only compare with a FinQA RAG run using the same prompt and answer-format version',
         limits='Same questions/model/guidance/calculator/output schema. Ranking failures remain planned failures.'))
     backend=TransformersChat(plan['model'],plan['revision'],max_tokens=512,seed=11)
     Settings.tokenizer=lambda text:backend.tokenizer.encode(text,add_special_tokens=False)
@@ -145,8 +146,10 @@ def score(root):
             input_tokens=sum(c['response']['usage']['prompt_tokens'] for c in row['calls'] if 'response' in c),
             output_tokens=sum(c['response']['usage']['completion_tokens'] for c in row['calls'] if 'response' in c),
             seconds=row['elapsed_seconds'])
+        result.update(answer_diagnostics(row))
         try:
-            parsed=parsed_answer(row['final']);tokens=official.program_tokenization(parsed['program'])
+            parsed=parsed_answer(row['final'],answer_format=protocol.get('answer_format','strict-json-v1'))
+            tokens=official.program_tokenization(parsed['program'])
             if not parsed['program'].strip() or len(tokens)>81: raise ValueError('Invalid program length')
             target=targets[row['id']];invalid,value=official.eval_program(tokens,target['table'])
             result['execution_correct']=invalid==0 and value==target['qa']['exe_ans']

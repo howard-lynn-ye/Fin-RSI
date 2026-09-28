@@ -82,6 +82,8 @@ def main():
               "HaikuBase": f"{means['Ah']:.3f}", "HaikuLibrary": f"{means['Bh']:.3f}",
               "DefectInstances": manifest["defects"]["planted_instances"],
               "CaughtInstances": manifest["defects"]["caught_instances"],
+              "ParityPassed": manifest["parity"]["passed"],
+              "ParityCount": manifest["parity"]["count"],
               "BeaconSevenAccepted": beacon_models["Qwen/Qwen2.5-Coder-7B-Instruct"]["accepted"],
               "BeaconFourteenAccepted": beacon_models["Qwen/Qwen2.5-Coder-14B-Instruct"]["accepted"],
               "BeaconPerModel": beacon_models["Qwen/Qwen2.5-Coder-14B-Instruct"]["recorded_cells"]}
