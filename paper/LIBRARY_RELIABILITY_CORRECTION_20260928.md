@@ -65,6 +65,10 @@ or undefined references. Overleaf compiled the new manuscript with Errors 0 and 
 
 Project: <https://www.overleaf.com/project/6aad9a03f27c3c07a182965d>
 
+GitHub manuscript/code commit: `861033a305d87a3968400e6e58bc5e4e856eb45e`, on
+`codex/library-reliability-20260928`. The following delivery-note commit only records this
+identifier; the synchronized TeX hashes are unchanged.
+
 History label: `Fin-skills library reliability - 2026-09-28`, on the September 28, 4:03 pm
 upload shown by Overleaf. Before editing, the project's source ZIP was saved locally and the
 affected files were compared with the previous synchronized sources. Six revised TeX files
