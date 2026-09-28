@@ -420,6 +420,23 @@ def build_qdii_premium() -> dict:
     }
 
 
+def build_panel_balance() -> dict:
+    clean_rows = [
+        {"ticker": f"SYM{i:02d}", "timestamp": f"{y}-06-{d:02d}"}
+        for i in range(10)
+        for y in (2022, 2023, 2024)
+        for d in range(1, 6)
+    ]
+    defect_rows = [{"ticker": "MEGA", "timestamp": "2024-06-01"} for _ in range(90)] + [
+        {"ticker": "TINY1", "timestamp": "2020-01-01"},
+        {"ticker": "TINY2", "timestamp": "2021-01-01"},
+    ]
+    return {
+        "clean": dict(df=pd.DataFrame(clean_rows), min_companies=5),
+        "defect": dict(df=pd.DataFrame(defect_rows), min_companies=5),
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict]] = {
     k[len("build_"):]: v for k, v in dict(globals()).items() if k.startswith("build_")}
 
