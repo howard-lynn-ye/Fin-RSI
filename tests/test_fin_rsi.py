@@ -8,6 +8,8 @@ import pytest
 import torch
 
 from fin_skills.fin_rsi import (
+    BilingualMerAPITProjector,
+    MultiHorizonRegimeGatedMoOOperator,
     REGISTERED_FIN_RSI_SEEDS,
     StreamingWoodburyFisherOperator,
     SubspacePrecisionSteinOperator,
@@ -253,4 +255,74 @@ def test_skill_level_rsi_evolution_report_and_harness_gates() -> None:
     assert g3["eval_triggers"]["min_margin"] >= 0.15
     assert g3["eval_blind"]["correct"] == 108
     assert g3["multi_encoder_routing"]["jev_system_one_calibrated_router_ours"]["top1_shuffled"] >= 97
+
+
+def test_direction_b_bilingual_mera_pit_projector_orthogonality() -> None:
+    torch.manual_seed(20260923)
+    proj = BilingualMerAPITProjector(input_dim=64, embed_dim=16, ridge_lambda=5.0)
+    train_emb = torch.randn(128, 64)
+    anchor_y = torch.randn(128, 8)
+    surprise_y = torch.randn(128, 8)
+    hype_nuis = torch.randn(128, 3)
+    weights = torch.rand(128) + 0.5
+
+    diag = proj.fit_expanding_pit(
+        train_emb=train_emb,
+        train_anchor_targets=anchor_y,
+        train_surprise_targets=surprise_y,
+        train_hype_nuisance=hype_nuis,
+        sample_weights=weights,
+    )
+    assert proj.is_fitted.item() is True
+    assert diag["n_train_pit"] == 128
+    # Verify Gram-Schmidt orthogonalization: W_perp is strictly orthogonal to hype_basis
+    assert diag["max_cos_perp_hype"] < 1e-4
+
+    out_16d, out_diag = proj(torch.randn(16, 64))
+    assert out_16d.shape == (16, 16)
+    assert out_diag["z_parallel"].shape == (16, 8)
+    assert out_diag["z_perp"].shape == (16, 8)
+
+
+def test_direction_a_multi_horizon_regime_gated_moo_operator() -> None:
+    torch.manual_seed(20260924)
+    op = MultiHorizonRegimeGatedMoOOperator(embed_dim=16, kc_dim=64, top_k_kc=8)
+    b_sz, seq_len, dim = 10, 8, 16
+    seq_soc = torch.randn(b_sz, seq_len, dim)
+    logits = torch.randn(b_sz, seq_len)
+    bursts = torch.ones(b_sz, seq_len)
+    ann_prior = torch.randn(b_sz, dim)
+    eff_n = torch.full((b_sz, 1), 4.0)
+    probs = torch.full((b_sz, 1), 0.6)
+    v_mask = torch.ones(b_sz, 1)
+    mera_emb = torch.randn(b_sz, dim)
+    micro_emb = torch.randn(b_sz, dim)
+    inst_emb = torch.randn(b_sz, dim)
+    vix_z = torch.linspace(-1.5, 2.5, b_sz).unsqueeze(-1)
+    pvol = torch.full((b_sz, 1), 0.025)
+    us10y = torch.full((b_sz, 1), 0.03)
+
+    out = op(
+        seq_social_emb=seq_soc,
+        salience_logits=logits,
+        burst_block_sizes=bursts,
+        announcement_prior_emb=ann_prior,
+        eff_sample_count=eff_n,
+        jev_calibrated_prob=probs,
+        volatility_gate_mask=v_mask,
+        mera_bilingual_emb=mera_emb,
+        micro_reversal_emb=micro_emb,
+        inst_long_emb=inst_emb,
+        vix_z30=vix_z,
+        parkinson_vol=pvol,
+        us10y_change_abs=us10y,
+    )
+    assert out["representation"].shape == (b_sz, dim)
+    assert out["pi_regime"].shape == (b_sz, 3)
+    # Simplex probabilities sum to 1.0
+    assert torch.allclose(out["pi_regime"].sum(dim=-1), torch.ones(b_sz), atol=1e-5)
+    # Higher vix_z30 induces higher crisis probability and tighter drawdown damper (smaller gamma_dd)
+    assert out["pi_regime"][-1, 2] > out["pi_regime"][0, 2]
+    assert out["gamma_dd"][-1, 0] < out["gamma_dd"][0, 0]
+
 

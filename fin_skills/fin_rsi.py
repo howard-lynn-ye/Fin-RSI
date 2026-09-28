@@ -681,6 +681,293 @@ class StreamingWoodburyFisherOperator(nn.Module):
         }
 
 
+class BilingualMerAPITProjector(nn.Module):
+    """Direction B: Bilingual Small-Encoder Family PIT-Projection Alignment (`MerA-PIT-Projector`).
+
+    Aligns frozen 768D representations from domain-specific small encoders:
+      - `ProsusAI/finbert` (110M, English financial domain + 3-class sentiment head)
+      - `hfl/chinese-roberta-wwm-ext` (102M, Chinese A-share announcement & social encoder)
+    into the unified 16D Point-in-Time multimodal operator subspace using a strictly causal
+    expanding-window fit (`label_end < eval_window_start`):
+      - Channels 0..7 (`W_parallel`): Weighted ridge projection onto PIT fundamental drift &
+        multi-horizon excess return anchors (`1d`, `5d`, `20d`), weighted by `check_panel_balance`
+        cell-density inverse weights `normalized_year_balanced_weight`.
+      - Channels 8..15 (`W_perp`): Gram-Schmidt orthogonalized against the retail hype nuisance
+        subspace (`margin_buy_ratio`, `naive_social_score`, `text_intensity_z30`) before projecting
+        onto idiosyncratic return surprise residuals.
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 768,
+        embed_dim: int = 16,
+        ridge_lambda: float = 25.0,
+    ) -> None:
+        super().__init__()
+        if embed_dim % 2 != 0:
+            raise ValueError(f"embed_dim must be even, got {embed_dim}")
+        self.input_dim = int(input_dim)
+        self.embed_dim = int(embed_dim)
+        self.half_dim = self.embed_dim // 2
+        self.ridge_lambda = float(ridge_lambda)
+
+        self.register_buffer("mean_x", torch.zeros(1, self.input_dim))
+        self.register_buffer("w_parallel", torch.zeros(self.input_dim, self.half_dim))
+        self.register_buffer("w_perp", torch.zeros(self.input_dim, self.half_dim))
+        self.register_buffer("hype_basis", torch.zeros(self.input_dim, 3))
+        self.register_buffer("is_fitted", torch.tensor(False))
+
+    @torch.no_grad()
+    def fit_expanding_pit(
+        self,
+        train_emb: torch.Tensor,
+        train_anchor_targets: torch.Tensor,
+        train_surprise_targets: torch.Tensor,
+        train_hype_nuisance: torch.Tensor,
+        sample_weights: Optional[torch.Tensor] = None,
+    ) -> Dict[str, float]:
+        """Fit the Parallel + Perpendicular projection matrices strictly on historical PIT data.
+
+        Args:
+            train_emb: `(N_train, D_in)` raw frozen encoder hidden states (`<= t_cutoff`).
+            train_anchor_targets: `(N_train, D/2)` fundamental & multi-horizon anchor targets.
+            train_surprise_targets: `(N_train, D/2)` residual surprise targets.
+            train_hype_nuisance: `(N_train, K_hype)` retail hype nuisance variables.
+            sample_weights: Optional `(N_train,)` inverse cell-density weights from `panel_balance`.
+        """
+        x = train_emb.float()
+        n_samples, d_in = x.shape
+        if sample_weights is None:
+            w = torch.ones(n_samples, 1, dtype=torch.float32, device=x.device)
+        else:
+            w = sample_weights.float().view(-1, 1).to(x.device)
+            w = w / torch.clamp(w.mean(), min=1e-8)
+
+        mu_x = (x * w).sum(dim=0, keepdim=True) / torch.clamp(w.sum(), min=1e-8)
+        xc = x - mu_x
+        sqrt_w = torch.sqrt(torch.clamp(w, min=1e-6))
+        xw = xc * sqrt_w
+
+        eye = torch.eye(d_in, dtype=torch.float32, device=x.device)
+        cov = (xw.T @ xw) / float(max(n_samples, 1)) + self.ridge_lambda * eye
+
+        # 1. Parallel Subspace (Channels 0..7): Weighted ridge onto fundamental/return anchors
+        y_par = (train_anchor_targets.float().to(x.device) * sqrt_w)
+        rhs_par = (xw.T @ y_par) / float(max(n_samples, 1))
+        w_par = torch.linalg.solve(cov, rhs_par)
+
+        # 2. Identify Nuisance Directions in Embedding Space & Gram-Schmidt Project Out
+        h_nuis = train_hype_nuisance.float().to(x.device)
+        h_nuis = (h_nuis - h_nuis.mean(dim=0, keepdim=True)) * sqrt_w
+        hype_dirs = (xw.T @ h_nuis) / float(max(n_samples, 1))
+        if torch.norm(hype_dirs) > 1e-6:
+            q_hype, _ = torch.linalg.qr(hype_dirs, mode="reduced")  # (D_in, K_hype)
+            xw_orth = xw - (xw @ q_hype) @ q_hype.T
+            cov_orth = (xw_orth.T @ xw_orth) / float(max(n_samples, 1)) + self.ridge_lambda * eye
+            y_surp = (train_surprise_targets.float().to(x.device) * sqrt_w)
+            rhs_perp = (xw_orth.T @ y_surp) / float(max(n_samples, 1))
+            w_prp = torch.linalg.solve(cov_orth, rhs_perp)
+            # Enforce exact orthogonality to the nuisance basis Q_hype
+            w_prp = w_prp - q_hype @ (q_hype.T @ w_prp)
+            cos_orth = float(torch.abs(F.normalize(w_par, dim=0).T @ q_hype).max().item())
+            cos_perp_hype = float(torch.abs(F.normalize(w_prp, dim=0).T @ q_hype).max().item())
+        else:
+            q_hype = torch.zeros(d_in, self.hype_basis.shape[1], device=x.device)
+            y_surp = (train_surprise_targets.float().to(x.device) * sqrt_w)
+            rhs_perp = (xw.T @ y_surp) / float(max(n_samples, 1))
+            w_prp = torch.linalg.solve(cov, rhs_perp)
+            cos_orth = 0.0
+            cos_perp_hype = 0.0
+
+        self.mean_x.copy_(mu_x)
+        self.w_parallel.copy_(w_par)
+        self.w_perp.copy_(w_prp)
+        if q_hype.shape[1] == self.hype_basis.shape[1]:
+            self.hype_basis.copy_(q_hype)
+        self.is_fitted.fill_(True)
+
+        return {
+            "n_train_pit": int(n_samples),
+            "max_cos_parallel_hype": round(cos_orth, 6),
+            "max_cos_perp_hype": round(cos_perp_hype, 6),
+        }
+
+    def forward(self, raw_emb: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Project 768D frozen encoder embeddings into the 16D [Parallel | Perp] PIT alpha space."""
+        xc = raw_emb.float() - self.mean_x.to(raw_emb.device)
+        z_par = torch.tanh(xc @ self.w_parallel.to(raw_emb.device))
+        z_perp = torch.tanh(xc @ self.w_perp.to(raw_emb.device))
+        out_16d = torch.cat([z_par, z_perp], dim=-1)
+        return out_16d, {
+            "z_parallel": z_par,
+            "z_perp": z_perp,
+        }
+
+
+class MultiHorizonRegimeGatedMoOOperator(nn.Module):
+    """Direction A (`Gen-4`): Multi-Horizon Regime-Gated Mixture-of-Operators (`MoO`) Family.
+
+    Co-evolves the Operator Family across three complementary return horizons (`1d`, `5d`, `20d`)
+    coupled with a strictly causal Point-in-Time Regime Gate (`regime-detection` & `position-sizing-kelly`):
+      - Expert 1 (`O_1d_micro`): Short-term microstructure liquidity replenishment & retail
+        overreaction reversal operator.
+      - Expert 2 (`O_5d_gen3_mera`): Medium-term `Gen-3` Streaming Woodbury-Fisher operator
+        augmented with `Direction B` Bilingual `MerA-PIT` aligned text embeddings (`FinBERT` +
+        `Chinese-RoBERTa`).
+      - Expert 3 (`O_20d_inst`): Long-term low-turnover institutional smart-money (`Northbound` +
+        fundamental value/illiquidity) operator.
+      - Causal Regime Gate (`G_regime`): Computes 3-state regime probabilities
+        `pi_t = [pi_calm, pi_trend, pi_crisis]` strictly from date-`t` observable macro/volatility
+        dispersion (`vix_z30`, cross-sectional `parkinson_volatility`, `|us10y_change_1d|`) and
+        applies a causal volatility-targeting drawdown damper `gamma_dd(s_t)` during crisis stress.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int = 16,
+        kc_dim: int = 64,
+        top_k_kc: int = 8,
+        tau: float = 2.5,
+        c_stein: float = 0.28,
+    ) -> None:
+        super().__init__()
+        self.embed_dim = int(embed_dim)
+        self.pooler = ValueSpaceBoundedESSOperator(embed_dim=embed_dim, tau=tau)
+        self.woodbury_fisher = StreamingWoodburyFisherOperator(
+            embed_dim=embed_dim,
+            kc_dim=kc_dim,
+            top_k_kc=top_k_kc,
+            tau=tau,
+            c_stein=c_stein,
+        )
+
+    @staticmethod
+    def compute_causal_regime_gate(
+        vix_z30: torch.Tensor,
+        parkinson_vol: torch.Tensor,
+        us10y_change_abs: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Compute strictly causal 3-state regime simplex `[pi_calm, pi_trend, pi_crisis]` and drawdown damper.
+
+        All inputs are observed at or before date `t` (zero look-ahead).
+        """
+        vz = vix_z30.float().view(-1, 1)
+        pvol = parkinson_vol.float().view(-1, 1)
+        rate_shk = us10y_change_abs.float().view(-1, 1)
+
+        stress_index = 0.50 * torch.clamp(vz, -2.0, 4.0) + 0.35 * (
+            (pvol - 0.022) / 0.015
+        ) + 0.15 * torch.clamp(rate_shk / 0.05, 0.0, 3.0)
+
+        logit_calm = -1.10 * stress_index + 0.35
+        logit_trend = 0.25 - 0.35 * torch.abs(stress_index - 0.20)
+        logit_crisis = 1.25 * stress_index - 0.45
+
+        logits = torch.cat([logit_calm, logit_trend, logit_crisis], dim=-1)
+        pi_regime = F.softmax(logits, dim=-1)  # (B, 3): [calm, trend, crisis]
+
+        # Causal Kelly/Vol-Targeting drawdown damper in [0.58, 1.00]
+        pi_crisis = pi_regime[:, 2:3]
+        gamma_dd = 1.0 - 0.42 * pi_crisis
+        return pi_regime, gamma_dd
+
+    def forward(
+        self,
+        seq_social_emb: torch.Tensor,
+        salience_logits: torch.Tensor,
+        burst_block_sizes: torch.Tensor,
+        announcement_prior_emb: torch.Tensor,
+        eff_sample_count: torch.Tensor,
+        jev_calibrated_prob: torch.Tensor,
+        volatility_gate_mask: torch.Tensor,
+        mera_bilingual_emb: Optional[torch.Tensor] = None,
+        micro_reversal_emb: Optional[torch.Tensor] = None,
+        inst_long_emb: Optional[torch.Tensor] = None,
+        vix_z30: Optional[torch.Tensor] = None,
+        parkinson_vol: Optional[torch.Tensor] = None,
+        us10y_change_abs: Optional[torch.Tensor] = None,
+        noise_var: float = 0.35,
+    ) -> Dict[str, torch.Tensor]:
+        """Execute the Gen-4 Multi-Horizon Regime-Gated MoO forward pass."""
+        pooled_soc, pool_diag = self.pooler(
+            seq_embeddings=seq_social_emb,
+            salience_logits=salience_logits,
+            burst_block_sizes=burst_block_sizes,
+        )
+        raw_pooled_soc = pool_diag["raw_pooled"]
+
+        # Innovation-invariant injection of Direction B Bilingual MerA-PIT text representation
+        if mera_bilingual_emb is not None:
+            mera_e = mera_bilingual_emb.to(dtype=raw_pooled_soc.dtype, device=raw_pooled_soc.device)
+            soc_input = raw_pooled_soc + 0.20 * mera_e
+            prior_input = announcement_prior_emb + 0.20 * mera_e
+        else:
+            soc_input = raw_pooled_soc
+            prior_input = announcement_prior_emb
+
+        # Expert 2 (5d Medium-Horizon Core): Gen-3 Woodbury-Fisher + MerA-PIT
+        o_5d, champ_diag = self.woodbury_fisher(
+            social_emb=soc_input,
+            announcement_prior_emb=prior_input,
+            eff_sample_count=eff_sample_count,
+            jev_calibrated_prob=jev_calibrated_prob,
+            volatility_gate_mask=volatility_gate_mask,
+            noise_var=noise_var,
+            update_covariance=True,
+        )
+
+        inv_cov_mat = self.woodbury_fisher.inv_cov.to(dtype=o_5d.dtype, device=o_5d.device)
+
+        # Expert 1 (1d Short-Horizon Microstructure & Overreaction Reversal, Woodbury-calibrated)
+        if micro_reversal_emb is not None:
+            o_1d = micro_reversal_emb.to(dtype=o_5d.dtype, device=o_5d.device) @ inv_cov_mat
+        else:
+            o_1d = prior_input @ inv_cov_mat
+
+        # Expert 3 (20d Long-Horizon Institutional Smart-Money & Value, Woodbury-calibrated)
+        if inst_long_emb is not None:
+            o_20d = inst_long_emb.to(dtype=o_5d.dtype, device=o_5d.device) @ inv_cov_mat
+        else:
+            o_20d = prior_input @ inv_cov_mat
+
+        if vix_z30 is not None and parkinson_vol is not None and us10y_change_abs is not None:
+            pi_regime, gamma_dd = self.compute_causal_regime_gate(
+                vix_z30=vix_z30,
+                parkinson_vol=parkinson_vol,
+                us10y_change_abs=us10y_change_abs,
+            )
+            pi_regime = pi_regime.to(dtype=o_5d.dtype, device=o_5d.device)
+            gamma_dd = gamma_dd.to(dtype=o_5d.dtype, device=o_5d.device)
+        else:
+            b_sz = o_5d.shape[0]
+            pi_regime = torch.tensor([[0.50, 0.35, 0.15]], device=o_5d.device, dtype=o_5d.dtype).expand(b_sz, 3)
+            gamma_dd = torch.ones(b_sz, 1, device=o_5d.device, dtype=o_5d.dtype)
+
+        pi_calm = pi_regime[:, 0:1]
+        pi_trend = pi_regime[:, 1:2]
+        pi_crisis = pi_regime[:, 2:3]
+
+        # Regime-gated multi-horizon operator mixture (rank-preserving across cross-section)
+        rep_calm = 0.18 * o_1d + 0.62 * o_5d + 0.20 * o_20d
+        rep_trend = 0.12 * o_1d + 0.56 * o_5d + 0.32 * o_20d
+        rep_crisis = 0.24 * o_1d + 0.42 * o_5d + 0.34 * o_20d
+
+        blended_rep = pi_calm * rep_calm + pi_trend * rep_trend + pi_crisis * rep_crisis
+
+        return {
+            "representation": blended_rep,
+            "rep_1d": o_1d,
+            "rep_5d": o_5d,
+            "rep_20d": o_20d,
+            "pi_regime": pi_regime,
+            "gamma_dd": gamma_dd,
+            "ess": pool_diag["ess"],
+            "alpha_d": champ_diag["alpha_d"],
+            "fisher_gate": champ_diag["fisher_gate"],
+            "kc_sparse_features": champ_diag["kc_sparse_features"],
+        }
+
+
 def evaluate_rsi_pareto_gate(
     summary_data: Mapping[str, Any] | pathlib.Path | str,
     primary_metric: str = "mean_daily_rank_ic",
@@ -808,6 +1095,8 @@ def evaluate_rsi_pareto_gate(
 
 
 __all__ = [
+    "BilingualMerAPITProjector",
+    "MultiHorizonRegimeGatedMoOOperator",
     "REGISTERED_FIN_RSI_SEEDS",
     "StreamingWoodburyFisherOperator",
     "SubspacePrecisionSteinOperator",
