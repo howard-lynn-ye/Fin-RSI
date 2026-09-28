@@ -9,6 +9,8 @@ import torch
 
 from fin_skills.fin_rsi import (
     BilingualMerAPITProjector,
+    CrossBoardBarraResidualMoOOperator,
+    FinRSIFamily,
     MultiHorizonRegimeGatedMoOOperator,
     REGISTERED_FIN_RSI_SEEDS,
     StreamingWoodburyFisherOperator,
@@ -326,3 +328,66 @@ def test_direction_a_multi_horizon_regime_gated_moo_operator() -> None:
     assert out["gamma_dd"][-1, 0] < out["gamma_dd"][0, 0]
 
 
+def test_gen5_cross_board_barra_residual_moo_operator() -> None:
+    torch.manual_seed(20260925)
+    op = CrossBoardBarraResidualMoOOperator(
+        embed_dim=16, kc_dim=64, top_k_kc=8, barra_neutralization_strength=0.22
+    )
+    b_sz, seq_len, dim = 12, 8, 16
+    seq_soc = torch.randn(b_sz, seq_len, dim, requires_grad=True)
+    logits = torch.randn(b_sz, seq_len, requires_grad=True)
+    bursts = torch.ones(b_sz, seq_len)
+    ann_prior = torch.randn(b_sz, dim)
+    eff_n = torch.full((b_sz, 1), 4.0)
+    probs = torch.full((b_sz, 1), 0.6)
+    v_mask = torch.ones(b_sz, 1)
+    board_ids = torch.tensor([0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2], dtype=torch.int64).unsqueeze(-1)
+    lim_prox = torch.linspace(0.0, 0.9, b_sz).unsqueeze(-1)
+    style_nuis = torch.randn(b_sz, 2)
+
+    out = op(
+        seq_social_emb=seq_soc,
+        salience_logits=logits,
+        burst_block_sizes=bursts,
+        announcement_prior_emb=ann_prior,
+        eff_sample_count=eff_n,
+        jev_calibrated_prob=probs,
+        volatility_gate_mask=v_mask,
+        board_type_id=board_ids,
+        limit_proximity=lim_prox,
+        style_nuisance_factors=style_nuis,
+    )
+    assert out["representation"].shape == (b_sz, dim)
+    assert out["limit_damper"].shape == (b_sz, 1)
+    assert out["limit_damper"][-1, 0] < out["limit_damper"][0, 0]
+
+    loss = out["representation"].pow(2).sum()
+    loss.backward()
+    assert logits.grad is not None
+    assert float(logits.grad.norm().item()) > 1e-4
+
+
+def test_fin_rsi_family_presets_and_live_scoring() -> None:
+    import numpy as np
+
+    rng = np.random.default_rng(20260923)
+    seq_15 = rng.normal(0.0, 0.08, size=(20, 15)).astype(np.float32)
+
+    for preset, expected_gen in (("nano", "gen3"), ("base", "gen4"), ("pro", "gen5")):
+        fam = FinRSIFamily.from_preset(preset=preset)
+        meta = fam.describe()
+        assert meta["preset"] == preset
+        assert meta["generation"] == expected_gen
+
+        for sym in ("SH600036", "SZ300729", "BEKE"):
+            res = fam.score_live_symbol(
+                symbol=sym,
+                features_seq=seq_15,
+                base_onnx_p_up=0.56,
+                kol_sentiment=0.70,
+            )
+            assert 0.10 <= res["p_up"] <= 0.90
+            assert 0.10 <= res["p_up_1d"] <= 0.90
+            assert 0.10 <= res["p_up_20d"] <= 0.90
+            assert res["sequence_ess"] >= 1.0
+            assert 0.50 <= res["gamma_dd"] <= 1.05
