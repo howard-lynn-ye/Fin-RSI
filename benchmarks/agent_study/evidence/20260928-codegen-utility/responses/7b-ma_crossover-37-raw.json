@@ -1,0 +1,19 @@
+{
+  "id": "7b-ma_crossover-37-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest possible row (t=20)\n    for t in range(long_window, len(prices)):\n        # Extract the last 'short_window' and 'long_window' adjusted prices\n        short_prices = adjusted_prices.iloc[t-short_window:t]\n        long_prices = adjusted_prices.iloc[t-long_window:t]\n        \n        # Compute the mean of the last 'short_window' and 'long_window' adjusted prices\n        short_mean = short_prices.mean()\n        long_mean = long_prices.mean()\n        \n        # Compute the difference between the two means\n        diff = short_mean - long_mean\n        \n        # If the difference is non-zero, set the weight to diff / 4\n        if diff != 0:\n            weights.iloc[t] = diff / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted prices by multiplying the raw prices with the split factors. It then iterates over the DataFrame, computing the rolling means for the last 5 and 20 days for each asset. The difference between these means is used to determine the weight, divided by 4. The weights are initialized to zero and updated only when the difference is non-zero."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10728,
+      "completion_tokens": 370,
+      "total_tokens": 11098
+    },
+    "generation_seconds": 5.500108370091766
+  }
+}

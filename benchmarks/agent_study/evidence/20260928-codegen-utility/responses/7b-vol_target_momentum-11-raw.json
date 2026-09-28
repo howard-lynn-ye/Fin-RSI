@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-11-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure inputs are pandas DataFrames\n    if not isinstance(prices, pd.DataFrame) or not isinstance(split_factors, pd.DataFrame):\n        raise ValueError(\"Both prices and split_factors must be pandas DataFrames.\")\n    \n    # Ensure both DataFrames have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns.\")\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Calculate the number of days to look back for the sample standard deviation\n    lookback_days = 20\n    \n    # Iterate over the DataFrame starting from day 21 (index 20)\n    for t in range(lookback_days, len(prices)):\n        # Extract the relevant prices and split factors for the current day and the previous day\n        prices_t = prices.iloc[t]\n        prices_t_minus_1 = prices.iloc[t - 1]\n        split_factors_t = split_factors.iloc[t]\n        \n        # Calculate the adjusted close prices\n        adj_close_t = prices_t * split_factors_t\n        adj_close_t_minus_1 = prices_t_minus_1 * split_factors_t\n        \n        # Calculate the momentum signal\n        momentum_signal = np.sign(adj_close_t / adj_close_t_minus_1 - 1)\n        \n        # Calculate the sample standard deviation of the last 20 simple returns\n        returns = (adj_close_t / adj_close_t_minus_1).pct_change().dropna()\n        std_dev = returns.std(ddof=1)\n        \n        # Calculate the scaling factor\n        scaling_factor = min(1, 0.10 / (std_dev * np.sqrt(252)))\n        \n        # Assign the weight to the current day\n        weights.iloc[t] = momentum_signal * scaling_factor / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function ensures that the input DataFrames are valid and have the same shape and columns. It initializes a DataFrame of zeros for the weights and iterates over the DataFrame starting from day 21 (index 20) to calculate the weights based on the momentum signal and the sample standard deviation of the last 20 simple returns. The weights are then returned as a pandas DataFrame."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10805,
+      "completion_tokens": 547,
+      "total_tokens": 11352
+    },
+    "generation_seconds": 13.141942214686424
+  }
+}

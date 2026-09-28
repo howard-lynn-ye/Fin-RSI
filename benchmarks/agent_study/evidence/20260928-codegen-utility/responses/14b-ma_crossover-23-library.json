@@ -1,0 +1,19 @@
+{
+  "id": "14b-ma_crossover-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Calculate adjusted prices\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    fast_window = 5\n    slow_window = 20\n    \n    # Iterate over the DataFrame starting from the 20th row\n    for i in range(slow_window, len(adjusted_prices)):\n        # Calculate the mean of the last 5 and last 20 adjusted closes\n        mean_fast = adjusted_prices.iloc[i-fast_window:i].mean()\n        mean_slow = adjusted_prices.iloc[i-slow_window:i].mean()\n        \n        # Compute the signal\n        signal = (mean_fast - mean_slow).apply(np.sign)\n        \n        # Assign weights\n        weights.iloc[i] = signal / 4\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11650,
+      "completion_tokens": 210,
+      "total_tokens": 11860
+    },
+    "generation_seconds": 15.415949193760753
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "7b-cross_sectional_momentum-37-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period: first 60 days\n    for t in range(60, len(prices)):\n        # Calculate simple returns for the last 60 days\n        returns = (adjusted_prices.iloc[t] / adjusted_prices.iloc[t-60]) - 1\n        \n        # Sort assets by return in descending order\n        sorted_indices = returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if returns[sorted_indices[0]] > 0:\n            weights.loc[prices.index[t], sorted_indices[0]] = 0.5\n        if returns[sorted_indices[1]] > 0:\n            weights.loc[prices.index[t], sorted_indices[1]] = 0.5\n    \n    return weights\n```\n\nThis function calculates the forward-adjusted close prices using the provided `prices` and `split_factors`. It then computes the simple returns for each asset over the past 60 days and ranks them in descending order. For each day starting from day 61, it assigns equal weights (0.5) to the top two assets with positive momentum, leaving the rest in cash (weight 0). The resulting weights are returned as a DataFrame with the same index and columns as the input `prices`."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10726,
+      "completion_tokens": 374,
+      "total_tokens": 11100
+    },
+    "generation_seconds": 5.900314727798104
+  }
+}

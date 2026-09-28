@@ -1,0 +1,19 @@
+{
+  "id": "7b-diagonal_risk_parity-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(returns), index=returns.index, columns=returns.columns)\n    \n    # Apply the diagonal risk parity rule starting from day 61\n    for t in range(60, len(returns)):\n        # Get the last 60 returns up to day t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize inverse standard deviations to sum to 1\n        weights.iloc[t] = inv_std_devs / inv_std_devs.sum()\n    \n    return weights\n```\n\nThis function `solve` takes two pandas DataFrames, `prices` and `split_factors`, and computes the diagonal risk parity weights based on the specified rules. It first adjusts the prices using the split factors, calculates the simple returns, initializes a DataFrame for weights with zeros, and then iteratively applies the diagonal risk parity rule starting from day 61. The weights are normalized such that their sum equals 1 for each time step."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11653,
+      "completion_tokens": 296,
+      "total_tokens": 11949
+    },
+    "generation_seconds": 4.558005421888083
+  }
+}

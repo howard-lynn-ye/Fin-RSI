@@ -1,0 +1,19 @@
+{
+  "id": "14b-diagonal_risk_parity-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0, index=prices.index, columns=prices.columns)\n    \n    # Apply diagonal risk parity for each session t >= 61\n    for t in range(60, len(returns)):\n        # Get the 60 simple returns ending at t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize inverse standard deviations to sum to 1\n        normalized_weights = inv_std_devs / inv_std_devs.sum()\n        \n        # Assign weights to the current day\n        weights.iloc[t] = normalized_weights\n    \n    return weights\n\n# Example usage:\n# prices_df = pd.DataFrame(prices, index=dates, columns=assets)\n# factors_df = pd.DataFrame(factors, index=dates, columns=assets)\n# weights_df = solve(prices_df, factors_df)\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames: `prices` and `split_factors`. It calculates the adjusted prices by applying the cumulative split factors, computes the simple returns, and then applies the diagonal risk parity method to determine the weights for each session starting from the 61st session. The weights are normalized such that they sum to 1 for each session."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10742,
+      "completion_tokens": 350,
+      "total_tokens": 11092
+    },
+    "generation_seconds": 25.900941215921193
+  }
+}

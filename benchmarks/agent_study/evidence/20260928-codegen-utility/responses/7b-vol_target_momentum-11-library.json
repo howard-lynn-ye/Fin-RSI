@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-11-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(daily_returns), index=daily_returns.index, columns=daily_returns.columns)\n    \n    # Warmup period\n    warmup_period = 21\n    \n    for t in range(warmup_period, len(daily_returns)):\n        for asset in daily_returns.columns:\n            # Calculate momentum signal\n            momentum = np.sign(daily_returns.iloc[t-1, daily_returns.columns.get_loc(asset)] / \n                               daily_returns.iloc[t-21, daily_returns.columns.get_loc(asset)] - 1)\n            \n            # Calculate sample standard deviation of last 20 returns\n            std_dev = daily_returns.iloc[t-20:t, daily_returns.columns.get_loc(asset)].std(ddof=1)\n            \n            # Calculate target exposure\n            target_exposure = min(1, 0.10 / (std_dev * np.sqrt(252)))\n            \n            # Assign weight\n            weights.iloc[t, daily_returns.columns.get_loc(asset)] = momentum * target_exposure / 4\n    \n    return weights\n```\n\nThis function calculates the weights based on the given formula. It first adjusts the prices for splits, computes the daily returns, initializes a weights DataFrame with zeros, and sets up a warmup period. For each day after the warmup period, it calculates the momentum signal, the sample standard deviation of the last 20 returns, and the target exposure. Finally, it assigns the weight to the corresponding asset and time step."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11716,
+      "completion_tokens": 369,
+      "total_tokens": 12085
+    },
+    "generation_seconds": 30.47511379700154
+  }
+}

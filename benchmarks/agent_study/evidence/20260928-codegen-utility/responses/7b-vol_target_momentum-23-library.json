@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate forward-adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Calculate returns for each asset\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate rolling standard deviation of returns\n    rolling_std = returns.rolling(window=20, ddof=1).std()\n    \n    # Calculate the momentum signal\n    momentum = np.sign((returns.shift(-1) - returns.shift(21)) / returns.shift(21))\n    \n    # Calculate the scaling factor based on rolling standard deviation\n    scaling_factor = np.minimum(1, 0.10 / (rolling_std * np.sqrt(252)))\n    \n    # Apply the momentum signal and scaling factor to get the weights\n    weights.iloc[21:] = momentum.iloc[21:] * scaling_factor.iloc[21:]\n    \n    # Normalize weights to ensure they sum to 1 for each row\n    weights.iloc[21:] /= weights.iloc[21:].sum(axis=1, keepdims=True)\n    \n    return weights\n```\n\nThis function calculates the forward-adjusted prices using the provided `prices` and `split_factors`. It then computes the returns for each asset, calculates the rolling standard deviation of these returns over a window of 20 days, and determines the momentum signal based on the difference between the returns at time `t-1` and `t-21`, normalized by the return at `t-21`.\n\nThe scaling factor is calculated as the minimum of 1 and 0.10 divided by the product of the rolling standard deviation and the square root of 252 (to annualize the standard deviation).\n\nFinally, the momentum signal is multiplied by the scaling factor to get the raw weights, which are then normalized so that they sum to 1 for each row, ensuring that the portfolio is fully invested.\n\nNote that the function initializes the weights DataFrame with zeros and skips the first 21 rows since there are not enough observations to calculate the momentum and rolling standard deviation for those rows."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11673,
+      "completion_tokens": 474,
+      "total_tokens": 12147
+    },
+    "generation_seconds": 9.84419416077435
+  }
+}

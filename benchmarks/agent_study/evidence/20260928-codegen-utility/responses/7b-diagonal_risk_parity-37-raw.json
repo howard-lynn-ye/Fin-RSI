@@ -1,0 +1,19 @@
+{
+  "id": "7b-diagonal_risk_parity-37-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Calculate the number of sessions to look back for returns\n    lookback = 60\n    \n    # Iterate over each asset and calculate the weights\n    for col in prices.columns:\n        for i in range(lookback, len(prices)):\n            # Get the last 'lookback' days of prices and split factors\n            sub_prices = prices.iloc[i-lookback:i+1, :][col]\n            sub_factors = split_factors.iloc[i-lookback:i+1, :][col]\n            \n            # Calculate the adjusted prices\n            adj_prices = sub_prices * sub_factors\n            \n            # Calculate the simple returns\n            returns = adj_prices.pct_change().dropna()\n            \n            # Calculate the inverse sample standard deviations\n            inv_std_devs = 1 / returns.std(ddof=1)\n            \n            # Normalize the inverse standard deviations to sum to 1\n            weights.loc[prices.index[i], col] = inv_std_devs / inv_std_devs.sum()\n    \n    return weights\n```\n\nThis function calculates the diagonal risk parity weights based on the given prices and split factors. It iterates over each asset and calculates the weights using the last 60 days of data. The weights are normalized such that they sum to 1. The function ensures that the input DataFrames have the same shape and columns before proceeding with the calculations."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10731,
+      "completion_tokens": 382,
+      "total_tokens": 11113
+    },
+    "generation_seconds": 23.879865798167884
+  }
+}

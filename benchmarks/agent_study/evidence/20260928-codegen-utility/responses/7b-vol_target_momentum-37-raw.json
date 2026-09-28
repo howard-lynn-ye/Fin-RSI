@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-37-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Calculate the rolling standard deviation for the last 20 days\n    std_devs = adjusted_prices.iloc[:-21].rolling(window=20, ddof=1).std()\n    \n    # Calculate the momentum indicator\n    momentum = (adjusted_prices.shift(-1) / adjusted_prices.shift(21)) - 1\n    \n    # Apply the formula to calculate weights\n    for col in prices.columns:\n        mask = ~np.isnan(momentum[col]) & ~np.isinf(momentum[col])\n        weights.loc[mask, col] = np.sign(momentum.loc[mask, col]) * \\\n                                  np.minimum(1, 0.10 / (std_devs.loc[mask, col] * np.sqrt(252))) / 4\n    \n    # Ensure weights are non-negative\n    weights = weights.clip(lower=0)\n    \n    # Set weights to zero for the first 20 days\n    weights.iloc[:20] = 0\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the forward-adjusted close prices, computes the rolling standard deviation over the last 20 days, and uses these values to determine the momentum indicator. It then applies the given formula to compute the weights, ensuring they are non-negative and setting them to zero for the first 20 days."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10751,
+      "completion_tokens": 374,
+      "total_tokens": 11125
+    },
+    "generation_seconds": 5.576182974036783
+  }
+}

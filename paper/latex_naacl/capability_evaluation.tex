@@ -1,8 +1,9 @@
 \section{Library evaluation: defects, execution, and numerical parity}
 \label{sec:capability_eval}
 We evaluate the financial library at three boundaries: detecting invalid research inputs,
-executing declared interfaces, and reproducing numerical references. Table~\ref{tab:core}
-summarizes the observed evidence. Each row has its own unit and denominator.
+executing declared interfaces, and reproducing numerical references; Section~\ref{sec:codegen}
+adds the code-generation audit (E4). Table~\ref{tab:core} summarizes the observed evidence.
+Each row has its own unit and denominator.
 
 \begin{table*}[t]
 \centering\small
@@ -23,6 +24,9 @@ Historical pilot; self-reported guard use is not an execution receipt \\
 E3: parity & Agreement with numerical references &
 \ParityPassed{}/\ParityCount{} checks within case-specific tolerances &
 Selected primitives; maximum absolute error $1.18\times10^{-8}$ \\
+E4: code & Valid first-submission programs &
+\CGOfficialValid/\CGPlanned{} pre-registered; \CGPostValid/\CGPlanned{} after post-hoc fence
+extraction & Two model sizes, four rules, three seeds; no library uptake \\
 \bottomrule
 \end{tabular}
 \caption{Core library evidence. Detection, executable completion, audit acceptance, and
@@ -63,6 +67,12 @@ or validation of all catalog entries.
 \paragraph{Auxiliary integrations.}
 The context and memory studies test optional consumers of the library's results.
 Their methods and outcomes appear in the appendices. The public FinQA RAG and reranking
-runs retain their original scores; frequent missing or malformed final answers prevent
-those low scores from isolating retrieval quality. Interface corrections require a new
-versioned comparison rather than retrospective replacement of the recorded grades.
+runs retain their original official scores (\FQLegacyTotal/\FQAnswers{} correct programs
+across six model and retrieval cells). A post-hoc reanalysis bound its target-blind
+extractions by hash before grading: accepting a single fenced answer adds no correct
+program, and counting explicit correct final numbers raises the total to
+\FQRecoverableTotal/\FQAnswers. That second count is not program accuracy. Of the
+\FQMistralAnswers{} Mistral answers, \FQMistralMissingTotal{} have no final answer, so
+format repair alone cannot isolate retrieval quality (Appendix~\ref{app:library}).
+Interface corrections require a new versioned comparison rather than retrospective
+replacement of the recorded grades.

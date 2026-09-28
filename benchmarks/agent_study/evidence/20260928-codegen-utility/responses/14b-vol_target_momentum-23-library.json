@@ -1,0 +1,19 @@
+{
+  "id": "14b-vol_target_momentum-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    \n    # Iterate over each row starting from the 21st row\n    for i in range(lookback, len(prices)):\n        for col in prices.columns:\n            # Calculate the 20-day simple returns\n            returns = adjusted_prices[col].iloc[i-lookback:i].pct_change().dropna()\n            \n            # Calculate the sample standard deviation of the returns\n            std_dev = returns.std(ddof=1)\n            \n            # Calculate the momentum signal\n            momentum_signal = np.sign(adjusted_prices[col].iloc[i-1] / adjusted_prices[col].iloc[i-lookback-1] - 1)\n            \n            # Calculate the weight\n            weight = momentum_signal * min(1, target_vol / (std_dev * np.sqrt(periods_per_year))) / 4\n            \n            # Assign the weight to the current row\n            weights.loc[prices.index[i], col] = weight\n    \n    return weights\n```\n\nThis function `solve` takes two pandas DataFrames, `prices` and `split_factors`, and computes the weights for each asset based on the specified volatility-targeted momentum strategy. The weights are calculated using the adjusted prices, which account for stock splits, and are returned as a DataFrame with the same index and columns as the input `prices`."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11673,
+      "completion_tokens": 373,
+      "total_tokens": 12046
+    },
+    "generation_seconds": 17.176844909787178
+  }
+}

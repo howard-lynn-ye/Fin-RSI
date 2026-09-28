@@ -1,0 +1,19 @@
+{
+  "id": "7b-cross_sectional_momentum-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape or not prices.index.equals(split_factors.index) or not prices.columns.equals(split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and index\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each date starting from the 61st day\n    for t in range(60, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        compounded_returns = (prices.iloc[t] / prices.iloc[t-60]) * (split_factors.iloc[t] / split_factors.iloc[t-60])\n        \n        # Sort the assets by their compounded returns in descending order\n        sorted_indices = compounded_returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with strictly positive momentum\n        if compounded_returns[sorted_indices[0]] > 0:\n            weights.loc[t, sorted_indices[0]] = 0.5\n        if compounded_returns[sorted_indices[1]] > 0:\n            weights.loc[t, sorted_indices[1]] = 0.5\n    \n    return weights\n```\n\nThis function calculates the compounded returns for each asset over the past 60 days, ranks them in descending order, and assigns weights of 0.5 to the top two assets with strictly positive momentum. The remaining assets receive a weight of 0. The function ensures that the input DataFrames have the same shape and index, and initializes the result DataFrame with zeros. It then iterates over each date starting from the 61st day, calculates the compounded returns, sorts the assets, and assigns the appropriate weights."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10737,
+      "completion_tokens": 397,
+      "total_tokens": 11134
+    },
+    "generation_seconds": 5.947607879061252
+  }
+}

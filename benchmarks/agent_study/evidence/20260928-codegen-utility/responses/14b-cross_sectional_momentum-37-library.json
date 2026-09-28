@@ -1,0 +1,19 @@
+{
+  "id": "14b-cross_sectional_momentum-37-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each date starting from the 61st day\n    for t in range(60, len(prices)):\n        # Get the last 60 days of returns up to t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Compound the returns\n        compounded_returns = (1 + recent_returns).prod()\n        \n        # Rank assets by compounded returns in descending order\n        ranked_assets = compounded_returns.sort_values(ascending=False)\n        \n        # Get the top two assets\n        top_two_assets = ranked_assets.head(2)\n        \n        # Assign weights to the top two assets\n        weights.loc[prices.index[t], top_two_assets.index] = 0.5\n        \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11637,
+      "completion_tokens": 243,
+      "total_tokens": 11880
+    },
+    "generation_seconds": 6.269236766733229
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "14b-cross_sectional_momentum-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 61st row\n    for i in range(60, len(prices)):\n        # Get the last 60 returns up to the previous day\n        recent_returns = returns.iloc[i-60:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + recent_returns).prod()\n        \n        # Rank the assets by compounded returns in descending order\n        ranked_assets = compounded_returns.sort_values(ascending=False)\n        \n        # Get the top two assets with positive momentum\n        top_two = ranked_assets[ranked_assets > 0].head(2)\n        \n        # Assign weights to the top two assets\n        if not top_two.empty:\n            weights.loc[prices.index[i], top_two.index] = 0.5 / len(top_two)\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10737,
+      "completion_tokens": 263,
+      "total_tokens": 11000
+    },
+    "generation_seconds": 6.574924668762833
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "7b-diagonal_risk_parity-11-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns for each column\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize an empty DataFrame to store weights\n    weights = pd.DataFrame(index=returns.index, columns=returns.columns)\n    \n    # Iterate over each date starting from the 61st day\n    for i in range(60, len(returns)):\n        # Get the last 60 returns for each asset\n        recent_returns = returns.iloc[i-60:i]\n        \n        # Calculate the inverse sample standard deviation (ddof=1)\n        inv_std_dev = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize the inverse standard deviations to sum to 1\n        weights.iloc[i] = inv_std_dev / inv_std_dev.sum()\n    \n    return weights\n```\n\nThis function calculates the diagonal risk parity weights based on the given prices and split factors. It first adjusts the prices using the split factors, then computes the simple returns for each asset. For each date starting from the 61st day, it extracts the last 60 returns, calculates the inverse sample standard deviation, normalizes these values to sum to 1, and stores them as weights. The resulting weights DataFrame has the same index and columns as the input prices DataFrame."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11696,
+      "completion_tokens": 304,
+      "total_tokens": 12000
+    },
+    "generation_seconds": 4.633702939841896
+  }
+}

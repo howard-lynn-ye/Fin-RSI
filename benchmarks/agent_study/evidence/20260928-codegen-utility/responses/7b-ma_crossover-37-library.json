@@ -1,0 +1,19 @@
+{
+  "id": "7b-ma_crossover-37-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal\n    normalized_signal = signal / 4\n    \n    # Create a DataFrame with zeros for the first 20 rows\n    weights = pd.DataFrame(np.zeros_like(normalized_signal), index=prices.index, columns=prices.columns)\n    \n    # Assign the normalized signal starting from the 21st row\n    weights.iloc[20:] = normalized_signal.iloc[20:]\n    \n    return weights\n```\n\nThis function calculates the moving average crossover signal based on the given prices and split factors. It then normalizes this signal and assigns it to the weights DataFrame, ensuring that the earliest 20 rows are filled with zeros."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11639,
+      "completion_tokens": 229,
+      "total_tokens": 11868
+    },
+    "generation_seconds": 3.606225076597184
+  }
+}
