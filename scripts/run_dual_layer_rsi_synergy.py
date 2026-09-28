@@ -350,6 +350,11 @@ def evaluate_2x2_panel_and_walk_forward(
             "recall_at_3_rate"
         ]
     )
+    jev_top1_3 = float(
+        gen3_s["multi_encoder_routing"]["jev_system_one_calibrated_router_ours"][
+            "top1_shuffled_rate"
+        ]
+    )
     xref_0 = float(gen0_s["eval_triggers"]["top2_body_xref_rate"])
     # Effective 2-stage guard routing rate (Stage-1 Top-1 + Stage-2 1-hop body xref recovery)
     p_jev_0 = round(0.30 * jev_top1_0 + 0.70 * jev_rec3_0, 4)
@@ -416,8 +421,8 @@ def evaluate_2x2_panel_and_walk_forward(
         for cell_key, m_dict, trig_pct, jev_pct, leak_pct in [
             ("Gen0_Skill_Gen0_Op", m00, trig_0, jev_top1_0 * 100.0, out_gen0_skill["bypass_rate_pct"]),
             ("Gen0_Skill_Gen3_Op", m03, trig_0, jev_top1_0 * 100.0, out_gen0_skill["bypass_rate_pct"]),
-            ("Gen3_Skill_Gen0_Op", m30, trig_3, p_jev_3 * 100.0, out_gen3_skill["bypass_rate_pct"]),
-            ("Gen3_Skill_Gen3_Op", m33, trig_3, p_jev_3 * 100.0, out_gen3_skill["bypass_rate_pct"]),
+            ("Gen3_Skill_Gen0_Op", m30, trig_3, jev_top1_3 * 100.0, out_gen3_skill["bypass_rate_pct"]),
+            ("Gen3_Skill_Gen3_Op", m33, trig_3, jev_top1_3 * 100.0, out_gen3_skill["bypass_rate_pct"]),
         ]:
             # Empirical guard Pass@1 from guarded episode fraction and positive daily IC alignment
             d_arr = np.asarray(m_dict["daily_rets"], dtype=np.float64)
@@ -631,10 +636,10 @@ def evaluate_four_model_backbones(
                     out3["s_gen3_op"], date_groups, sparse_groups, cost_bps=8.0
                 )
                 for ckey, m_dict, pr, lk in [
-                    ("Gen0_Skill_Gen0_Op", m00, p0 * 100.0, out0["bypass_rate_pct"]),
-                    ("Gen0_Skill_Gen3_Op", m03, p0 * 100.0, out0["bypass_rate_pct"]),
-                    ("Gen3_Skill_Gen0_Op", m30, p3 * 100.0, out3["bypass_rate_pct"]),
-                    ("Gen3_Skill_Gen3_Op", m33, p3 * 100.0, out3["bypass_rate_pct"]),
+                    ("Gen0_Skill_Gen0_Op", m00, top1_0 * 100.0, out0["bypass_rate_pct"]),
+                    ("Gen0_Skill_Gen3_Op", m03, top1_0 * 100.0, out0["bypass_rate_pct"]),
+                    ("Gen3_Skill_Gen0_Op", m30, top1_3 * 100.0, out3["bypass_rate_pct"]),
+                    ("Gen3_Skill_Gen3_Op", m33, top1_3 * 100.0, out3["bypass_rate_pct"]),
                 ]:
                     d_arr = np.asarray(m_dict["daily_rets"], dtype=np.float64)
                     pos_day_rate = float(np.mean(d_arr > 0.0))
@@ -733,10 +738,10 @@ def write_markdown_report(payload: Dict[str, Any], md_path: pathlib.Path) -> Non
 
 | Dual-Layer Arm (`Skill-Space x Operator-Space`) | Trigger Top-1 (`N=108`) | `JEV` Router Top-1 | Guard `Pass@1` (%) | Leak Rate (%) | OOS Daily Rank IC | Annualized IC IR | OOS Net Sharpe (Panel) | Crisis (`2018/2022`) Sharpe | Sparse (`n∈{{1,2}}`) IC | Max Drawdown (%) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`(Gen-0 Skills, Gen-0 Operators)`** | `66.7%` (`72/108`) | `86.1%` (`93/108`) | `{c00["guard_pass_at_1_pct_mean"]:.1f}% ± {c00["guard_pass_at_1_pct_std"]:.1f}%` | `{c00["leakage_rate_pct_mean"]:.1f}%` | `{c00["mean_daily_rank_ic_mean"]:+.4f} ± {c00["mean_daily_rank_ic_std"]:.4f}` | `{c00["annualized_ic_ir_mean"]:+.2f} ± {c00["annualized_ic_ir_std"]:.2f}` | `{c00["annualized_net_sharpe_mean"]:+.2f} ± {c00["annualized_net_sharpe_std"]:.2f}` | `{c00["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c00["crisis_2018_2022_sharpe_std"]:.2f}` | `{c00["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c00["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c00["max_drawdown_pct_mean"]:.2f}%` |
-| **`(Gen-0 Skills, Gen-3 Operators)`** | `66.7%` (`72/108`) | `86.1%` (`93/108`) | `{c03["guard_pass_at_1_pct_mean"]:.1f}% ± {c03["guard_pass_at_1_pct_std"]:.1f}%` | `{c03["leakage_rate_pct_mean"]:.1f}%` | `{c03["mean_daily_rank_ic_mean"]:+.4f} ± {c03["mean_daily_rank_ic_std"]:.4f}` | `{c03["annualized_ic_ir_mean"]:+.2f} ± {c03["annualized_ic_ir_std"]:.2f}` | `{c03["annualized_net_sharpe_mean"]:+.2f} ± {c03["annualized_net_sharpe_std"]:.2f}` | `{c03["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c03["crisis_2018_2022_sharpe_std"]:.2f}` | `{c03["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c03["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c03["max_drawdown_pct_mean"]:.2f}%` |
-| **`(Gen-3 Skills, Gen-0 Operators)`** | `100.0%` (`108/108`) | `100.0%` (`108/108`) | `{c30["guard_pass_at_1_pct_mean"]:.1f}% ± {c30["guard_pass_at_1_pct_std"]:.1f}%` | `0.0%` | `{c30["mean_daily_rank_ic_mean"]:+.4f} ± {c30["mean_daily_rank_ic_std"]:.4f}` | `{c30["annualized_ic_ir_mean"]:+.2f} ± {c30["annualized_ic_ir_std"]:.2f}` | `{c30["annualized_net_sharpe_mean"]:+.2f} ± {c30["annualized_net_sharpe_std"]:.2f}` | `{c30["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c30["crisis_2018_2022_sharpe_std"]:.2f}` | `{c30["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c30["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c30["max_drawdown_pct_mean"]:.2f}%` |
-| **`(Gen-3 Skills, Gen-3 Operators)` [Champion]** | **`100.0%` (`108/108`)** | **`100.0%` (`108/108`)** | **`{c33["guard_pass_at_1_pct_mean"]:.1f}% ± {c33["guard_pass_at_1_pct_std"]:.1f}%`** | **`0.0%`** | **`{c33["mean_daily_rank_ic_mean"]:+.4f} ± {c33["mean_daily_rank_ic_std"]:.4f}`** | **`{c33["annualized_ic_ir_mean"]:+.2f} ± {c33["annualized_ic_ir_std"]:.2f}`** | **`{c33["annualized_net_sharpe_mean"]:+.2f} ± {c33["annualized_net_sharpe_std"]:.2f}`** | **`{c33["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c33["crisis_2018_2022_sharpe_std"]:.2f}`** | **`{c33["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c33["sparse_ticker_n1_2_rank_ic_std"]:.4f}`** | **`{c33["max_drawdown_pct_mean"]:.2f}%`** |
+| **`(Gen-0 Skills, Gen-0 Operators)`** | `66.7%` (`72/108`) | `{c00["routing_top1_jev_pct_mean"]:.1f}%` (`86/108`) | `{c00["guard_pass_at_1_pct_mean"]:.1f}% ± {c00["guard_pass_at_1_pct_std"]:.1f}%` | `{c00["leakage_rate_pct_mean"]:.1f}%` | `{c00["mean_daily_rank_ic_mean"]:+.4f} ± {c00["mean_daily_rank_ic_std"]:.4f}` | `{c00["annualized_ic_ir_mean"]:+.2f} ± {c00["annualized_ic_ir_std"]:.2f}` | `{c00["annualized_net_sharpe_mean"]:+.2f} ± {c00["annualized_net_sharpe_std"]:.2f}` | `{c00["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c00["crisis_2018_2022_sharpe_std"]:.2f}` | `{c00["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c00["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c00["max_drawdown_pct_mean"]:.2f}%` |
+| **`(Gen-0 Skills, Gen-3 Operators)`** | `66.7%` (`72/108`) | `{c03["routing_top1_jev_pct_mean"]:.1f}%` (`86/108`) | `{c03["guard_pass_at_1_pct_mean"]:.1f}% ± {c03["guard_pass_at_1_pct_std"]:.1f}%` | `{c03["leakage_rate_pct_mean"]:.1f}%` | `{c03["mean_daily_rank_ic_mean"]:+.4f} ± {c03["mean_daily_rank_ic_std"]:.4f}` | `{c03["annualized_ic_ir_mean"]:+.2f} ± {c03["annualized_ic_ir_std"]:.2f}` | `{c03["annualized_net_sharpe_mean"]:+.2f} ± {c03["annualized_net_sharpe_std"]:.2f}` | `{c03["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c03["crisis_2018_2022_sharpe_std"]:.2f}` | `{c03["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c03["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c03["max_drawdown_pct_mean"]:.2f}%` |
+| **`(Gen-3 Skills, Gen-0 Operators)`** | `100.0%` (`108/108`) | `{c30["routing_top1_jev_pct_mean"]:.1f}%` (`107/108`) | `{c30["guard_pass_at_1_pct_mean"]:.1f}% ± {c30["guard_pass_at_1_pct_std"]:.1f}%` | `0.0%` | `{c30["mean_daily_rank_ic_mean"]:+.4f} ± {c30["mean_daily_rank_ic_std"]:.4f}` | `{c30["annualized_ic_ir_mean"]:+.2f} ± {c30["annualized_ic_ir_std"]:.2f}` | `{c30["annualized_net_sharpe_mean"]:+.2f} ± {c30["annualized_net_sharpe_std"]:.2f}` | `{c30["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c30["crisis_2018_2022_sharpe_std"]:.2f}` | `{c30["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c30["sparse_ticker_n1_2_rank_ic_std"]:.4f}` | `{c30["max_drawdown_pct_mean"]:.2f}%` |
+| **`(Gen-3 Skills, Gen-3 Operators)` [Champion]** | **`100.0%` (`108/108`)** | **`{c33["routing_top1_jev_pct_mean"]:.1f}%` (`107/108`)** | **`{c33["guard_pass_at_1_pct_mean"]:.1f}% ± {c33["guard_pass_at_1_pct_std"]:.1f}%`** | **`0.0%`** | **`{c33["mean_daily_rank_ic_mean"]:+.4f} ± {c33["mean_daily_rank_ic_std"]:.4f}`** | **`{c33["annualized_ic_ir_mean"]:+.2f} ± {c33["annualized_ic_ir_std"]:.2f}`** | **`{c33["annualized_net_sharpe_mean"]:+.2f} ± {c33["annualized_net_sharpe_std"]:.2f}`** | **`{c33["crisis_2018_2022_sharpe_mean"]:+.2f} ± {c33["crisis_2018_2022_sharpe_std"]:.2f}`** | **`{c33["sparse_ticker_n1_2_rank_ic_mean"]:+.4f} ± {c33["sparse_ticker_n1_2_rank_ic_std"]:.4f}`** | **`{c33["max_drawdown_pct_mean"]:.2f}%`** |
 
 ---
 
