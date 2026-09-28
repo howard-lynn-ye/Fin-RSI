@@ -23,44 +23,42 @@ def test_audit_panel_balance_passes_on_balanced_panel():
     for t in [f"SYM{i:02d}" for i in range(10)]:
         for y in [2022, 2023, 2024]:
             for d in range(1, 6):
-                rows.append({"ticker": t, "timestamp": f"{y}-06-{d:02d}"})
+                rows.append({"symbol": t, "date": f"{y}-06-{d:02d}"})
     df = pd.DataFrame(rows)
     res = audit_panel_balance(df)
-    assert res["passed"] is True
-    assert res["n_companies"] == 10
-    assert res["n_years"] == 3
-    assert res["company_gini"] < 0.15
+    assert res.passed is True
+    assert res.n_entities == 10
+    assert res.n_years == 3
+    assert res.company_gini < 0.15
 
 
 def test_audit_panel_balance_fails_on_skewed_panel():
     # 1 ticker has 90 rows in 1 year; 2 tickers have 1 row
-    rows = [{"ticker": "MEGA", "timestamp": "2024-06-01"} for _ in range(90)]
-    rows.append({"ticker": "TINY1", "timestamp": "2020-01-01"})
-    rows.append({"ticker": "TINY2", "timestamp": "2021-01-01"})
+    rows = [{"symbol": "MEGA", "date": "2024-06-01"} for _ in range(90)]
+    rows.append({"symbol": "TINY1", "date": "2020-01-01"})
+    rows.append({"symbol": "TINY2", "date": "2021-01-01"})
     df = pd.DataFrame(rows)
-    res = audit_panel_balance(df, min_companies=5)
-    assert res["passed"] is False
-    assert len(res["violations"]) >= 2
+    res = audit_panel_balance(df)
+    assert res.passed is False
+    assert "IMBALANCED PANEL" in res.verdict
+    assert len(res.notes) >= 1
 
 
-def test_rebalance_company_year_panel_caps_cells_and_drops_sparse():
+def test_rebalance_company_year_panel_caps_cells_and_attaches_weights():
     rows = []
-    # 5 companies with 2 years and 20 rows per cell
     for i in range(5):
         for y in [2023, 2024]:
             for d in range(20):
-                rows.append({"ticker": f"GOOD{i}", "timestamp": f"{y}-03-{(d % 28) + 1:02d}", "val": d})
-    # 1 sparse company with only 1 year
-    rows.append({"ticker": "SPARSE", "timestamp": "2024-01-02", "val": 1})
+                rows.append({"symbol": f"GOOD{i}", "date": f"{y}-03-{(d % 28) + 1:02d}", "val": d})
     df = pd.DataFrame(rows)
 
-    rebalanced, report = rebalance_company_year_panel(
+    rebalanced = rebalance_company_year_panel(
         df,
-        max_per_company_year=5,
-        min_years_per_company=2,
-        min_obs_per_company=4,
-        min_companies_per_year=3,
+        entity_col="symbol",
+        time_col="date",
+        max_per_cell=5,
     )
-    assert "SPARSE" not in set(rebalanced["ticker"])
     assert len(rebalanced) == 5 * 2 * 5
-    assert report["after"]["passed"] is True
+    assert "normalized_year_balanced_weight" in rebalanced.columns
+    res = audit_panel_balance(rebalanced)
+    assert res.passed is True
