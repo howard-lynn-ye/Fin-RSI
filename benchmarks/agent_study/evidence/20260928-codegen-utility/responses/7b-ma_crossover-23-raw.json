@@ -1,0 +1,19 @@
+{
+  "id": "7b-ma_crossover-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted closing prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest nonzero-capable row (t=20)\n    for i in range(long_window, len(prices)):\n        for col in prices.columns:\n            # Calculate the mean of the last 'short_window' adjusted closes\n            short_mean = adjusted_prices.iloc[i-short_window+1:i+1, prices.columns.get_loc(col)].mean()\n            \n            # Calculate the mean of the last 'long_window' adjusted closes\n            long_mean = adjusted_prices.iloc[i-long_window+1:i+1, prices.columns.get_loc(col)].mean()\n            \n            # Compute the sign of the difference between the two means\n            signal = np.sign(short_mean - long_mean)\n            \n            # Divide the signal by 4 to get the weight\n            weights.at[prices.index[i], col] = signal / 4\n    \n    return weights\n```\n\nThis function calculates the adjusted closing prices using the provided `prices` and `split_factors`. It then computes the weights based on the moving average crossover strategy described in the task definition. The weights are initialized to zero and updated for each asset and time step where the required data is available. The function returns a DataFrame of weights with the same index and columns as the input `prices`."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10739,
+      "completion_tokens": 350,
+      "total_tokens": 11089
+    },
+    "generation_seconds": 5.255137281958014
+  }
+}

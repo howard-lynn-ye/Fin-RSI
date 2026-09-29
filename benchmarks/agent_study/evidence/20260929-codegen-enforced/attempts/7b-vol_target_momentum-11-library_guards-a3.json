@@ -1,0 +1,42 @@
+{
+  "id": "7b-vol_target_momentum-11-library_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal for each asset\n    momentum_signals = np.sign(daily_returns.shift(-21)) * np.minimum(1, 0.10 / (daily_returns.iloc[:, :20].std(ddof=1) * np.sqrt(252)))\n    \n    # Normalize the signals to sum to 1 for each row\n    weights = momentum_signals.div(momentum_signals.sum(axis=1), axis=0)\n    \n    # Ensure all weights are non-negative\n    weights = np.maximum(weights, 0)\n    \n    # Set the first 21 rows to zero since we don't have enough data to calculate momentum\n    weights.iloc[:21] = 0\n    \n    # Ensure the output has the same index and columns as the input\n    if not weights.index.equals(prices.index) or not weights.columns.equals(prices.columns):\n        raise ValueError(\"Output index/columns do not match input\")\n    \n    return weights\n```\n\nThis version of the code includes a check to ensure that the output DataFrame has the same index and columns as the input DataFrame. If there is a mismatch, it raises a `ValueError`. This should address the issue reported by the controller."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 12765,
+      "completion_tokens": 308,
+      "total_tokens": 13073
+    },
+    "generation_seconds": 8.953050409909338
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal for each asset\n    momentum_signals = np.sign(daily_returns.shift(-21)) * np.minimum(1, 0.10 / (daily_returns.iloc[:, :20].std(ddof=1) * np.sqrt(252)))\n    \n    # Normalize the signals to sum to 1 for each row\n    weights = momentum_signals.div(momentum_signals.sum(axis=1), axis=0)\n    \n    # Ensure all weights are non-negative\n    weights = np.maximum(weights, 0)\n    \n    # Set the first 21 rows to zero since we don't have enough data to calculate momentum\n    weights.iloc[:21] = 0\n    \n    # Ensure the output has the same index and columns as the input\n    if not weights.index.equals(prices.index) or not weights.columns.equals(prices.columns):\n        raise ValueError(\"Output index/columns do not match input\")\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-69c40xpz",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "Output index/columns do not match input",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 25, in solve\nValueError: Output index/columns do not match input\n"
+    },
+    "solve_seconds": 0.007343559060245752,
+    "library_calls": 0,
+    "controller_seconds": 3.8113061017356813
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nExecution failed: ValueError: Output index/columns do not match input\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 25, in solve\nValueError: Output index/columns do not match input\nReturn the complete corrected program."
+}

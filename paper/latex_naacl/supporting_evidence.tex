@@ -15,11 +15,11 @@ for post-delisting exposure, and recalculating performance under fixed transacti
 Oracle grades are generated after the submission receipt is saved and are never exposed
 to the agent during its decision turns.
 
-This oracle separates genuine investment skill from data leakage. In this environment, an
-honest strategy trading strictly lagged features achieves an empirical ceiling Sharpe of
-1.63. In contrast, look-ahead joins (e.g., using current-day closing prices before the
-close) produce inflated paper Sharpe ratios up to 71.5. Abnormally high backtest performance
-thus serves as an unambiguous signature of look-ahead leakage.
+The oracle tests whether allocations depend on unavailable information. The recorded
+latent-drift reference earns a sample net Sharpe of 1.63 with a one-day lag; this is a
+reference strategy, not a proved ceiling on attainable performance. Wrong-side joins can
+inflate reported performance, but a high Sharpe alone does not diagnose leakage.
+Dependency perturbations and availability-time checks establish the defect.
 
 \subsection{Validation benchmarks}
 \paragraph{Defect detection benchmark.}
@@ -61,11 +61,12 @@ relying on self-reported compliance.
 \paragraph{Social sentiment verification.}
 On 1.72 million financial posts across 2,521 social media accounts, raw uncalibrated sentiment
 scores exhibited negative out-of-sample rank correlation with subsequent asset returns
-($\text{Rank IC} = -0.0318$): blindly following social media sentiment lost money.
+($\text{Rank IC} = -0.0318$).
 By evaluating each account's historical prediction accuracy and applying Bayesian credibility
 weighting (including inverting signals from consistently inaccurate accounts), the out-of-sample
-correlation flipped to $+0.0104$. This demonstrates that unstructured text signals require
-empirical track-record verification before driving investment decisions.
+correlation was reported as $+0.0104$. These values are retained from the supplied summary
+fixture; row-level predictions and timestamp provenance were unavailable for independent
+reproduction. They are not verified trading-return results or core library evidence.
 
 \subsection{Four-condition audit feasibility}
 We evaluated models under four audit conditions: unassisted baseline (C0), text guidance
@@ -76,8 +77,8 @@ Table~\ref{tab:beacon_feasibility} presents results for Qwen2.5-Coder 14B under 
 constraints. The acceptance rate was 67\% under C0 and C1, 100\% under C2 (optional guards),
 and 0\% under C3 (mandatory audit), where runs reached the turn limit while attempting to fix
 all detected code defects. Mean token consumption under C3 was \BeaconFourteenCThreeMeanTokens{}
-compared to \BeaconFourteenCTwoMeanTokens{} under C2, showing that automated verification
-compels the agent to engage in substantially deeper code debugging before finalizing allocations.
+compared to \BeaconFourteenCTwoMeanTokens{} under C2. This records additional work without
+successful acceptance; token consumption alone does not establish better debugging.
 
 \begin{table*}[t]
 \centering\small

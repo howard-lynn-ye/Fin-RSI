@@ -1,0 +1,19 @@
+{
+  "id": "7b-ma_crossover-11-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted closing prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest possible row (t=20)\n    for i in range(long_window, len(prices)):\n        # Extract the last 'short_window' and 'long_window' adjusted prices for each asset\n        short_ma = adjusted_prices.iloc[i-short_window:i].mean()\n        long_ma = adjusted_prices.iloc[i-long_window:i].mean()\n        \n        # Compute the difference between the short and long moving averages\n        diff = short_ma - long_ma\n        \n        # Assign the sign of the difference divided by 4 to the corresponding weight\n        weights.iloc[i] = np.sign(diff) / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function that takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted closing prices using the provided split factors, then computes the simple moving averages for the last 5 and 20 days for each asset. It then calculates the difference between these moving averages and assigns the sign of this difference divided by 4 to the corresponding weight, ensuring that earlier rows are set to zero."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10782,
+      "completion_tokens": 335,
+      "total_tokens": 11117
+    },
+    "generation_seconds": 5.019277120009065
+  }
+}

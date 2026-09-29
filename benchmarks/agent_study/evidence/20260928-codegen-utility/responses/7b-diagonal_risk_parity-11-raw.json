@@ -1,0 +1,19 @@
+{
+  "id": "7b-diagonal_risk_parity-11-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure inputs are pandas DataFrames\n    if not isinstance(prices, pd.DataFrame) or not isinstance(split_factors, pd.DataFrame):\n        raise ValueError(\"Both prices and split_factors must be pandas DataFrames.\")\n    \n    # Ensure both DataFrames have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns.\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Calculate the number of sessions to look back for returns\n    lookback = 60\n    \n    # Iterate over each session starting from the 61st day\n    for t in range(lookback, len(prices)):\n        # Extract the relevant subset of prices and split factors\n        prices_subset = prices.iloc[t-lookback:t]\n        split_factors_subset = split_factors.iloc[t-lookback:t]\n        \n        # Calculate the adjusted prices using the split factors\n        adjusted_prices = prices_subset * split_factors_subset\n        \n        # Calculate the simple returns\n        returns = adjusted_prices.pct_change().dropna()\n        \n        # Calculate the inverse sample standard deviations (ddof=1)\n        inv_std_devs = 1 / returns.std(ddof=1)\n        \n        # Normalize the inverse standard deviations to sum to 1\n        weights.iloc[t] = inv_std_devs / inv_std_devs.sum()\n    \n    return weights\n```\n\nThis code defines the `solve` function that takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights based on the specified diagonal risk parity method. The function ensures that the inputs are valid pandas DataFrames with the same shape and columns. It then iterates over each session starting from the 61st day, calculates the adjusted prices using the split factors, computes the simple returns, and determines the inverse sample standard deviations. Finally, it normalizes these inverse standard deviations to sum to 1 and assigns them as the weights for that session."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10785,
+      "completion_tokens": 461,
+      "total_tokens": 11246
+    },
+    "generation_seconds": 13.14232624694705
+  }
+}

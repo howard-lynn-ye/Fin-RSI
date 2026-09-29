@@ -144,6 +144,47 @@ incorrect without such an exception. Model identities are given in the text.}
 \label{tab:finqa-rerank-final}
 \end{table}
 
+\paragraph{Frozen format reanalysis.}
+To test whether answer formatting alone explains these low scores, we re-scored the
+\FQAnswers{} saved RAG and reranking answers without regenerating any of them.
+Target-blind extractions were bound by hash before the official FinQA executor and gold
+labels were loaded, and the
+original official counts were reproduced first. Table~\ref{tab:finqa-format} keeps those
+program scores, adds the prospective single-fence parser, and separately counts a final
+answer as recoverable when the parsed program is correct or the final text states one
+unambiguous correct number. Percent signs are normalized; refusals, ambiguous scales, and
+missing answers stay failures, and no tool output replaces a missing final answer.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrr}
+\toprule
+Model & Condition & Official & Fence & Recov. & No final \\
+\midrule
+Qwen & RAG & \FQQwenRagLegacy & \FQQwenRagFence & \FQQwenRagRecoverable & \FQQwenRagMissing \\
+Qwen & BGE & \FQQwenBgeLegacy & \FQQwenBgeFence & \FQQwenBgeRecoverable & \FQQwenBgeMissing \\
+Qwen & Kev-4B & \FQQwenKevLegacy & \FQQwenKevFence & \FQQwenKevRecoverable & \FQQwenKevMissing \\
+Mistral & RAG & \FQMistralRagLegacy & \FQMistralRagFence & \FQMistralRagRecoverable &
+\FQMistralRagMissing \\
+Mistral & BGE & \FQMistralBgeLegacy & \FQMistralBgeFence & \FQMistralBgeRecoverable &
+\FQMistralBgeMissing \\
+Mistral & Kev-4B & \FQMistralKevLegacy & \FQMistralKevFence & \FQMistralKevRecoverable &
+\FQMistralKevMissing \\
+\bottomrule
+\end{tabular}
+\caption{Post-hoc FinQA format reanalysis (\FQQwenRagN{} questions per row). Official: original
+strict program correctness. Fence: single-fence parser. Recov.: recoverable correct final
+answer, which is not program or citation correctness.}
+\label{tab:finqa-format}
+\end{table}
+
+Relaxing the fence adds no correct program. Recoverable final answers exceed program
+correctness in \FQRecoveredExtra{} answers (\FQRecoveredExtraQwen{} from Qwen), and most
+Mistral answers never reach a final answer.
+Formatting is therefore one failure among several, not the explanation for the scores,
+and the reanalysis does not establish a retrieval or reranking gain.
+
 \paragraph{Interpretation and runtime limitation.}
 The reranking study does not demonstrate a Kev downstream-answer advantage.
 Answer-format and scoring exceptions dominate these runs. The original Mistral

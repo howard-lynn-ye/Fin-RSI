@@ -1,0 +1,38 @@
+{
+  "id": "7b-cross_sectional_momentum-23-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the data starting from the 61st day\n    for t in range(60, len(prices)):\n        # Get the prices and factors for the current day and the previous 60 days\n        current_prices = adjusted_prices.iloc[t]\n        previous_prices = adjusted_prices.iloc[t-60:t]\n        \n        # Calculate the simple returns for the previous 60 days\n        simple_returns = (previous_prices - previous_prices.shift(1)) / previous_prices.shift(1)\n        \n        # Compound the simple returns to get the total return for the previous 60 days\n        total_return = (simple_returns + 1).prod()\n        \n        # Rank the assets by their total return in descending order\n        rank = (-total_return).rank(method='min')\n        \n        # Identify the top two assets with positive momentum\n        top_two_assets = rank <= 2\n        \n        # Assign equal weight (0.5) to the top two assets\n        weights.iloc[t][top_two_assets] = 0.5\n        \n        # Ensure the sum of weights for each asset does not exceed 1\n        weights.iloc[t] /= weights.iloc[t].sum()\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames `prices` and `split_factors` as input and returns a DataFrame of weights. The function calculates the forward-adjusted close prices, initializes a DataFrame of weights with zeros, and iterates over the data starting from the 61st day. For each day, it calculates the simple returns for the previous 60 days, compounds them to get the total return, ranks the assets by their total return in descending order, identifies the top two assets with positive momentum, assigns equal weight (0.5) to these assets, and ensures the sum of weights for each asset does not exceed 1."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10772,
+      "completion_tokens": 497,
+      "total_tokens": 11269
+    },
+    "generation_seconds": 13.20018124114722
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the data starting from the 61st day\n    for t in range(60, len(prices)):\n        # Get the prices and factors for the current day and the previous 60 days\n        current_prices = adjusted_prices.iloc[t]\n        previous_prices = adjusted_prices.iloc[t-60:t]\n        \n        # Calculate the simple returns for the previous 60 days\n        simple_returns = (previous_prices - previous_prices.shift(1)) / previous_prices.shift(1)\n        \n        # Compound the simple returns to get the total return for the previous 60 days\n        total_return = (simple_returns + 1).prod()\n        \n        # Rank the assets by their total return in descending order\n        rank = (-total_return).rank(method='min')\n        \n        # Identify the top two assets with positive momentum\n        top_two_assets = rank <= 2\n        \n        # Assign equal weight (0.5) to the top two assets\n        weights.iloc[t][top_two_assets] = 0.5\n        \n        # Ensure the sum of weights for each asset does not exceed 1\n        weights.iloc[t] /= weights.iloc[t].sum()\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-o4gy3uou",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "4eb538facd340cc90ddcaa3dcb700c756aef98974999174165aff7734d4065f4",
+    "solve_seconds": 0.061410197988152504,
+    "library_calls": 0,
+    "controller_seconds": 3.7061618007719517
+  },
+  "accepted": true,
+  "feedback": null
+}

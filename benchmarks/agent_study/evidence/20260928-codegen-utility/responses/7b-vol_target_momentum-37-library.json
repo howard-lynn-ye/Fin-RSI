@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-37-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(daily_returns), index=daily_returns.index, columns=daily_returns.columns)\n    \n    # Warmup period\n    warmup_period = 21\n    \n    # Calculate rolling standard deviation of returns over the last 20 days\n    rolling_std = daily_returns.rolling(window=20, min_periods=1).std(ddof=1)\n    \n    # Calculate the target momentum signal\n    momentum_signal = np.sign(daily_returns.shift(-1) / daily_returns - 1)\n    \n    # Apply the volatility targeting factor\n    volatility_factor = np.minimum(1, 0.10 / (rolling_std * np.sqrt(252)))\n    \n    # Calculate the final weights\n    weights.iloc[warmup_period:] = momentum_signal.iloc[warmup_period:] * volatility_factor.iloc[warmup_period:] / 4\n    \n    return weights\n```\n\nThis function first adjusts the prices for splits using the provided `split_factors`. It then calculates the daily returns of these adjusted prices. A DataFrame of weights is initialized with zeros. The function applies a warm-up period of 21 days during which all weights are set to zero. For the remaining periods, it computes the rolling standard deviation of the returns over the last 20 days. Using this standard deviation, it calculates a volatility targeting factor. The momentum signal is computed as the sign of the return from one day ago divided by the return two days ago minus one. Finally, the weights are calculated by multiplying the momentum signal by the volatility targeting factor and dividing by 4. The resulting weights are returned as a DataFrame with the same index and columns as the input `daily_returns`."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11662,
+      "completion_tokens": 412,
+      "total_tokens": 12074
+    },
+    "generation_seconds": 8.716387605760247
+  }
+}

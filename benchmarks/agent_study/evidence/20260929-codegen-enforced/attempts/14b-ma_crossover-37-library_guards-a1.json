@@ -1,0 +1,56 @@
+{
+  "id": "14b-ma_crossover-37-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n    \n    # Define the moving average crossover parameters\n    fast_window = 5\n    slow_window = 20\n    \n    # Calculate the moving averages\n    for col in adjusted_prices.columns:\n        fast_ma = adjusted_prices[col].rolling(window=fast_window).mean()\n        slow_ma = adjusted_prices[col].rolling(window=slow_window).mean()\n        \n        # Compute the signal\n        signal = (fast_ma - slow_ma).shift(1)  # Shift to use information strictly before t\n        \n        # Determine the weights based on the signal\n        weights[col] = np.sign(signal) / 4\n    \n    # Ensure weights are zero before the earliest nonzero-capable row\n    weights.iloc[:slow_window] = 0\n    \n    return weights\n```\n\nThis solution defines the `solve` function, which takes `prices` and `split_factors` as inputs. It first adjusts the prices for splits using the cumulative product of split factors. Then, it calculates the moving averages for each column using the specified fast and slow windows. The signal is computed as the difference between the fast and slow moving averages, shifted by one row to ensure causality. Finally, the weights are determined based on the sign of the signal, divided by 4, and set to zero before the earliest nonzero-capable row."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11744,
+      "completion_tokens": 334,
+      "total_tokens": 12078
+    },
+    "generation_seconds": 18.953507204074413
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n    \n    # Define the moving average crossover parameters\n    fast_window = 5\n    slow_window = 20\n    \n    # Calculate the moving averages\n    for col in adjusted_prices.columns:\n        fast_ma = adjusted_prices[col].rolling(window=fast_window).mean()\n        slow_ma = adjusted_prices[col].rolling(window=slow_window).mean()\n        \n        # Compute the signal\n        signal = (fast_ma - slow_ma).shift(1)  # Shift to use information strictly before t\n        \n        # Determine the weights based on the signal\n        weights[col] = np.sign(signal) / 4\n    \n    # Ensure weights are zero before the earliest nonzero-capable row\n    weights.iloc[:slow_window] = 0\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-9n3uqtnq",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "2db8087511efa553288ad5b1a7aa53c746ffeffe20b1d82e6349e0e2b530a2fb",
+    "solve_seconds": 0.007396460045129061,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 0.5
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.009s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.007s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "controller_seconds": 3.9845499768853188
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLibrary requirement failed: no fin_skills.algorithms.run call was traced; compute the rule with the discovered library algorithm.\nSplit-representation check failed: the output changed by up to 0.5 when the same economic prices were passed as split-adjusted closes with unit split factors.\nReturn the complete corrected program."
+}

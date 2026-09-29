@@ -1,5 +1,10 @@
 # Manuscript delivery: GitHub and Overleaf
 
+Latest delivery, 2026-09-28: the library-centered revision is recorded in
+[LIBRARY_RELIABILITY_CORRECTION_20260928.md](LIBRARY_RELIABILITY_CORRECTION_20260928.md),
+including the source commit, six matching remote/local hashes, Overleaf history label and
+both build outcomes. The September 22 framing below is historical.
+
 Updated 2026-09-22. A manuscript revision is delivered only when its source is committed
 to GitHub **and** the corresponding files are verified in the existing Overleaf project.
 A local commit, a ZIP export or a successful GitHub push alone does not meet both conditions.

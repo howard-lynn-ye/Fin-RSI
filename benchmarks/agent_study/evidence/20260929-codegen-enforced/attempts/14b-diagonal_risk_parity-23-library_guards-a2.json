@@ -1,0 +1,56 @@
+{
+  "id": "14b-diagonal_risk_parity-23-library_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(index=returns.index, columns=returns.columns, dtype=float)\n    \n    # Apply diagonal risk parity (inverse-volatility) for t >= 61\n    for t in range(60, len(returns)):\n        recent_returns = returns.iloc[t-60:t]\n        std_devs = recent_returns.std(ddof=1)\n        inv_std_devs = 1 / std_devs\n        weights.iloc[t] = inv_std_devs / inv_std_devs.sum()\n    \n    # Fill earlier rows with zeros\n    weights.iloc[:60] = 0\n    \n    return weights\n\n# Example usage:\n# prices_df = pd.DataFrame(prices, index=pd.to_datetime(dates), columns=assets)\n# split_factors_df = pd.DataFrame(factors, index=pd.to_datetime(dates), columns=assets)\n# weights_df = solve(prices_df, split_factors_df)\n```\n\nThis solution defines the `solve` function, which takes `prices` and `split_factors` as inputs. It first adjusts the prices for splits, calculates the simple returns, and then applies diagonal risk parity (inverse-volatility) for sessions starting from the 61st row. The weights are normalized such that they sum to 1 for each session. Earlier rows are filled with zeros. The function returns a DataFrame of weights with the same index and columns as the input DataFrames."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 12197,
+      "completion_tokens": 364,
+      "total_tokens": 12561
+    },
+    "generation_seconds": 20.648202986922115
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(index=returns.index, columns=returns.columns, dtype=float)\n    \n    # Apply diagonal risk parity (inverse-volatility) for t >= 61\n    for t in range(60, len(returns)):\n        recent_returns = returns.iloc[t-60:t]\n        std_devs = recent_returns.std(ddof=1)\n        inv_std_devs = 1 / std_devs\n        weights.iloc[t] = inv_std_devs / inv_std_devs.sum()\n    \n    # Fill earlier rows with zeros\n    weights.iloc[:60] = 0\n    \n    return weights\n\n# Example usage:\n# prices_df = pd.DataFrame(prices, index=pd.to_datetime(dates), columns=assets)\n# split_factors_df = pd.DataFrame(factors, index=pd.to_datetime(dates), columns=assets)\n# weights_df = solve(prices_df, split_factors_df)",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-ts7kxzwn",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "7f52558f9fa9de065d9ce6edafcaecd9e5f3aead83e316ba0672cf153e59f5e1",
+    "solve_seconds": 0.01846847729757428,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 0.22366840072060554
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.020s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.019s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "controller_seconds": 3.6914821374230087
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nLibrary requirement failed: no fin_skills.algorithms.run call was traced; compute the rule with the discovered library algorithm.\nSplit-representation check failed: the output changed by up to 0.224 when the same economic prices were passed as split-adjusted closes with unit split factors.\nReturn the complete corrected program."
+}

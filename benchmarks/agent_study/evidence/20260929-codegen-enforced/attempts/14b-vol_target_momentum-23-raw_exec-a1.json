@@ -1,0 +1,38 @@
+{
+  "id": "14b-vol_target_momentum-23-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period\n    lookback = 20\n    \n    # Iterate over each row starting from the 21st row\n    for i in range(lookback, len(prices)):\n        # Calculate the returns for the lookback period\n        returns = adjusted_prices.iloc[i-lookback:i].pct_change().dropna()\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.std(ddof=1) * np.sqrt(252)\n        \n        # Calculate the momentum signal\n        momentum_signal = (adjusted_prices.iloc[i] / adjusted_prices.iloc[i-1] - 1).apply(np.sign)\n        \n        # Calculate the target volatility\n        target_volatility = 0.10 / std_dev\n        \n        # Cap the target volatility at 1\n        target_volatility = target_volatility.clip(upper=1)\n        \n        # Calculate the weights\n        raw_weights = momentum_signal * target_volatility / 4\n        \n        # Assign the weights to the current row\n        weights.iloc[i] = raw_weights\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10797,
+      "completion_tokens": 300,
+      "total_tokens": 11097
+    },
+    "generation_seconds": 16.88424442661926
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period\n    lookback = 20\n    \n    # Iterate over each row starting from the 21st row\n    for i in range(lookback, len(prices)):\n        # Calculate the returns for the lookback period\n        returns = adjusted_prices.iloc[i-lookback:i].pct_change().dropna()\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.std(ddof=1) * np.sqrt(252)\n        \n        # Calculate the momentum signal\n        momentum_signal = (adjusted_prices.iloc[i] / adjusted_prices.iloc[i-1] - 1).apply(np.sign)\n        \n        # Calculate the target volatility\n        target_volatility = 0.10 / std_dev\n        \n        # Cap the target volatility at 1\n        target_volatility = target_volatility.clip(upper=1)\n        \n        # Calculate the weights\n        raw_weights = momentum_signal * target_volatility / 4\n        \n        # Assign the weights to the current row\n        weights.iloc[i] = raw_weights\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-fxjky5jz",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "645db121c132a73613de96f2036bbf87e47fb349beb55a97fb2cb919b6618230",
+    "solve_seconds": 0.1381102530285716,
+    "library_calls": 0,
+    "controller_seconds": 4.070824806112796
+  },
+  "accepted": true,
+  "feedback": null
+}

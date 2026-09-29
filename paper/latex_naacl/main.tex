@@ -6,85 +6,91 @@
 \hypersetup{hidelinks}
 \input{evidence_numbers}
 \input{merge_numbers}
-\title{From Tool Access to Research Capability:\\Tools and Memory for Financial Agents}
+\input{codegen_numbers}
+\title{When Financial Agents Code: Auditing Spurious Alpha, Data Leakage,\\
+and Execution Errors with Guarded Domain Libraries}
 \author{Anonymous NAACL Submission}
 \date{}
 \begin{document}
 \maketitle
 \nolinenumbers
 \begin{abstract}
-Language models can call external quantitative libraries, but tool access alone does
-not ensure sound financial decisions. An agent must select methods appropriate for
-the data, interpret numerical outputs, and adapt from prior outcomes. We present
-\textsc{fin-skills}, a package of 129 financial skills and executable algorithms, and
-examine its use within a two-level memory architecture: HiSTrim prunes historical
-interaction context during inference while protecting task constraints, and a persistent
-memory component stores verified episode returns across tasks. Execution and feedback
-checks cryptographically bind validation to code artifacts, preventing updates from
-leaked or invalid data. Across 64 multi-step portfolio decisions with two open-weight
-models (Qwen2.5-Coder 7B and 14B), agents made 43 successful algorithm calls across
-momentum and mean-reversion strategies. However, autonomous tool execution did not
-improve mean returns over unassisted baselines, as agents often misapplied methods
-or took unhedged exposures. These results show that tool use requires contextual
-filtering and cross-episode adaptation to produce reliable research capability.
+Financial agents increasingly write the quantitative code behind their conclusions, yet a
+plausible backtest can conceal future information, a misapplied corporate action, or a
+validation claim that never executed. We present \textsc{fin-skills}, a financial library of
+129 skills, 48 algorithm--backend catalog entries, and 36 executable research guards that
+turn dated domain conventions into structured computation and artifact-bound audit records.
+Across three seeded worlds, the guard suite detects all \CaughtInstances{} of
+\DefectInstances{} planted defects with no false alarms on the clean references, and
+\ParityPassed{} of \ParityCount{} numerical checks meet their stated tolerances. In a frozen
+paired study of first-submission code generation with two open code models, none of
+\CGPlanned{} programs meets the pre-registered validity criteria: \CGFormatFailures{} responses
+break the code-only format and every executed program fails numerical and split checks. With
+the first code fence extracted post hoc, \CGPostExecuted{} programs execute but only
+\CGPostValid{} is valid; \CGRecumulated{} programs mishandle cumulative split factors and
+\CGPostTimingFailures{} use same-session or future prices; documentation alone produced no
+library calls. In a frozen follow-up with three attempts, enforcing lag and split checks cut
+accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
+\ENRawGuardsAllAcceptedInvalid{}, and to \ENLibGuardsAllAcceptedInvalid{} with an enforced library
+call, but did not raise valid programs (\ENRawExecAllValid, \ENRawGuardsAllValid, and
+\ENLibGuardsAllValid{} of 24). The checks prevent silent errors from being delivered; they
+do not make small models write correct code. HiSTrim and persistent memory are optional
+integrations whose results are reported separately.
 \end{abstract}
 
 \section{Introduction}
-A financial research agent must decide which method suits a task, what data that method
-requires, how to interpret its output, and when later evidence warrants revising its
-decision. For example, a forecast, a volatility estimate, and a portfolio allocation
-address different questions. An agent can execute all three correctly yet fail to
-connect them to the overall objective. Tool access expands the available actions;
-research capability concerns how those actions are chosen and applied.
+A financial agent can produce a convincing research report while joining a disclosure
+to dates before publication, treating a stock split as a return, or reporting a check
+that never executed. These failures can create apparent alpha without a usable investment
+signal, and they increasingly arise in code the agent writes itself. Preventing them
+requires financial conventions to be expressed as executable input requirements and tests,
+alongside the algorithms that consume the data.
 
-This distinction becomes critical across repeated decisions. Useful intermediate
-outputs can vanish from a limited context window, while earlier experiences should
-inform future choices without causing rigid behavior. Within-task context selection and
-cross-episode memory address complementary halves of this problem. Their value depends
-on which information they retain and how that information changes downstream actions.
-Empirical feedback must also be reliable: decisions corrupted by look-ahead joins or
-unadjusted splits provide false learning signals. Execution checks ensure that
-experience updates reflect verified, defect-free evidence.
+\textsc{fin-skills} provides this infrastructure. Its domain skills identify appropriate
+libraries and dated failure modes; its numerical interfaces expose parameter and data
+contracts; and its research guards check availability times, corporate actions,
+validation splits, costs, and other declared assumptions. Structured findings distinguish
+a detected defect from a missing input or a successful check. Artifact-bound execution
+records allow a controller to enforce those checks rather than trust an agent's prose.
 
-We investigate these questions through \textsc{fin-skills}, an open library linking
-dated financial guidance with discoverable, executable quantitative methods. An agent
-can inspect input requirements, select parameters, execute an algorithm, and use the
-structured result in its next decision step. We connect this interface with two memory
-mechanisms: HiSTrim selects historical representations within the model's active
-attention context, and a persistent memory component updates state from delayed
-portfolio returns. This architecture couples tool execution with context selection
-and state updates.
+We ask whether language models can reliably build quantitative computations without such
+a library, and what the library's checks and primitives establish. E1 measures whether the
+guard suite detects known defects without flagging clean references. E2 measures whether
+agents discover and execute the interfaces and whether submitted artifacts meet the audit
+contract. E3 compares numerical primitives with independent references. E4 freezes a paired
+code-generation study in which two open code models implement four allocation and signal
+rules with and without the library's documentation, graded by an independent executable
+oracle, then repeats the tasks with three attempts while a controller enforces the library
+call and lag and split checks. First submissions are almost never valid, and the dominant
+errors (re-cumulated split factors and same-session prices) execute without raising an error.
+Enforcement stops most wrong programs from being accepted but does not produce more correct
+ones, which separates the library's auditing value from any claim of better generation.
 
-Our autonomous-use study provides a clear empirical test: while open-weight models
-successfully executed 43 quantitative algorithms across 64 portfolio decisions,
-unguided tool execution did not improve net returns over unassisted baselines. Simply
-adding tools does not make an agent an effective researcher. Without mechanisms to
-filter past context and update from past mistakes, models frequently selected unsuited
-algorithms or adopted extreme risk exposures.
+The distinction matters for interpreting an earlier portfolio experiment. That experiment
+exposed a price-compatible subset of algorithms on one short, anonymized currency path,
+without mandatory guard enforcement. It is an exploratory component ablation of algorithm
+access, not a comparison of the complete guarded library against an unguarded system.
+We retain its returns and execution traces, but do not use its losses to infer either
+that financial tools are ineffective or that memory would repair those losses.
 
-We examine three concrete questions:
-First, how does autonomous tool access alter the methods an agent selects and its
-portfolio risk?
-Second, how much historical context can be pruned without degrading reasoning fidelity?
-Third, can verified cross-episode returns guide subsequent method selection under
-shifting market regimes?
-
-This paper makes three contributions:
-(1) \textsc{fin-skills}, a standardized library of 129 quantitative skills, 48 algorithm
-backends, and 36 research guards;
-(2) a two-level memory formulation combining within-session KV pruning (HiSTrim) with
-cross-episode state updates; and
-(3) an empirical evaluation of autonomous tool choice, execution behavior, and financial
-outcomes in open-weight models.
+Our contributions are (1) a library of 129 financial skills, 48 algorithm--backend
+catalog entries, and 36 executable research guards; (2) structured computation and
+artifact-bound verification interfaces connecting financial assumptions to actual
+execution; (3) evidence on planted-defect detection, execution behavior, and numerical
+parity; and (4) frozen, hash-bound audits of financial code generation that separate format
+failure, silent financial error, and library uptake, and measure what enforced checks change:
+fewer wrong programs accepted, not more correct programs written. HiSTrim and persistent
+memory provide optional context and experience services; their auxiliary studies do not
+determine the core contribution.
 
 \section{Related work}
 FinAgent combines multimodal financial information with trading tools, reflection, and
 memory \cite{zhang2024finagent}; StockBench evaluates sequential portfolio decisions
 using prices, fundamentals, and news \cite{chen2025stockbench}. The Finance Agent
 Benchmark evaluates financial research tasks \cite{bigeard2025finance}. These works
-study tool use and memory within language-model agents. Our study isolates the specific
-effects of tool access by comparing unassisted inputs, static guidance, fixed tool
-outputs, and autonomous execution under identical market data.
+study tool use and memory within language-model agents. Our contribution supplies the
+financial knowledge, numerical contracts, and executable research checks that such agents
+can reuse. A separate exploratory comparison varies algorithm access under identical data.
 
 Behavioral testing offers a structured view of model capabilities beyond aggregate
 scores \cite{ribeiro2020checklist}. Financial backtest overfitting and selection bias
@@ -120,48 +126,73 @@ adapters provide a unified fit--predict lifecycle, while portfolio optimizers ex
 specialized execution interfaces. Appendix~\ref{app:library} details the complete
 interface inventory, model lifecycle, and retrieval pipeline.
 
-\input{selective_context}
-\input{fly_memory}
 \input{feedback_checks}
 \input{capability_evaluation}
+\input{codegen_study}
 \input{autonomous_study}
 
-\section{Discussion: from execution to useful experience}
-The empirical study shows that successful tool execution does not guarantee sound
-investment decisions. Both Qwen models discovered and invoked algorithms without syntax
-errors, yet neither outperformed unassisted baselines. The failure was not in execution,
-but in method selection and risk management: 7B concentrated into single assets following
-momentum signals, while 14B relied on mean reversion during trending phases.
+\section{Discussion: financial reliability as an executable contract}
+The strongest evidence for \textsc{fin-skills} concerns defects that its checks can
+observe and computations that can be independently reproduced. E1 establishes detection
+on the fixed planted families; E3 establishes numerical agreement for the tested
+primitives. E2 shows why optional access and enforced verification must be distinguished:
+an agent may describe a check without executing it, while mandatory verification may
+reject a submission that the agent cannot repair within its budget. Detection, acceptance,
+and task success must therefore be reported separately.
 
-These failure modes point directly to the roles of context and memory. In long
-interactions, intermediate numerical outputs clutter the context window, displacing
-earlier data summaries and constraints. HiSTrim addresses this by evicting low-utility
-historical tokens while keeping instruction spans intact. Meanwhile, cross-episode memory
-allows an agent to register that a particular strategy failed under specific volatility
-conditions, adjusting subsequent selections.
+E4 sharpens both points. Unassisted first submissions from open code models failed in the
+ways a backtest would not reveal: split conventions, the execution lag, and output
+contracts. Supplying documentation is not the same as supplying the library, because no
+program used it, and a guard certifies only its stated contract: the causality check caught
+every strictly-future dependence but not a same-session lag until it was composed with a
+one-row shift. Enforced, these checks reduced accepted-but-wrong programs from
+\ENRawExecAllAcceptedInvalidPct\% to \ENRawGuardsAllAcceptedInvalidPct\% of episodes, yet no arm
+produced more valid programs, and enforced library use mostly failed on interface errors.
+The library's measured value here is refusing wrong results; making agents use its
+algorithms correctly requires a clearer calling interface and stronger models.
 
-Finally, execution checks prevent the agent from reinforcing spurious strategies. If an
-agent backtests on unadjusted prices or incorporates future data, it observes artificial
-profits. Without verification guards, persistent memory would treat those illusions as
-positive reinforcement. Verification is therefore the necessary filter that keeps
-experiential learning grounded in real market dynamics.
+The portfolio component ablation leaves the causal contribution of guard enforcement
+unmeasured. Exposure choices, market direction, and transaction costs all affect its
+returns; the saved losses do not identify which factor caused the difference between
+conditions. A matched guarded arm is needed to measure what enforcement changes.
+
+Context pruning and persistent memory can consume the library's verified records, but
+their gains are separate empirical questions. In the auxiliary report-QA studies, a
+post-hoc reanalysis keeps the official program scores and shows that relaxing fence
+parsing adds no correct program; missing final answers, not formatting alone, limit
+those runs. The current context-pruning study shows quality loss. These findings motivate
+interface and retention checks, not a replacement of the library's contribution with an
+unproven memory benefit.
 
 \section{Conclusion}
-Access to financial algorithms gives language models the ability to compute, but not
-the judgment to invest. In this paper, we structured tool use around method selection,
-within-task context reduction, and cross-episode memory updates, with execution checks
-ensuring data integrity. Our experiments demonstrate that while open-weight models
-readily discover and run specialized algorithms, turning tool execution into effective
-decision-making requires active context management and feedback-driven adaptation.
+\textsc{fin-skills} makes professional financial guidance executable through quantitative
+interfaces and research guards. Its fixed defect benchmark records
+\CaughtInstances{}/\DefectInstances{} detections with no clean-reference false alarms,
+and \ParityPassed{}/\ParityCount{} numerical checks pass their stated tolerances.
+A frozen code-generation audit finds \CGOfficialValid{}/\CGPlanned{} valid first submissions
+under its pre-registered parser and \CGPostValid{}/\CGPlanned{} after post-hoc extraction,
+with silent split and timing errors dominating the executable programs. Enforcing the
+library's checks cut accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
+\ENRawGuardsAllAcceptedInvalid{} without raising valid ones. These results support reusable
+infrastructure that refuses spurious research findings and reproduces computations; they do
+not show that the library makes small models write correct financial code.
 
 \section*{Limitations}
-This study has several limitations. First, our evaluation uses daily currency reference
-rates rather than live limit order books; real-world trading introduces slippage, market
-impact, and borrow costs. Second, we tested two model scales within a single open-weight
-family (Qwen2.5-Coder 7B and 14B); frontier proprietary models may show different tool
-selection patterns. Third, although HiSTrim and persistent memory are fully implemented
-in their respective benchmarks, full end-to-end integration across multi-year trading
-regimes requires further scaling.
+The defect benchmark repeats fixed synthetic families across seeds; its 100\% recall is
+not a universal leakage-detection guarantee. Numerical parity covers eight primitives,
+not every backend. The code-generation study uses author-designed synthetic tasks, two
+model sizes from one family, and three seeds on four fixed rules, which are not twelve
+independently sampled problems; training contamination is not ruled out. Its fence
+extraction is a post-hoc sensitivity analysis run on another host. The enforced follow-up
+reuses these tasks after seeing E4's failures, allows only three attempts, and its interface
+text named one argument differently from the library function. Passing sampled
+perturbations does not certify universal causality. The currency component ablation uses
+daily reference prices, two Qwen model sizes, and one short path, without a matched
+mandatory-guard arm or executable quotes and carry. Auxiliary QA comparisons use public,
+development-exposed, overlapping tasks and retain format and runtime failures; their
+format reanalysis is post hoc. Research guards enforce specified checks, not regulatory
+certification, complete adversarial isolation, or investment profitability. Human workflow
+efficiency and independent prospective validation remain unmeasured.
 
 \section*{Ethics and Reproducibility}
 All models, tools, and evaluation benchmarks adhere to open, reproducible protocols.
@@ -177,9 +208,11 @@ facilitate independent verification.
 \setlength{\@fpsep}{14pt}
 \setlength{\@fpbot}{0pt plus 1fil}
 \makeatother
-\input{histrim_evidence}
-\clearpage
 \input{supporting_evidence}
 \clearpage
 \input{library_details}
+\clearpage
+\input{selective_context}
+\input{fly_memory}
+\input{histrim_evidence}
 \end{document}

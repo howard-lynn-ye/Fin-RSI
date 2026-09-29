@@ -1,0 +1,38 @@
+{
+  "id": "7b-ma_crossover-37-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest possible row (t=20)\n    for i in range(long_window, len(prices)):\n        # Extract the last 'short_window' and 'long_window' adjusted prices for each asset\n        short_prices = adjusted_prices.iloc[i-short_window:i]\n        long_prices = adjusted_prices.iloc[i-long_window:i]\n        \n        # Compute the mean of the short and long windows for each asset\n        short_mean = short_prices.mean()\n        long_mean = long_prices.mean()\n        \n        # Compute the difference between the short and long means\n        diff = short_mean - long_mean\n        \n        # Set the weight for the current row based on the sign of the difference divided by 4\n        weights.iloc[i] = np.sign(diff) / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted prices using the split factors, initializes a DataFrame of zeros for the weights, and then iterates over the DataFrame to compute the weights based on the moving average crossover strategy."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10763,
+      "completion_tokens": 337,
+      "total_tokens": 11100
+    },
+    "generation_seconds": 9.205340400803834
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest possible row (t=20)\n    for i in range(long_window, len(prices)):\n        # Extract the last 'short_window' and 'long_window' adjusted prices for each asset\n        short_prices = adjusted_prices.iloc[i-short_window:i]\n        long_prices = adjusted_prices.iloc[i-long_window:i]\n        \n        # Compute the mean of the short and long windows for each asset\n        short_mean = short_prices.mean()\n        long_mean = long_prices.mean()\n        \n        # Compute the difference between the short and long means\n        diff = short_mean - long_mean\n        \n        # Set the weight for the current row based on the sign of the difference divided by 4\n        weights.iloc[i] = np.sign(diff) / 4\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-bkah891s",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "ff2fa4aa0155107c66e081d917e930e1d5ceca6b83d53cf9c09f8f76fa6198c1",
+    "solve_seconds": 0.034287278074771166,
+    "library_calls": 0,
+    "controller_seconds": 3.6538183777593076
+  },
+  "accepted": true,
+  "feedback": null
+}

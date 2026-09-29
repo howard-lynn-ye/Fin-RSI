@@ -1,0 +1,56 @@
+{
+  "id": "7b-cross_sectional_momentum-23-raw_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape or not prices.index.equals(split_factors.index):\n        raise ValueError(\"prices and split_factors must have the same shape and index\")\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period for 60 days\n    warmup_period = 60\n    \n    # Iterate over the data starting from day 61\n    for t in range(warmup_period, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        compounded_returns = (prices.iloc[t] / prices.iloc[t - warmup_period]) ** (1 / warmup_period) - 1\n        \n        # Sort assets by compounded returns in descending order\n        sorted_indices = compounded_returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if compounded_returns[sorted_indices[0]] > 0:\n            weights.loc[prices.index[t], sorted_indices[0]] = 0.5\n        if compounded_returns[sorted_indices[1]] > 0:\n            weights.loc[prices.index[t], sorted_indices[1]] = 0.5\n    \n    return weights\n```\n\nThis implementation calculates the compounded returns for the last 60 days for each asset and ranks them in descending order. It then assigns equal weights (0.5) to the top two assets with positive momentum, leaving the rest in cash (weight 0). The warmup period ensures that there are enough data points to calculate the compounded returns accurately."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10832,
+      "completion_tokens": 371,
+      "total_tokens": 11203
+    },
+    "generation_seconds": 10.084338772110641
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape or not prices.index.equals(split_factors.index):\n        raise ValueError(\"prices and split_factors must have the same shape and index\")\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period for 60 days\n    warmup_period = 60\n    \n    # Iterate over the data starting from day 61\n    for t in range(warmup_period, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        compounded_returns = (prices.iloc[t] / prices.iloc[t - warmup_period]) ** (1 / warmup_period) - 1\n        \n        # Sort assets by compounded returns in descending order\n        sorted_indices = compounded_returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if compounded_returns[sorted_indices[0]] > 0:\n            weights.loc[prices.index[t], sorted_indices[0]] = 0.5\n        if compounded_returns[sorted_indices[1]] > 0:\n            weights.loc[prices.index[t], sorted_indices[1]] = 0.5\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-ul2j36l3",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "2d9bf53aba3ffa37bc2a2d45e679d7fa24247398a5e90dbbb1d3b84158734c72",
+    "solve_seconds": 0.015674089081585407,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 0.5
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.024s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.022s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)"
+        }
+      ]
+    },
+    "controller_seconds": 3.5919687119312584
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nSplit-representation check failed: the output changed by up to 0.5 when the same economic prices were passed as split-adjusted closes with unit split factors.\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.022s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)\nReturn the complete corrected program."
+}

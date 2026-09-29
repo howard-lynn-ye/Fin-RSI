@@ -1,0 +1,42 @@
+{
+  "id": "14b-vol_target_momentum-11-raw_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns)\n    \n    # Calculate weights\n    for t in range(21, len(prices)):\n        for col in prices.columns:\n            # Calculate momentum signal\n            momentum_signal = np.sign(adjusted_prices[col].iloc[t-1] / adjusted_prices[col].iloc[t-21] - 1)\n            \n            # Calculate sample standard deviation of last 20 simple returns\n            returns = adjusted_prices[col].pct_change().iloc[t-20:t]\n            sample_std = returns.std(ddof=1) * np.sqrt(252)\n            \n            # Calculate target volatility\n            target_volatility = min(1, 0.10 / sample_std)\n            \n            # Calculate weight\n            weight = momentum_signal * target_volatility / 4\n            \n            # Assign weight to the current row\n            weights.at[prices.index[t], col] = weight\n    \n    return weights\n```\n\nThis solution defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights. The function first adjusts the prices for splits, then calculates the weights based on the specified momentum and volatility targeting rules. The weights are computed for each asset starting from the 21st row, ensuring that all necessary data is available for the calculations."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10900,
+      "completion_tokens": 329,
+      "total_tokens": 11229
+    },
+    "generation_seconds": 18.37046038126573
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns)\n    \n    # Calculate weights\n    for t in range(21, len(prices)):\n        for col in prices.columns:\n            # Calculate momentum signal\n            momentum_signal = np.sign(adjusted_prices[col].iloc[t-1] / adjusted_prices[col].iloc[t-21] - 1)\n            \n            # Calculate sample standard deviation of last 20 simple returns\n            returns = adjusted_prices[col].pct_change().iloc[t-20:t]\n            sample_std = returns.std(ddof=1) * np.sqrt(252)\n            \n            # Calculate target volatility\n            target_volatility = min(1, 0.10 / sample_std)\n            \n            # Calculate weight\n            weight = momentum_signal * target_volatility / 4\n            \n            # Assign weight to the current row\n            weights.at[prices.index[t], col] = weight\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-c8j1gwu3",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "output contains nonfinite values",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 23, in _frame\nValueError: output contains nonfinite values\n"
+    },
+    "solve_seconds": 0.10258783819153905,
+    "library_calls": 0,
+    "controller_seconds": 3.8201401359401643
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nExecution failed: ValueError: output contains nonfinite values\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 23, in _frame\nValueError: output contains nonfinite values\nReturn the complete corrected program."
+}

@@ -6,7 +6,7 @@ import pytest
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'benchmarks/agent_study'))
-from finqa_rag_ablation import documents, pack, parsed_answer, gate
+from finqa_rag_ablation import ANSWER_FORMAT, answer_diagnostics, documents, pack, parsed_answer, gate
 sys.path.remove(str(ROOT/"benchmarks/agent_study"))
 from fin_skills.rag import RAGIndex
 
@@ -38,3 +38,44 @@ def test_table_row_header_preserved_without_answer_labels():
     result=documents(case)
     assert '2020' in result[1]['text'] and '12' in result[1]['text']
     assert 'private' not in str(result)
+
+
+@pytest.mark.parametrize('fence', ['```json', '```'])
+def test_versioned_format_accepts_only_a_complete_fence(fence):
+    raw = fence + '\n{"program":"subtract(12, 10)","citations":"[S1]"}\n```'
+    with pytest.raises(ValueError):
+        parsed_answer(raw)  # Historical protocols retain strict grading.
+    assert parsed_answer(raw, answer_format=ANSWER_FORMAT) == {
+        'program': 'subtract(12, 10)', 'citations': '[S1]'}
+    assert not answer_diagnostics({'final': raw})['strict_json_compliant']
+
+
+@pytest.mark.parametrize('raw', [
+    'Here is the answer: {"program":"add(1, 1)","citations":"[S1]"}',
+    '```json\n{"program":"add(1, 1)","citations":"[S1]"}\n```\nExtra prose',
+    '{"program":"add(1, 1)","citations":"[S1]"} {}',
+    '{"program":"add(1, 1)","program":"subtract(1, 1)","citations":"[S1]"}',
+    '{"program":"add(1, 1)","citations":["S1"]}',
+    '{"program":"add(1, 1)"}',
+    '```python\n{"program":"add(1, 1)","citations":"[S1]"}\n```',
+    None,
+])
+def test_v2_does_not_repair_or_select_an_answer(raw):
+    with pytest.raises((ValueError, TypeError)):
+        parsed_answer(raw, answer_format=ANSWER_FORMAT)
+
+
+def test_generation_failure_is_not_hidden_as_a_json_error():
+    failure = {'type': 'RuntimeError', 'message': 'PRESPECIFIED_MODEL_CALL_LIMIT'}
+    row = {'final': None, 'error': failure, 'calls': [
+        {'response': {'choices': [{'finish_reason': 'length'}]}},
+        {'error': 'provider failure'},
+    ]}
+    assert answer_diagnostics(row) == {
+        'episode_error': failure, 'missing_final': True,
+        'strict_json_compliant': False, 'length_limited_responses': 1}
+
+
+def test_unknown_format_version_fails_closed():
+    with pytest.raises(ValueError, match='Unknown answer format'):
+        parsed_answer('{}', answer_format='unknown')

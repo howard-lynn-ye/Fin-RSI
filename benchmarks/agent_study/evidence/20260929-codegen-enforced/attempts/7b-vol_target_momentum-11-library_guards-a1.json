@@ -1,0 +1,42 @@
+{
+  "id": "7b-vol_target_momentum-11-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal for each asset\n    momentum_signals = np.sign(daily_returns.shift(-21)) * np.minimum(1, 0.10 / (daily_returns.iloc[:, :20].std(ddof=1) * np.sqrt(252)))\n    \n    # Normalize the signals to sum to 1 for each row\n    weights = momentum_signals.div(momentum_signals.sum(axis=1), axis=0)\n    \n    # Ensure all weights are non-negative\n    weights = np.maximum(weights, 0)\n    \n    # Set the first 21 rows to zero since we don't have enough data to calculate momentum\n    weights.iloc[:21] = 0\n    \n    return weights\n```\n\nThis implementation follows the specified rules:\n1. It calculates the forward-adjusted prices using the provided `split_factors`.\n2. It computes the daily returns from these adjusted prices.\n3. It calculates the momentum signal for each asset based on the formula provided.\n4. It normalizes these signals so that the sum of weights for each row equals 1.\n5. It ensures that all weights are non-negative.\n6. It sets the first 21 rows to zero because we don't have enough data to calculate the momentum for those days.\n\nThe function should now be ready to be used with the provided data and verified against the given constraints."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11821,
+      "completion_tokens": 341,
+      "total_tokens": 12162
+    },
+    "generation_seconds": 9.486426238901913
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Forward adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal for each asset\n    momentum_signals = np.sign(daily_returns.shift(-21)) * np.minimum(1, 0.10 / (daily_returns.iloc[:, :20].std(ddof=1) * np.sqrt(252)))\n    \n    # Normalize the signals to sum to 1 for each row\n    weights = momentum_signals.div(momentum_signals.sum(axis=1), axis=0)\n    \n    # Ensure all weights are non-negative\n    weights = np.maximum(weights, 0)\n    \n    # Set the first 21 rows to zero since we don't have enough data to calculate momentum\n    weights.iloc[:21] = 0\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-lf2m8z22",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "output index/columns do not match input",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\n"
+    },
+    "solve_seconds": 0.0070303757674992085,
+    "library_calls": 0,
+    "controller_seconds": 3.65669904416427
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nExecution failed: ValueError: output index/columns do not match input\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\nReturn the complete corrected program."
+}

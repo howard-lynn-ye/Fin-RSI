@@ -1,0 +1,42 @@
+{
+  "id": "7b-ma_crossover-23-library_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal to ensure sum of weights is 1\n    weights = signal / np.abs(signal).sum(axis=1)\n    \n    # Ensure weights are non-negative\n    weights[weights < 0] = 0\n    \n    # Set early rows to zero\n    weights.iloc[:20] = 0\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes in two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function first adjusts the prices using the split factors, then calculates the moving averages over the last 5 and 20 days, computes the signal based on the difference between these moving averages, normalizes the signal to ensure the sum of weights is 1, sets negative weights to zero, and finally sets the earliest 20 rows to zero."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 12168,
+      "completion_tokens": 276,
+      "total_tokens": 12444
+    },
+    "generation_seconds": 7.94333344232291
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal to ensure sum of weights is 1\n    weights = signal / np.abs(signal).sum(axis=1)\n    \n    # Ensure weights are non-negative\n    weights[weights < 0] = 0\n    \n    # Set early rows to zero\n    weights.iloc[:20] = 0\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-euyi21ej",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "output index/columns do not match input",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\n"
+    },
+    "solve_seconds": 0.019985551945865154,
+    "library_calls": 0,
+    "controller_seconds": 3.673812116961926
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nExecution failed: ValueError: output index/columns do not match input\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\nReturn the complete corrected program."
+}

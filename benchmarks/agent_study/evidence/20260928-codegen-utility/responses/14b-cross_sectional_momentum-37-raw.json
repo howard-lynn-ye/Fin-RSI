@@ -1,0 +1,19 @@
+{
+  "id": "14b-cross_sectional_momentum-37-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 61st row\n    for i in range(60, len(prices)):\n        # Get the last 60 returns up to the previous day\n        recent_returns = returns.iloc[i-60:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + recent_returns).prod()\n        \n        # Rank the compounded returns in descending order\n        ranked_returns = compounded_returns.rank(ascending=False, method='first')\n        \n        # Identify the top two assets\n        top_two_assets = ranked_returns[ranked_returns <= 2].index\n        \n        # Assign weights to the top two assets\n        weights.loc[prices.index[i], top_two_assets] = 0.5 / len(top_two_assets)\n    \n    return weights\n\n# Example usage:\n# Assuming 'prices' and 'split_factors' are already defined as per the provided data\n# weights = solve(prices, split_factors)\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified cross-sectional momentum strategy. The function adjusts the prices for splits, calculates simple returns, and then iteratively determines the weights for each day based on the compounded returns of the previous 60 days. The top two assets by compounded return receive equal weights, while the rest remain in cash."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10726,
+      "completion_tokens": 378,
+      "total_tokens": 11104
+    },
+    "generation_seconds": 9.943512154277414
+  }
+}

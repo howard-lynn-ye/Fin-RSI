@@ -1,0 +1,42 @@
+{
+  "id": "14b-vol_target_momentum-37-library_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Run the vol_target_momentum algorithm from fin_skills\n    weights = run(\n        algorithm_id=\"vol_target_momentum\",\n        data_dictionary={\n            \"prices\": adjusted_prices\n        },\n        lookback=20,\n        target_vol=0.10,\n        periods_per_year=252,\n        max_exposure=1.0\n    )\n    \n    return weights\n```\n\nThis revised solution leverages the `fin_skills.algorithms.run` function to compute the rule using the `vol_target_momentum` algorithm. It adjusts the prices for splits and then calls the `run` function with the appropriate parameters. This ensures compliance with the library requirement and should address the issues related to split representation and causality."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 12475,
+      "completion_tokens": 199,
+      "total_tokens": 12674
+    },
+    "generation_seconds": 12.436666204594076
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Run the vol_target_momentum algorithm from fin_skills\n    weights = run(\n        algorithm_id=\"vol_target_momentum\",\n        data_dictionary={\n            \"prices\": adjusted_prices\n        },\n        lookback=20,\n        target_vol=0.10,\n        periods_per_year=252,\n        max_exposure=1.0\n    )\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-swldq42f",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "TypeError",
+      "message": "main.<locals>.run() missing 2 required positional arguments: 'name' and 'data'",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 10, in solve\nTypeError: main.<locals>.run() missing 2 required positional arguments: 'name' and 'data'\n"
+    },
+    "solve_seconds": 0.0019452590495347977,
+    "library_calls": 0,
+    "controller_seconds": 3.934979029931128
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nExecution failed: TypeError: main.<locals>.run() missing 2 required positional arguments: 'name' and 'data'\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 10, in solve\nTypeError: main.<locals>.run() missing 2 required positional arguments: 'name' and 'data'\nReturn the complete corrected program."
+}

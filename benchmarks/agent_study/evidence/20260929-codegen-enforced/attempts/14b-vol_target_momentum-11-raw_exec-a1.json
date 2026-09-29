@@ -1,0 +1,38 @@
+{
+  "id": "14b-vol_target_momentum-11-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=adjusted_prices.index, columns=adjusted_prices.columns)\n    \n    # Define the lookback period\n    lookback = 20\n    \n    # Iterate over each row starting from the 21st row\n    for i in range(lookback, len(adjusted_prices)):\n        for col in adjusted_prices.columns:\n            # Calculate the momentum signal\n            momentum_signal = np.sign(adjusted_prices[col].iloc[i-1] / adjusted_prices[col].iloc[i-lookback-1] - 1)\n            \n            # Calculate the sample standard deviation of the last 20 simple returns\n            returns = adjusted_prices[col].pct_change().iloc[i-lookback:i]\n            sample_std = returns.std(ddof=1) * np.sqrt(252)\n            \n            # Calculate the volatility target\n            vol_target = min(1, 0.10 / sample_std)\n            \n            # Calculate the weight\n            weight = momentum_signal * vol_target / 4\n            \n            # Assign the weight to the current row\n            weights.at[adjusted_prices.index[i], col] = weight\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights based on the specified rules. The function adjusts the prices for splits, calculates the momentum signal, computes the sample standard deviation of the last 20 simple returns, determines the volatility target, and finally calculates the weight for each asset on each date."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10840,
+      "completion_tokens": 372,
+      "total_tokens": 11212
+    },
+    "generation_seconds": 20.537301663774997
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=adjusted_prices.index, columns=adjusted_prices.columns)\n    \n    # Define the lookback period\n    lookback = 20\n    \n    # Iterate over each row starting from the 21st row\n    for i in range(lookback, len(adjusted_prices)):\n        for col in adjusted_prices.columns:\n            # Calculate the momentum signal\n            momentum_signal = np.sign(adjusted_prices[col].iloc[i-1] / adjusted_prices[col].iloc[i-lookback-1] - 1)\n            \n            # Calculate the sample standard deviation of the last 20 simple returns\n            returns = adjusted_prices[col].pct_change().iloc[i-lookback:i]\n            sample_std = returns.std(ddof=1) * np.sqrt(252)\n            \n            # Calculate the volatility target\n            vol_target = min(1, 0.10 / sample_std)\n            \n            # Calculate the weight\n            weight = momentum_signal * vol_target / 4\n            \n            # Assign the weight to the current row\n            weights.at[adjusted_prices.index[i], col] = weight\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-bgp1c37n",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "48d836f91963c05d878df97a3c7406153d499dedd1919c0610d29e80cbe75518",
+    "solve_seconds": 0.10486733075231314,
+    "library_calls": 0,
+    "controller_seconds": 4.268119025975466
+  },
+  "accepted": true,
+  "feedback": null
+}
