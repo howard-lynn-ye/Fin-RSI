@@ -1,0 +1,56 @@
+{
+  "id": "14b-ma_crossover-11-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    fast_window = 5\n    slow_window = 20\n    \n    # Iterate over each column (asset) in the adjusted prices DataFrame\n    for column in adjusted_prices.columns:\n        # Calculate the simple moving averages\n        fast_ma = adjusted_prices[column].rolling(window=fast_window).mean()\n        slow_ma = adjusted_prices[column].rolling(window=slow_window).mean()\n        \n        # Compute the signal: sign(fast_ma - slow_ma)\n        signal = (fast_ma - slow_ma).shift(1).apply(np.sign)\n        \n        # Assign the signal to the weights DataFrame, divided by 4\n        weights[column] = signal / 4\n    \n    # Ensure the first 20 rows are zero (warmup period)\n    weights.iloc[:20] = 0.0\n    \n    return weights\n```\n\nThis solution defines the `solve` function, which takes two pandas DataFrames: `prices` and `split_factors`. It adjusts the prices for splits using the cumulative product of the split factors, computes the moving averages for each asset, and then generates a signal based on the difference between the fast and slow moving averages. The signal is used to determine the weights for each asset, which are then returned as a DataFrame. The first 20 rows are set to zero to account for the warmup period."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11798,
+      "completion_tokens": 355,
+      "total_tokens": 12153
+    },
+    "generation_seconds": 20.029501917771995
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes for the moving averages\n    fast_window = 5\n    slow_window = 20\n    \n    # Iterate over each column (asset) in the adjusted prices DataFrame\n    for column in adjusted_prices.columns:\n        # Calculate the simple moving averages\n        fast_ma = adjusted_prices[column].rolling(window=fast_window).mean()\n        slow_ma = adjusted_prices[column].rolling(window=slow_window).mean()\n        \n        # Compute the signal: sign(fast_ma - slow_ma)\n        signal = (fast_ma - slow_ma).shift(1).apply(np.sign)\n        \n        # Assign the signal to the weights DataFrame, divided by 4\n        weights[column] = signal / 4\n    \n    # Ensure the first 20 rows are zero (warmup period)\n    weights.iloc[:20] = 0.0\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-139en1fo",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "5035a4ff016238742dca400782afa493361e19006d52c5aeef5d4db7d1b38711",
+    "solve_seconds": 0.006412308197468519,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 0.5
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.008s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.007s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "controller_seconds": 3.979778790846467
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLibrary requirement failed: no fin_skills.algorithms.run call was traced; compute the rule with the discovered library algorithm.\nSplit-representation check failed: the output changed by up to 0.5 when the same economic prices were passed as split-adjusted closes with unit split factors.\nReturn the complete corrected program."
+}

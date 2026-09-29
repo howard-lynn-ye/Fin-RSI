@@ -1,0 +1,56 @@
+{
+  "id": "14b-vol_target_momentum-23-library_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Calculate the 20-day sample standard deviation of returns\n    std_dev = returns.rolling(window=20).std(ddof=1)\n    \n    # Calculate the target volatility factor\n    target_vol_factor = 0.10 / (std_dev * np.sqrt(252))\n    \n    # Calculate the momentum signal\n    momentum_signal = np.sign(adjusted_prices / adjusted_prices.shift(20) - 1)\n    \n    # Combine momentum signal with target volatility factor\n    raw_weights = momentum_signal * np.minimum(1, target_vol_factor)\n    \n    # Normalize weights to sum to 1 across assets\n    weights = raw_weights.div(raw_weights.sum(axis=1), axis=0)\n    \n    # Fill NaN values with 0 (for rows before t=21)\n    weights = weights.fillna(0)\n    \n    return weights\n\n# Example usage:\n# prices = pd.DataFrame(...)\n# split_factors = pd.DataFrame(...)\n# weights = solve(prices, split_factors)\n```\n\nThis solution defines the `solve` function, which takes in `prices` and `split_factors` DataFrames, adjusts the prices for splits, calculates the necessary signals and factors, and then computes the weights according to the specified rule. The weights are normalized to sum to 1 across assets and filled with 0 for rows before the 21st day."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 13032,
+      "completion_tokens": 352,
+      "total_tokens": 13384
+    },
+    "generation_seconds": 20.454731818288565
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Calculate the 20-day sample standard deviation of returns\n    std_dev = returns.rolling(window=20).std(ddof=1)\n    \n    # Calculate the target volatility factor\n    target_vol_factor = 0.10 / (std_dev * np.sqrt(252))\n    \n    # Calculate the momentum signal\n    momentum_signal = np.sign(adjusted_prices / adjusted_prices.shift(20) - 1)\n    \n    # Combine momentum signal with target volatility factor\n    raw_weights = momentum_signal * np.minimum(1, target_vol_factor)\n    \n    # Normalize weights to sum to 1 across assets\n    weights = raw_weights.div(raw_weights.sum(axis=1), axis=0)\n    \n    # Fill NaN values with 0 (for rows before t=21)\n    weights = weights.fillna(0)\n    \n    return weights\n\n# Example usage:\n# prices = pd.DataFrame(...)\n# split_factors = pd.DataFrame(...)\n# weights = solve(prices, split_factors)",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-6k1bud25",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "fddf2f5c93779da49e49d5c71194c47a8b91615c50af95e719ac6cc8edc5a494",
+    "solve_seconds": 0.006090445909649134,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 396.5738512485438
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.008s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 19.0011)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.007s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 11.9662)"
+        }
+      ]
+    },
+    "controller_seconds": 4.034942626953125
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nLibrary requirement failed: no fin_skills.algorithms.run call was traced; compute the rule with the discovered library algorithm.\nSplit-representation check failed: the output changed by up to 397 when the same economic prices were passed as split-adjusted closes with unit split factors.\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.008s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 19.0011)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.007s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 11.9662)\nReturn the complete corrected program."
+}

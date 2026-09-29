@@ -28,11 +28,13 @@ paired study of first-submission code generation with two open code models, none
 break the code-only format and every executed program fails numerical and split checks. With
 the first code fence extracted post hoc, \CGPostExecuted{} programs execute but only
 \CGPostValid{} is valid; \CGRecumulated{} programs mishandle cumulative split factors and
-\CGPostTimingFailures{} use same-session or future prices. Library documentation in the prompt
-produced no library calls, so the study measures the failure modes of unassisted code, not a
-library benefit. Applied post hoc, the library's causality guard flags all
-\CGStrictlyFuture{} strictly-future programs without false alarms, while same-session
-execution lags fall outside its contract. HiSTrim and persistent memory are optional
+\CGPostTimingFailures{} use same-session or future prices; documentation alone produced no
+library calls. In a frozen follow-up with three attempts, enforcing lag and split checks cut
+accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
+\ENRawGuardsAllAcceptedInvalid{}, and to \ENLibGuardsAllAcceptedInvalid{} with an enforced library
+call, but did not raise valid programs (\ENRawExecAllValid, \ENRawGuardsAllValid, and
+\ENLibGuardsAllValid{} of 24). The checks prevent silent errors from being delivered; they
+do not make small models write correct code. HiSTrim and persistent memory are optional
 integrations whose results are reported separately.
 \end{abstract}
 
@@ -58,10 +60,11 @@ agents discover and execute the interfaces and whether submitted artifacts meet 
 contract. E3 compares numerical primitives with independent references. E4 freezes a paired
 code-generation study in which two open code models implement four allocation and signal
 rules with and without the library's documentation, graded by an independent executable
-oracle. The first-submission programs are almost never valid, and the dominant computational
+oracle, then repeats the tasks with three attempts while a controller enforces the library
+call and lag and split checks. First submissions are almost never valid, and the dominant
 errors (re-cumulated split factors and same-session prices) execute without raising an error.
-The models also ignored the documentation, so E4 characterizes the risk the library targets
-rather than measuring its benefit.
+Enforcement stops most wrong programs from being accepted but does not produce more correct
+ones, which separates the library's auditing value from any claim of better generation.
 
 The distinction matters for interpreting an earlier portfolio experiment. That experiment
 exposed a price-compatible subset of algorithms on one short, anonymized currency path,
@@ -74,11 +77,11 @@ Our contributions are (1) a library of 129 financial skills, 48 algorithm--backe
 catalog entries, and 36 executable research guards; (2) structured computation and
 artifact-bound verification interfaces connecting financial assumptions to actual
 execution; (3) evidence on planted-defect detection, execution behavior, and numerical
-parity; and (4) a frozen, hash-bound audit of first-submission financial code that
-separates format failure, silent financial error, and library uptake, and delimits what
-a causality guard does and does not certify. HiSTrim and persistent memory provide optional
-context and experience services; their auxiliary studies do not determine the core
-contribution.
+parity; and (4) frozen, hash-bound audits of financial code generation that separate format
+failure, silent financial error, and library uptake, and measure what enforced checks change:
+fewer wrong programs accepted, not more correct programs written. HiSTrim and persistent
+memory provide optional context and experience services; their auxiliary studies do not
+determine the core contribution.
 
 \section{Related work}
 FinAgent combines multimodal financial information with trading tools, reflection, and
@@ -139,11 +142,14 @@ and task success must therefore be reported separately.
 
 E4 sharpens both points. Unassisted first submissions from open code models failed in the
 ways a backtest would not reveal: split conventions, the execution lag, and output
-contracts. The same study shows that supplying documentation is not the same as supplying
-the library, because no program used it. A guard also certifies only its stated contract;
-the causality check caught every strictly-future dependence but not a same-session lag.
-The next experiment must hold these tasks fixed while a controller requires the library call
-and the lag, split, and causality checks before accepting a program.
+contracts. Supplying documentation is not the same as supplying the library, because no
+program used it, and a guard certifies only its stated contract: the causality check caught
+every strictly-future dependence but not a same-session lag until it was composed with a
+one-row shift. Enforced, these checks reduced accepted-but-wrong programs from
+\ENRawExecAllAcceptedInvalidPct\% to \ENRawGuardsAllAcceptedInvalidPct\% of episodes, yet no arm
+produced more valid programs, and enforced library use mostly failed on interface errors.
+The library's measured value here is refusing wrong results; making agents use its
+algorithms correctly requires a clearer calling interface and stronger models.
 
 The portfolio component ablation leaves the causal contribution of guard enforcement
 unmeasured. Exposure choices, market direction, and transaction costs all affect its
@@ -165,11 +171,11 @@ interfaces and research guards. Its fixed defect benchmark records
 and \ParityPassed{}/\ParityCount{} numerical checks pass their stated tolerances.
 A frozen code-generation audit finds \CGOfficialValid{}/\CGPlanned{} valid first submissions
 under its pre-registered parser and \CGPostValid{}/\CGPlanned{} after post-hoc extraction,
-with silent split and timing errors dominating the executable programs. Execution records
-and independent oracles expose the difference between an asserted audit and a completed one.
-These results support reusable infrastructure for detecting spurious research findings
-and reproducing computations, and they identify enforced invocation as the step that
-optional documentation does not provide.
+with silent split and timing errors dominating the executable programs. Enforcing the
+library's checks cut accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
+\ENRawGuardsAllAcceptedInvalid{} without raising valid ones. These results support reusable
+infrastructure that refuses spurious research findings and reproduces computations; they do
+not show that the library makes small models write correct financial code.
 
 \section*{Limitations}
 The defect benchmark repeats fixed synthetic families across seeds; its 100\% recall is
@@ -177,8 +183,9 @@ not a universal leakage-detection guarantee. Numerical parity covers eight primi
 not every backend. The code-generation study uses author-designed synthetic tasks, two
 model sizes from one family, and three seeds on four fixed rules, which are not twelve
 independently sampled problems; training contamination is not ruled out. Its fence
-extraction is a post-hoc sensitivity analysis run on another host, and because no program
-used the library it does not measure a library or guard intervention. Passing sampled
+extraction is a post-hoc sensitivity analysis run on another host. The enforced follow-up
+reuses these tasks after seeing E4's failures, allows only three attempts, and its interface
+text named one argument differently from the library function. Passing sampled
 perturbations does not certify universal causality. The currency component ablation uses
 daily reference prices, two Qwen model sizes, and one short path, without a matched
 mandatory-guard arm or executable quotes and carry. Auxiliary QA comparisons use public,

@@ -1,0 +1,56 @@
+{
+  "id": "7b-ma_crossover-23-raw_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each column (asset)\n    for col in prices.columns:\n        # Compute the rolling means for the last 5 and 20 days\n        mean_5 = adjusted_prices[col].rolling(window=5, min_periods=1).mean()\n        mean_20 = adjusted_prices[col].rolling(window=20, min_periods=1).mean()\n        \n        # Compute the difference between the means\n        diff = mean_5 - mean_20\n        \n        # Apply the sign function and divide by 4\n        weights[col] = np.sign(diff) / 4\n        \n        # Ensure that the earliest nonzero-capable row is t=20\n        weights[col] = weights[col].shift(1)\n        weights[col].iloc[:20] = 0\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted prices using the split factors, computes the rolling means for the last 5 and 20 days, and then applies the sign function followed by division by 4. It ensures that the earliest nonzero-capable row is at t=20 by shifting the results up one row and setting the first 20 rows to zero."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10834,
+      "completion_tokens": 346,
+      "total_tokens": 11180
+    },
+    "generation_seconds": 14.44831187510863
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each column (asset)\n    for col in prices.columns:\n        # Compute the rolling means for the last 5 and 20 days\n        mean_5 = adjusted_prices[col].rolling(window=5, min_periods=1).mean()\n        mean_20 = adjusted_prices[col].rolling(window=20, min_periods=1).mean()\n        \n        # Compute the difference between the means\n        diff = mean_5 - mean_20\n        \n        # Apply the sign function and divide by 4\n        weights[col] = np.sign(diff) / 4\n        \n        # Ensure that the earliest nonzero-capable row is t=20\n        weights[col] = weights[col].shift(1)\n        weights[col].iloc[:20] = 0\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-677gky8d",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "b1fd7ae1b5177b07a9cc1cc8b7908ca26e98409b9af38cb392b391c9bfd8a8dc",
+    "solve_seconds": 0.007747755851596594,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.010s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.008s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "controller_seconds": 4.56525927176699
+  },
+  "accepted": true,
+  "feedback": null
+}

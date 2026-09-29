@@ -1,0 +1,38 @@
+{
+  "id": "7b-vol_target_momentum-23-raw_exec",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Iterate over each column (asset) and calculate the weights\n    for col in prices.columns:\n        # Get the price series for the current asset\n        price_series = adjusted_prices[col]\n        \n        # Calculate the returns for the last 21 days\n        returns = price_series.pct_change().dropna()\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.std(ddof=1)\n        \n        # Calculate the momentum signal\n        momentum_signal = np.sign(price_series / price_series.shift(21) - 1)\n        \n        # Calculate the scaling factor\n        scaling_factor = np.minimum(1, 0.10 / (std_dev * np.sqrt(252)))\n        \n        # Calculate the raw weights\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the weights to sum to 1/4\n        normalized_weights = raw_weights / raw_weights.sum() * 0.25\n        \n        # Assign the normalized weights to the corresponding positions in the weights DataFrame\n        weights.loc[returns.index, col] = normalized_weights\n    \n    # Set the weights for the first 20 rows to zero\n    weights.iloc[:20] = 0\n    \n    # Replace infinite values with NaN\n    weights.replace([np.inf, -np.inf], np.nan, inplace=True)\n    \n    # Fill NaN values with zero\n    weights.fillna(0, inplace=True)\n    \n    return weights\n```\n\nThis updated code includes steps to handle non-finite values by replacing them with NaN and then filling those NaN values with zero. This ensures that the returned weights DataFrame does not contain any non-finite values."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11418,
+      "completion_tokens": 456,
+      "total_tokens": 11874
+    },
+    "generation_seconds": 12.371402595657855
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Iterate over each column (asset) and calculate the weights\n    for col in prices.columns:\n        # Get the price series for the current asset\n        price_series = adjusted_prices[col]\n        \n        # Calculate the returns for the last 21 days\n        returns = price_series.pct_change().dropna()\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.std(ddof=1)\n        \n        # Calculate the momentum signal\n        momentum_signal = np.sign(price_series / price_series.shift(21) - 1)\n        \n        # Calculate the scaling factor\n        scaling_factor = np.minimum(1, 0.10 / (std_dev * np.sqrt(252)))\n        \n        # Calculate the raw weights\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the weights to sum to 1/4\n        normalized_weights = raw_weights / raw_weights.sum() * 0.25\n        \n        # Assign the normalized weights to the corresponding positions in the weights DataFrame\n        weights.loc[returns.index, col] = normalized_weights\n    \n    # Set the weights for the first 20 rows to zero\n    weights.iloc[:20] = 0\n    \n    # Replace infinite values with NaN\n    weights.replace([np.inf, -np.inf], np.nan, inplace=True)\n    \n    # Fill NaN values with zero\n    weights.fillna(0, inplace=True)\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-ljpxrnt2",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "3333925b86457a14db6c14a9f1db957e074196008eda176e286bbcaf71437f1b",
+    "solve_seconds": 0.01126571325585246,
+    "library_calls": 0,
+    "controller_seconds": 3.8263925020582974
+  },
+  "accepted": true,
+  "feedback": null
+}

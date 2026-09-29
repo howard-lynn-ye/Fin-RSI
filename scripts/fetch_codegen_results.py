@@ -8,7 +8,8 @@ Run from D:\\fin_skill in PowerShell:
   python scripts\\fetch_codegen_results.py status           # print and save job status
   python scripts\\fetch_codegen_results.py fetch            # download once completion.txt exists
   python scripts\\fetch_codegen_results.py fetch --partial  # snapshot an unfinished job
-Downloads go to a NEW folder runs\\codegen-utility-v2-fetch-<UTC stamp>\\ with fetch-receipt.json.
+Pass --study enforced-v1 for job 1765432. Downloads go to a NEW folder
+runs\\codegen-<study>-fetch-<UTC stamp>\\ with fetch-receipt.json.
 """
 import argparse
 from datetime import datetime, timezone
@@ -32,10 +33,15 @@ from scripts.deploy_beacon_followup import remote_command  # noqa: E402
 CRED = os.environ.get('FIN_BEACON_CREDENTIAL', 'D:/ct_agent_vqa/.secrets/beacon_password.txt')
 JOB = '1733007'
 REMOTE = '/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-utility-20260928-v2'
+STUDIES = {  # study label -> (job id, remote root)
+    'utility-v2': (JOB, REMOTE),
+    'enforced-v1': ('1765432', '/beacon-projects/radfm/wy891/'
+                               'fin-skills-campaign-codegen-enforced-20260929-v1')}
+STUDY = 'utility-v2'
 TOP = ('protocol.json', 'inputs.json', 'qualification.json', 'inference-started.json',
        'inference-receipt.json', 'scores.json', 'completion.txt', 'job.sh', 'manifest.json',
        'plan.json')
-DIRS = ('responses', 'audits', 'logs')
+DIRS = ('responses', 'attempts', 'audits', 'logs')
 SOURCE = ('source/inputs.json', 'source/library-and-runner.tar.gz', 'source/protocol.json',
           'source/protocol.md', 'job.sh', 'source/submit_model_followup.py')
 
@@ -104,7 +110,7 @@ def fetch(t, partial):
         names = sorted(set(names))
         before = remote_hashes(t, names)
         source = remote_hashes(t, [n for n in SOURCE if exists(n)])
-        out = ROOT / 'runs' / ('codegen-utility-v2-fetch-' + stamp)
+        out = ROOT / 'runs' / (f'codegen-{STUDY}-fetch-' + stamp)
         out.mkdir(parents=True, exist_ok=False)
         files = {}
         for name in names:
@@ -130,7 +136,11 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('action', choices=['status', 'fetch'])
     p.add_argument('--partial', action='store_true')
+    p.add_argument('--study', choices=sorted(STUDIES), default='utility-v2')
     args = p.parse_args()
+    global JOB, REMOTE, STUDY
+    STUDY = args.study
+    JOB, REMOTE = STUDIES[STUDY]
     with open_transport() as t:
         if args.action == 'status':
             text = status_text(t)

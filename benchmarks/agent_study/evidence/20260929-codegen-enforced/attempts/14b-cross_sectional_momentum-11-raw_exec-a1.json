@@ -1,0 +1,38 @@
+{
+  "id": "14b-cross_sectional_momentum-11-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().fillna(0)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 61st row\n    for i in range(60, len(prices)):\n        # Get the last 60 days of returns\n        recent_returns = returns.iloc[i-60:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + recent_returns).prod() - 1\n        \n        # Rank the compounded returns in descending order\n        ranks = compounded_returns.rank(method='first', ascending=False)\n        \n        # Identify the top two assets\n        top_two = ranks[ranks <= 2].index\n        \n        # Assign weights to the top two assets\n        weights.loc[prices.index[i], top_two] = 0.5 / len(top_two)\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights based on the specified cross-sectional momentum strategy. The function adjusts the prices for splits, calculates daily returns, and then iterates over each row starting from the 61st row to compute the compounded returns over the last 60 days. It ranks these compounded returns, identifies the top two assets, and assigns equal weights to them."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10815,
+      "completion_tokens": 343,
+      "total_tokens": 11158
+    },
+    "generation_seconds": 18.981589269824326
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().fillna(0)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 61st row\n    for i in range(60, len(prices)):\n        # Get the last 60 days of returns\n        recent_returns = returns.iloc[i-60:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + recent_returns).prod() - 1\n        \n        # Rank the compounded returns in descending order\n        ranks = compounded_returns.rank(method='first', ascending=False)\n        \n        # Identify the top two assets\n        top_two = ranks[ranks <= 2].index\n        \n        # Assign weights to the top two assets\n        weights.loc[prices.index[i], top_two] = 0.5 / len(top_two)\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-9661dn0k",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "4c330fa842b84cc11456ff227bfe27e0c395513e6c647d3fca933991633ee43b",
+    "solve_seconds": 0.035437218844890594,
+    "library_calls": 0,
+    "controller_seconds": 3.6702340049669147
+  },
+  "accepted": true,
+  "feedback": null
+}

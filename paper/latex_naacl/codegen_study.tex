@@ -1,13 +1,14 @@
-\section{E4: First-submission financial code generation}
+\section{E4: Financial code generation with and without enforcement}
 \label{sec:codegen}
 Can an open code model write a correct allocation or signal rule from a specification alone,
-and does placing the library's documentation in context change that? We froze a paired study
-before model inference. Qwen2.5-Coder 7B and 14B each wrote one program for four rules
-(diagonal risk parity by inverse volatility, positive cross-sectional momentum, a 5/20
-moving-average crossover, and volatility-targeted momentum), three data seeds, and two arms:
-\CGPlanned{} programs. Both arms received identical raw quotes with split jumps, cumulative
-split factors known on their event dates, the mathematical rule, the one-bar timing rule, one
-response of at most 2,048 tokens, and no execution feedback. The library arm additionally
+and does the library's documentation, or enforcing its use and checks, change that? We froze
+a paired first-submission study before model inference. Qwen2.5-Coder 7B and 14B each
+wrote one program for four rules (diagonal risk parity by inverse volatility, positive
+cross-sectional momentum, a 5/20 moving-average crossover, and volatility-targeted
+momentum), three data seeds, and two arms: \CGPlanned{} programs. Both arms received
+identical raw quotes with split jumps, cumulative split factors known on their event dates,
+the mathematical rule, the one-bar timing rule, one response of at most 2,048 tokens, and no
+execution feedback. The library arm additionally
 received the actual catalog output and interface and guard documentation (mean prompt
 \CGFourteenLibraryInTokens{} versus \CGFourteenRawInTokens{} tokens). Programs ran in the
 Landlock/seccomp worker. An independent NumPy grader, shared by both arms, requires
@@ -80,6 +81,56 @@ same-session violations: the guard asks whether values before $k$ depend on data
 $k$, which is feature causality, whereas a position must also exclude session $k$ itself.
 The execution-lag contract therefore needs its own check rather than an inference from a
 passed causality test. Together with E2, these results show that raw first submissions are
-unreliable in ways that still execute, and that optional documentation is not used; they
-motivate controller-enforced library calls and guards, which remain to be tested on these
-tasks.
+unreliable in ways that still execute, and that optional documentation is not used.
+
+\paragraph{Enforced library calls and checks.}
+We therefore froze a follow-up on the same rules, seeds, models, prompt packet, and hidden
+grader, with up to three attempts and controller feedback in three arms of 24 episodes:
+coding from scratch with execution feedback only; coding from scratch with enforced lag and
+split checks; and the library documentation with an enforced
+\texttt{fin\_skills.algorithms.run} call plus the same checks. The lag check applies the
+library's causality guard to positions shifted up one row ($k=40,72$), closing the
+same-session gap above; the split check requires identical output for the split-adjusted
+representation. Feedback never reveals reference weights, and every arm parses the first
+complete fence. A deliverable counts only if the controller accepts it and the unchanged
+grader finds it valid.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccc}
+\toprule
+Arm & Valid & Acc. & Wrong & Lib. & Tries \\
+\midrule
+Raw & \ENRawExecAllValid/24 & \ENRawExecAllAccepted & \ENRawExecAllAcceptedInvalid & ---
+& \ENRawExecAllAttempts \\
+Raw + checks & \ENRawGuardsAllValid/24 & \ENRawGuardsAllAccepted &
+\ENRawGuardsAllAcceptedInvalid & --- & \ENRawGuardsAllAttempts \\
+Lib.\ + checks & \ENLibGuardsAllValid/24 & \ENLibGuardsAllAccepted &
+\ENLibGuardsAllAcceptedInvalid & \ENLibEpisodesCalling/24 & \ENLibGuardsAllAttempts \\
+\bottomrule
+\end{tabular}
+\caption{Enforced follow-up (job \ENJob; 7B and 14B pooled, up to three attempts). Raw
+receives execution feedback only. Valid: accepted and valid under the hidden grader. Acc.:
+accepted. Wrong: accepted but invalid. Lib.: episodes with a traced library call in any
+attempt. Tries: mean attempts.}
+\label{tab:enforced}
+\end{table}
+
+Enforcement did not produce more valid programs (Table~\ref{tab:enforced}):
+\ENRawExecAllValid, \ENRawGuardsAllValid, and \ENLibGuardsAllValid{} of 24. It changed what is
+delivered. With execution feedback alone, \ENRawExecAllAccepted{} programs were accepted and
+\ENRawExecAllAcceptedInvalid{} of them were wrong (\ENRawExecAllAcceptedInvalidPct\%),
+including \ENRawExecAllSplitFail{} split and \ENRawExecAllTimingFail{} timing failures. With
+enforced checks, accepted-but-wrong programs fell to \ENRawGuardsAllAcceptedInvalid{}
+(\ENRawGuardsAllAcceptedInvalidPct\%), both of which pass the grader's timing and split
+probes and fail only numerical agreement; with the library requirement, none was accepted.
+The library was hard to use from its interface text: \ENLibAttemptsMentioning{} of
+\ENLibAttempts{} library-arm attempts reference \textsc{fin-skills}, \ENLibAttemptsCalling{}
+trace a call, and \ENLibAttemptsFailedRun{} fail to run, mostly on output shape, nonfinite
+values, and argument errors. In \ENKeywordAttempts{} attempts the model followed a parameter
+name in the supplied interface text that the function does not accept; all
+\ENKeywordRecumulated{} also re-cumulated split factors and would have failed the split
+check. For these models and this budget, the checks turn silent errors into explicit
+rejections; correct construction still needs a stronger model, more repair budget, or a
+simpler interface.

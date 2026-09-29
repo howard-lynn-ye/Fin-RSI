@@ -1,0 +1,38 @@
+{
+  "id": "14b-diagonal_risk_parity-37-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0, index=prices.index, columns=prices.columns)\n    \n    # Apply diagonal risk parity for t >= 61\n    for t in range(60, len(returns)):\n        # Get the last 60 returns up to t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize to sum to 1\n        normalized_weights = inv_std_devs / inv_std_devs.sum()\n        \n        # Assign weights to the current date\n        weights.iloc[t] = normalized_weights\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10766,
+      "completion_tokens": 215,
+      "total_tokens": 10981
+    },
+    "generation_seconds": 12.66952200140804
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0, index=prices.index, columns=prices.columns)\n    \n    # Apply diagonal risk parity for t >= 61\n    for t in range(60, len(returns)):\n        # Get the last 60 returns up to t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize to sum to 1\n        normalized_weights = inv_std_devs / inv_std_devs.sum()\n        \n        # Assign weights to the current date\n        weights.iloc[t] = normalized_weights\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-2pznl2q_",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "92241fbd10d2c5fbbc601bc9652b33bf154188177740e0235bcf040aca5e3acd",
+    "solve_seconds": 0.029039050918072462,
+    "library_calls": 0,
+    "controller_seconds": 3.9701755391433835
+  },
+  "accepted": true,
+  "feedback": null
+}

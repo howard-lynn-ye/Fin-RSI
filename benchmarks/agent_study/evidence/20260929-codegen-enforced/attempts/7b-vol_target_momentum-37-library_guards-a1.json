@@ -1,0 +1,42 @@
+{
+  "id": "7b-vol_target_momentum-37-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal\n    momentum = daily_returns.shift(-1)\n    \n    # Calculate the sample standard deviation of the last 20 returns\n    std_dev = daily_returns.rolling(window=20, min_periods=1).std(ddof=1)\n    \n    # Calculate the target volatility\n    target_vol = 0.10 / np.sqrt(252)\n    \n    # Calculate the scaling factor\n    scale_factor = np.minimum(1, target_vol / std_dev)\n    \n    # Calculate the raw weights\n    raw_weights = np.sign(momentum) * scale_factor\n    \n    # Normalize the weights to sum to 1\n    weights = raw_weights / raw_weights.sum(axis=1, keepdims=True)\n    \n    # Set the first 21 rows to 0\n    weights.iloc[:21] = 0\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes in two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function first adjusts the prices for splits, calculates daily returns, computes the momentum signal, determines the sample standard deviation of the last 20 returns, calculates the target volatility, and then computes the scaling factor. It then calculates the raw weights based on the momentum and scaling factor, normalizes these weights so that they sum to 1 for each row, and sets the first 21 rows to 0. Finally, it returns the resulting weights DataFrame."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11767,
+      "completion_tokens": 379,
+      "total_tokens": 12146
+    },
+    "generation_seconds": 10.428611016832292
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\nfrom fin_skills.algorithms import run\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors\n    \n    # Calculate daily returns\n    daily_returns = adjusted_prices.pct_change().dropna()\n    \n    # Calculate the momentum signal\n    momentum = daily_returns.shift(-1)\n    \n    # Calculate the sample standard deviation of the last 20 returns\n    std_dev = daily_returns.rolling(window=20, min_periods=1).std(ddof=1)\n    \n    # Calculate the target volatility\n    target_vol = 0.10 / np.sqrt(252)\n    \n    # Calculate the scaling factor\n    scale_factor = np.minimum(1, target_vol / std_dev)\n    \n    # Calculate the raw weights\n    raw_weights = np.sign(momentum) * scale_factor\n    \n    # Normalize the weights to sum to 1\n    weights = raw_weights / raw_weights.sum(axis=1, keepdims=True)\n    \n    # Set the first 21 rows to 0\n    weights.iloc[:21] = 0\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-pkqik5l_",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "the 'keepdims' parameter is not supported in the pandas implementation of sum()",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 28, in solve\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/frame.py\", line 11670, in sum\n    result = super().sum(axis, skipna, numeric_only, min_count, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/generic.py\", line 12506, in sum\n    return self._min_count_stat_function(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/generic.py\", line 12471, in _min_count_stat_function\n    nv.validate_func(name, (), kwargs)\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/compat/numpy/function.py\", line 418, in validate_func\n    return validation_func(args, kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/compat/numpy/function.py\", line 88, in __call__\n    validate_args_and_kwargs(\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/util/_validators.py\", line 223, in validate_args_and_kwargs\n    validate_kwargs(fname, kwargs, compat_args)\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/util/_validators.py\", line 165, in validate_kwargs\n    _check_for_default_values(fname, kwds, compat_args)\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/util/_validators.py\", line 81, in _check_for_default_values\n    raise ValueError(\nValueError: the 'keepdims' parameter is not supported in the pandas implementation of sum()\n"
+    },
+    "solve_seconds": 0.03371402621269226,
+    "library_calls": 0,
+    "controller_seconds": 3.801138967741281
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nExecution failed: ValueError: the 'keepdims' parameter is not supported in the pandas implementation of sum()\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/util/_validators.py\", line 81, in _check_for_default_values\n    raise ValueError(\nValueError: the 'keepdims' parameter is not supported in the pandas implementation of sum()\nReturn the complete corrected program."
+}

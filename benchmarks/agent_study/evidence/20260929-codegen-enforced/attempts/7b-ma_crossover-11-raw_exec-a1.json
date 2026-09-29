@@ -1,0 +1,38 @@
+{
+  "id": "7b-ma_crossover-11-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted closing prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Compute the rolling means for the last 5 and 20 days\n    for col in prices.columns:\n        roll_5 = adjusted_prices[col].rolling(window=5, min_periods=1).mean()\n        roll_20 = adjusted_prices[col].rolling(window=20, min_periods=1).mean()\n        \n        # Compute the sign of the difference between the two means\n        diff_sign = np.sign(roll_5 - roll_20)\n        \n        # Divide by 4 to get the weight\n        weights[col] = diff_sign / 4\n        \n        # Ensure the earliest nonzero-capable row is t=20\n        weights[col] = weights[col].shift(20)\n    \n    # Replace NaN values with 0\n    weights.fillna(0, inplace=True)\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted closing prices, computes the rolling means for the last 5 and 20 days, determines the sign of the difference between these means, divides by 4 to get the weight, and ensures that the earliest nonzero-capable row is at t=20. It also handles NaN values by replacing them with 0."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10817,
+      "completion_tokens": 350,
+      "total_tokens": 11167
+    },
+    "generation_seconds": 9.669721092097461
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted closing prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Compute the rolling means for the last 5 and 20 days\n    for col in prices.columns:\n        roll_5 = adjusted_prices[col].rolling(window=5, min_periods=1).mean()\n        roll_20 = adjusted_prices[col].rolling(window=20, min_periods=1).mean()\n        \n        # Compute the sign of the difference between the two means\n        diff_sign = np.sign(roll_5 - roll_20)\n        \n        # Divide by 4 to get the weight\n        weights[col] = diff_sign / 4\n        \n        # Ensure the earliest nonzero-capable row is t=20\n        weights[col] = weights[col].shift(20)\n    \n    # Replace NaN values with 0\n    weights.fillna(0, inplace=True)\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-c9whpvsp",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "404177d34d74c4c2ebacf04187026640e529f52aa2d56ec047c3abc9570239fa",
+    "solve_seconds": 0.006081634666770697,
+    "library_calls": 0,
+    "controller_seconds": 3.7287769517861307
+  },
+  "accepted": true,
+  "feedback": null
+}
