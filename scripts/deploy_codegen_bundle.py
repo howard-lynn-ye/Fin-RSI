@@ -36,7 +36,8 @@ def main():
     plan = manifest['plan']
     assert plan == json.loads((bundle/'plan.json').read_text())
     root = plan['remote_root']
-    assert root.startswith('/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-')
+    assert root.startswith(('/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-',
+                            '/beacon-projects/radfm/wy891/fin-skills-campaign-trading-'))
     for marker in ('deployment-started.json', 'deployment-receipt.json'):
         if (bundle/marker).exists():
             raise SystemExit(f'{marker} exists; inspect the remote state instead of redeploying')
@@ -65,7 +66,15 @@ def main():
             sftp.mkdir(root, mode=0o700)
             for sub in ('logs', 'tmp', 'cache', 'source'):
                 sftp.mkdir(root + '/' + sub, mode=0o700)
+            made = set()
             for name, blob in files.items():
+                parent = root + '/' + name.rsplit('/', 1)[0] if '/' in name else root
+                if parent not in made and parent != root:
+                    try:
+                        sftp.stat(parent)
+                    except FileNotFoundError:
+                        sftp.mkdir(parent, mode=0o700)
+                    made.add(parent)
                 with sftp.open(root + '/' + name, 'wx') as out:
                     out.write(blob)
                 with sftp.open(root + '/' + name, 'rb') as back:
@@ -74,7 +83,8 @@ def main():
             sftp.chmod(root + '/job.sh', 0o700)
         command = ['sbatch', '--parsable', '--account=angliece', '--partition=beacon',
                    '--qos=medium', '--nodes=1', '--ntasks=1', '--cpus-per-task=4',
-                   '--gres=gpu:1', '--mem=' + plan['memory'], '--time=' + plan['time'],
+                   '--gres=' + plan.get('gres', 'gpu:1'), '--mem=' + plan['memory'],
+                   '--time=' + plan['time'],
                    '--job-name=' + plan['name'], '--chdir=' + root,
                    '--output=' + root + '/logs/slurm-%j.out',
                    '--error=' + root + '/logs/slurm-%j.err', root + '/job.sh', root]
