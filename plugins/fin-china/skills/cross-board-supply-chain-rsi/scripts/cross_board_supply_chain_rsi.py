@@ -193,25 +193,54 @@ def compute_cross_board_supply_chain_features(
     smart_div = -0.50 * r_mgn_buy - 0.35 * r_mgn_bal + 0.15 * (r_nb + 0.5 * r_kol)
     # 2. Cross-Board Price-Limit Sign-Bifurcated Microstructure
     bifurc = (0.45 * r_gap - 0.30 * r_ret + 0.25 * rev_sign * (-r_mgn_buy)) * damper
-    # 3. Intraday Candle & Overnight Asymmetry
-    candle_asym = 0.50 * (r_up - r_lo) + 0.50 * r_gap
+    # 3. Intraday Candle & Range Compression Asymmetry (Gate-B upgraded: fixes single-day shadow sign flip)
+    if "garman_klass_volatility" in out.columns or "text_intensity_z30" in out.columns:
+        r_gk = _cs_rank_series(_get_col("garman_klass_volatility", 0.02), date_key)
+        r_txt = _cs_rank_series(_get_col("text_intensity_z30", 0.0), date_key)
+        candle_asym = -0.45 * r_gk - 0.30 * r_txt + 0.15 * r_gap - 0.10 * (r_up - r_lo)
+    else:
+        candle_asym = 0.50 * (r_up - r_lo) + 0.50 * r_gap
     # 4. GARP Valuation & Low-Volatility Stability Quality
     garp_qual = -0.35 * r_pe - 0.30 * r_pb - 0.25 * r_vol - 0.10 * r_il
 
     # 5. Exact Vectorized Leave-One-Out (j != i) Supply-Chain Peer Spillover
+    # Gate-B fix: prevents coarse-cluster LOO subtraction (-w_i/(W_c - w_i) * s_i) from inverting within-board rank
     leader_w = 1.0 / (1.0 + np.exp(-(1.5 * garp_qual + 1.2 * smart_div + 0.8 * r_nb)))
     peer_sig = 0.50 * garp_qual + 0.30 * smart_div + 0.20 * (-r_ret)
     ws_prod = pd.Series(leader_w * peer_sig, index=out.index)
     w_ser = pd.Series(leader_w, index=out.index)
 
-    grp_keys = [date_key, out["supply_chain_cluster"]]
+    sub_cluster = sym_series.map(lambda s: f"{spec_map[s].supply_chain_cluster}_{s[-1]}")
+    grp_keys = [date_key, sub_cluster]
     ws_sum = ws_prod.groupby(grp_keys).transform("sum").to_numpy(dtype=np.float64)
     w_sum = w_ser.groupby(grp_keys).transform("sum").to_numpy(dtype=np.float64)
     cnt = w_ser.groupby(grp_keys).transform("count").to_numpy(dtype=np.int64)
 
-    w_excl = np.maximum(w_sum - leader_w, 1e-8)
-    ws_excl = ws_sum - leader_w * peer_sig
-    spillover = np.where(cnt > 1, ws_excl / w_excl, 0.0)
+    # Fallback to coarse supply_chain_cluster when a sub_cluster has only 1 stock on date t
+    grp_coarse = [date_key, out["supply_chain_cluster"]]
+    ws_sum_c = ws_prod.groupby(grp_coarse).transform("sum").to_numpy(dtype=np.float64)
+    w_sum_c = w_ser.groupby(grp_coarse).transform("sum").to_numpy(dtype=np.float64)
+    cnt_c = w_ser.groupby(grp_coarse).transform("count").to_numpy(dtype=np.int64)
+
+    w_excl_sub = np.maximum(w_sum - leader_w, 1e-8)
+    ws_excl_sub = ws_sum - leader_w * peer_sig
+    w_excl_c = np.maximum(w_sum_c - leader_w, 1e-8)
+    ws_excl_c = ws_sum_c - leader_w * peer_sig
+    loo_peer = np.where(cnt > 1, ws_excl_sub / w_excl_sub, np.where(cnt_c > 1, ws_excl_c / w_excl_c, 0.0))
+
+    # Strictly chronological lagged (t-1) stock reception affinity (zero future leak, zero contemporaneous self-leak)
+    if date_key.nunique() > 1:
+        order_df = pd.DataFrame(
+            {"_sym": sym_series, "_dt": date_key.astype(str), "_sig": peer_sig, "_pos": np.arange(len(out))},
+            index=out.index,
+        )
+        order_df.sort_values(["_sym", "_dt"], inplace=True, kind="mergesort")
+        order_df["_lag1"] = order_df.groupby("_sym", sort=False)["_sig"].shift(1).fillna(0.0)
+        order_df.sort_values("_pos", inplace=True, kind="mergesort")
+        s_lag1 = order_df["_lag1"].to_numpy(dtype=np.float64)
+        spillover = 0.45 * loo_peer + 0.55 * s_lag1 * (1.0 + 0.50 * loo_peer)
+    else:
+        spillover = loo_peer
 
     out["supply_chain_leader_spillover"] = spillover
     out["smart_vs_retail_divergence"] = smart_div
