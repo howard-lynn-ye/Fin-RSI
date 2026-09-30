@@ -36,12 +36,18 @@ REMOTE = '/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-utility-20260
 STUDIES = {  # study label -> (job id, remote root)
     'utility-v2': (JOB, REMOTE),
     'enforced-v1': ('1765432', '/beacon-projects/radfm/wy891/'
-                               'fin-skills-campaign-codegen-enforced-20260929-v1')}
+                               'fin-skills-campaign-codegen-enforced-20260929-v1'),
+    'trading-7b-v3': ('1782624', '/beacon-projects/radfm/wy891/'
+                                 'fin-skills-campaign-trading-7b-20260930-v3'),
+    'trading-14b-v3': ('1782625', '/beacon-projects/radfm/wy891/'
+                                  'fin-skills-campaign-trading-14b-20260930-v3'),
+    'trading-32b-v3': ('1782626', '/beacon-projects/radfm/wy891/'
+                                  'fin-skills-campaign-trading-32b-20260930-v3')}
 STUDY = 'utility-v2'
 TOP = ('protocol.json', 'inputs.json', 'qualification.json', 'inference-started.json',
        'inference-receipt.json', 'scores.json', 'completion.txt', 'job.sh', 'manifest.json',
        'plan.json')
-DIRS = ('responses', 'attempts', 'audits', 'logs')
+DIRS = ('responses', 'attempts', 'audits', 'logs', 'decisions', 'data')
 SOURCE = ('source/inputs.json', 'source/library-and-runner.tar.gz', 'source/protocol.json',
           'source/protocol.md', 'job.sh', 'source/submit_model_followup.py')
 
@@ -101,12 +107,20 @@ def fetch(t, partial):
             print(status)
             raise SystemExit('completion.txt not present yet; rerun later or pass --partial')
         names = [n for n in TOP if exists(n)]
-        for d in DIRS:
+        def walk(rel):
             try:
-                names += [d + '/' + a.filename for a in s.listdir_attr(REMOTE + '/' + d)
-                          if stat.S_ISREG(a.st_mode)]
+                entries = s.listdir_attr(REMOTE + '/' + rel)
             except FileNotFoundError:
-                pass
+                return []
+            found = []
+            for a in entries:
+                if stat.S_ISREG(a.st_mode):
+                    found.append(rel + '/' + a.filename)
+                elif stat.S_ISDIR(a.st_mode):
+                    found += walk(rel + '/' + a.filename)
+            return found
+        for d in DIRS:
+            names += walk(d)
         names = sorted(set(names))
         before = remote_hashes(t, names)
         source = remote_hashes(t, [n for n in SOURCE if exists(n)])

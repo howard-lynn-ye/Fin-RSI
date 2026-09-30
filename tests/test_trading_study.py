@@ -92,7 +92,7 @@ class Scripted:
 def test_scripted_paths_run_through_controller_ledger_and_scorer(tmp_path, package_path,
                                                                  monkeypatch):
     monkeypatch.setattr(ts, 'SEEDS', (11,))
-    root = tmp_path/'root'
+    root = tmp_path/'7b'
     ts.freeze(root, ['7b'])
     ts.qualify(root)
     ts.run(root, ['7b'], backend_factory=Scripted)
@@ -105,6 +105,11 @@ def test_scripted_paths_run_through_controller_ledger_and_scorer(tmp_path, packa
     base = scores['baselines']['equal_weight_rebalanced']
     assert abs(raw['metrics']['cumulative_return'] - base['cumulative_return']) < 1e-9
     assert '7b-11' in scores['paired'] and scores['paired']['7b-11']['block_bootstrap']
+    # The manuscript generator re-checks hashes and re-prices every path from the decisions.
+    from scripts.build_trading_evidence import macros
+    numbers = macros(tmp_path, verify_fetch=False)
+    assert numbers['TRSevenRawReturn'] == f"{100*base['cumulative_return']:.1f}"
+    assert numbers['TRSevenLibLibCalls'] == '1.00' and numbers['TRFamiliesDone'] == 1
 
 
 def test_code_can_arrive_in_a_fence_or_python_triple_quotes():
