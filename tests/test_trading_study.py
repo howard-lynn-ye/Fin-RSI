@@ -105,3 +105,27 @@ def test_scripted_paths_run_through_controller_ledger_and_scorer(tmp_path, packa
     base = scores['baselines']['equal_weight_rebalanced']
     assert abs(raw['metrics']['cumulative_return'] - base['cumulative_return']) < 1e-9
     assert '7b-11' in scores['paired'] and scores['paired']['7b-11']['block_bootstrap']
+
+
+def test_code_can_arrive_in_a_fence_or_python_triple_quotes():
+    fenced = '{"tool": "run_python"}\n```python\nprint(1)\n```'
+    assert ts.extract_call(fenced) == ({'tool': 'run_python',
+                                        'arguments': {'code': 'print(1)'}}, 'json+fence')
+    triple = ('```json\n{\n  "tool": "run_python",\n  "arguments": {\n    "code": """\n'
+              'print(2)\n"""\n  }\n}\n```')
+    call, status = ts.extract_call(triple)
+    assert status == 'lenient' and call['arguments']['code'].strip() == 'print(2)'
+    # Only run_python code is recovered; malformed submissions are not repaired.
+    assert ts.extract_call('{"tool": "submit", "arguments": {"weights": {SPY: 1}}}')[0] is None
+    assert ts.extract_call('I would buy SPY.') == (None, 'unparsed')
+
+
+def test_every_aborted_v2_turn_parses_the_same_way_or_better():
+    folder = ROOT/'benchmarks/agent_study/evidence/20260929-trading-study/aborted-v2-20260930'
+    for path in folder.glob('*/decisions/*/*.json'):
+        for turn in json.loads(path.read_text())['turns']:
+            call, status = ts.extract_call(turn['response'])
+            if turn['parse'] == 'json':
+                assert status in ('json', 'json+fence')
+            else:
+                assert status == 'lenient' and call['tool'] == 'run_python'

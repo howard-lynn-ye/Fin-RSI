@@ -45,3 +45,18 @@ more documentation, so tools and text vary together; three model sizes from one 
 unchanged holding after a failed decision is a design choice. Results are reported for the
 complete hash-verified batch of each model; an interrupted job is recorded, never rerun over
 existing decisions. A negative or null result is reported as such.
+
+## Amendment v2 (2026-09-30, before any return was computed)
+
+The v1 jobs never started (H200 queue). The first L40S jobs (v2) were stopped after about seven
+minutes and eight decisions: under the one-JSON-object format, 7B wrote run_python code in
+Python triple quotes on every turn, was rejected with a generic message and never submitted,
+while library tools that need no code were unaffected. This penalised the arm that must write
+code. For both arms, v3 (i) lets run_python code follow {"tool": "run_python"} in a ```python
+fence, (ii) recovers run_python code written in a fence or a triple-quoted "code" value
+(recorded as a lenient parse; code is never edited and other tools are never repaired),
+(iii) returns a specific hint on a parse failure, and (iv) lists the CSV columns in the
+prompt. The aborted records are kept under
+`benchmarks/agent_study/evidence/20260929-trading-study/aborted-v2-20260930/`; the new parser
+recovers all 24 failed 7B turns and leaves all 30 14B/32B turns unchanged. Hardware: one
+L40S for 7B and 14B, two for 32B.

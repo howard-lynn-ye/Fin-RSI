@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -46,15 +47,17 @@ SKILLS = ('portfolio-optimizers', 'trend-following-models', 'signal-construction
           'corporate-actions-processing', 'risk-measures-var-cvar', 'regime-detection')
 
 SYSTEM = """You manage a long-only portfolio of 12 US-listed instruments: {tickers}.
-Workspace files (read-only): quotes.csv (daily open, high, low, close, volume through
-today's close; quotes are RAW, not adjusted for splits or dividends), corporate_actions.csv
-(dated splits and cash dividends), README.md. Today is {date} (session {index} of the
+Workspace files (read-only): quotes.csv, columns date,ticker,open,high,low,close,volume,
+one row per ticker and session through today's close; quotes are RAW, not adjusted for
+splits or dividends. corporate_actions.csv, columns date,ticker,kind,value,note (kind is
+split or dividend). README.md. Today is {date} (session {index} of the
 history). Target weights you submit are executed at the NEXT session's close, held for
 {step} sessions, then you decide again. Trading costs {cost:g} basis points per side on the
 traded notional. Objective: maximize net risk-adjusted return over the holding period; there
 is no benchmark to track and cash earns zero. Current holdings after price drift: {holdings}.
-Respond with exactly one JSON object per turn, {{"tool": <name>, "arguments": {{...}}}}, with
-no code fences and no other text. Tools:
+Each turn, call exactly one tool with a JSON object {{"tool": <name>, "arguments": {{...}}}}.
+For run_python you may instead write {{"tool": "run_python"}} followed by the code in one
+```python fenced block, which avoids escaping code inside JSON. Tools:
 - read_file(path, offset=0, limit=6000): part of a workspace file as text.
 - run_python(code): run Python (numpy, pandas, scipy) with the workspace as the working
   directory; print what you need to see; {timeout} second limit; no network or writes.
@@ -100,6 +103,37 @@ def schedule(sessions):
     first = next(i for i, d in enumerate(sessions) if d >= START)
     picks = [i for i in range(first, len(sessions) - 2, STEP)]
     return picks
+
+
+FENCE = re.compile(r'```(?:python|py)[^\n]*\n(.*?)\n?```', re.DOTALL)
+TRIPLE = re.compile(r'"code"\s*:\s*(?:\"\"\"|\'\'\')(.*?)(?:\"\"\"|\'\'\')', re.DOTALL)
+TOOL = re.compile(r'"tool"\s*:\s*"([a-z_]+)"')
+
+
+def extract_call(text):
+    """Tool call from a response; the same rule for both arms.
+
+    1. The first complete JSON object with a "tool" key. For run_python without a code
+       string, the first ```python fence supplies the code.
+    2. Otherwise, a run_python call whose code is in a ```python fence or in a Python
+       triple-quoted "code" value (invalid JSON that models often write): status lenient.
+    Nothing else is repaired; code and weights are never edited.
+    """
+    call, status = extract_json(text)
+    fence = FENCE.search(text)
+    if call is not None:
+        arguments = call.get('arguments') if isinstance(call.get('arguments'), dict) else {}
+        if call.get('tool') == 'run_python' and not arguments.get('code') and fence:
+            call = dict(call, arguments=dict(arguments, code=fence.group(1)))
+            status = 'json+fence'
+        return call, status
+    tool = TOOL.search(text)
+    if tool and tool.group(1) == 'run_python':
+        triple = TRIPLE.search(text)
+        code = fence.group(1) if fence else (triple.group(1) if triple else None)
+        if code:
+            return {'tool': 'run_python', 'arguments': {'code': code}}, 'lenient'
+    return None, 'unparsed'
 
 
 def extract_json(text):
@@ -258,12 +292,14 @@ def decide(backend, controller, arm, date, index, holdings):
         usage['prompt_tokens'] += response['usage']['prompt_tokens']
         usage['completion_tokens'] += response['usage']['completion_tokens']
         seconds += response['generation_seconds']
-        call, status = extract_json(text)
+        call, status = extract_call(text)
         record = dict(turn=turn, response=text, parse=status,
                       finish_reason=response['choices'][0]['finish_reason'])
         if call is None:
-            result = dict(ok=False, error='Respond with one JSON object '
-                                          '{"tool": name, "arguments": {...}}.')
+            result = dict(ok=False, error='No tool call could be parsed. Send one JSON '
+                          'object {"tool": name, "arguments": {...}}; for run_python, send '
+                          '{"tool": "run_python"} followed by the code in one ```python '
+                          'fenced block. Python triple quotes are not valid JSON.')
             record['tool'] = None
         elif call.get('tool') == 'submit':
             weights = (call.get('arguments') or {}).get('weights', call.get('arguments'))
@@ -368,7 +404,12 @@ def freeze(root, families=None):
     random.Random(20260929).shuffle(rows)
     write(root/'inputs.json', dict(paths=rows, decision_sessions=picks,
                                    decision_dates=[total.index[i] for i in picks]))
-    write(root/'protocol.json', dict(version='trading-study-v1',
+    write(root/'protocol.json', dict(version='trading-study-v2',
+        amendment='v1 jobs never started (queue); v2 jobs were stopped after 7 minutes '
+                  'because the one-JSON-object format made 7B fail every turn by writing '
+                  'code in Python triple quotes; the code-fence option, the lenient '
+                  'run_python parse, the parse-failure hint and the column list apply to '
+                  'both arms. No return had been computed.',
         created_utc=datetime.now(timezone.utc).isoformat(), universe=TICKERS,
         start=START, step=STEP, cost_bps=COST_BPS, max_turns=MAX_TURNS,
         max_tokens=MAX_TOKENS, temperature=.1, top_p=1., seeds=SEEDS, arms=ARMS,
@@ -561,7 +602,8 @@ def score(root):
             library_calls=sum(tools[k] for k in ('run_algorithm', 'run_guard',
                                                    'list_algorithms', 'describe_algorithm',
                                                    'read_skill')),
-            parse_failures=sum(t['parse'] != 'json' for r in records for t in r['turns']),
+            parse_failures=sum(t['parse'] == 'unparsed' for r in records for t in r['turns']),
+            lenient_parses=sum(t['parse'] == 'lenient' for r in records for t in r['turns']),
             mean_turnover=float(np.mean([t['turnover'] for t in trades])),
             prompt_tokens=sum(r['prompt_tokens'] for r in records),
             completion_tokens=sum(r['completion_tokens'] for r in records),
