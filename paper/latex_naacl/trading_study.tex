@@ -1,0 +1,58 @@
+\section{Out-of-sample trading with and without the library}
+\label{sec:trading}
+Does an agent that can use \textsc{fin-skills} earn more than the same agent without it?
+We froze a paired study before inference on real daily data for twelve US-listed
+instruments: eight ETFs spanning equities, bonds, gold, and commodities, and four stocks
+with splits during the history (two inside the test window). The agent sees a vendor-style
+feed of unadjusted quotes and a dated table of splits and cash dividends; the hidden ledger
+prices positions with total-return closes. Every ten sessions from
+\TRWindowStart{} to \TRWindowEnd{} (\TRDecisions{} decisions), the agent inspects the data
+available at that close, may call tools for up to eight turns, and submits long-only
+weights that execute at the next close with 5 basis points per side. A failed decision
+leaves holdings unchanged. Qwen2.5-Coder 7B, 14B, and 32B, released before the test window,
+each run three sampling seeds per arm.
+
+Both arms can read the files and run sandboxed NumPy, pandas, and SciPy code. The library
+arm can also import \textsc{fin-skills} and call its catalog: the library builds split- and
+dividend-adjusted inputs, runs one of 21 allocation, signal, risk, or forecasting methods,
+and returns weights or lagged signals; guards and dated skill documents are available on
+request. Prompts, budgets, and sampling are otherwise identical. The primary endpoint is
+each path's net Sharpe ratio and cumulative return, paired by model and seed, with a
+bootstrap over holding periods. Before any return was computed we replaced a tool format
+that forced code into JSON strings, which made the 7B model fail every turn in the arm that
+must write code; the change applies to both arms and is recorded with the aborted records.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llrrrrr}
+\toprule
+Model & Arm & Return & Sharpe & MaxDD & Subm. & Lib. \\
+\midrule
+7B & Raw & \TRSevenRawReturn & \TRSevenRawSharpe & \TRSevenRawMaxDD & \TRSevenRawSubRate & --- \\
+7B & Library & \TRSevenLibReturn & \TRSevenLibSharpe & \TRSevenLibMaxDD & \TRSevenLibSubRate &
+\TRSevenLibLibCalls \\
+14B & Raw & \TRFourteenRawReturn & \TRFourteenRawSharpe & \TRFourteenRawMaxDD &
+\TRFourteenRawSubRate & --- \\
+14B & Library & \TRFourteenLibReturn & \TRFourteenLibSharpe & \TRFourteenLibMaxDD &
+\TRFourteenLibSubRate & \TRFourteenLibLibCalls \\
+32B & Raw & \TRThirtyTwoRawReturn & \TRThirtyTwoRawSharpe & \TRThirtyTwoRawMaxDD &
+\TRThirtyTwoRawSubRate & --- \\
+32B & Library & \TRThirtyTwoLibReturn & \TRThirtyTwoLibSharpe & \TRThirtyTwoLibMaxDD &
+\TRThirtyTwoLibSubRate & \TRThirtyTwoLibLibCalls \\
+\midrule
+\multicolumn{2}{l}{Equal weight, rebalanced} & \TRBaseEwRebReturn & \TRBaseEwRebSharpe &
+& & \\
+\multicolumn{2}{l}{Equal weight, buy and hold} & \TRBaseEwHoldReturn & \TRBaseEwHoldSharpe &
+& & \\
+\multicolumn{2}{l}{60/40 SPY/IEF, rebalanced} & \TRBaseSixtyFortyReturn &
+\TRBaseSixtyFortySharpe & & & \\
+\bottomrule
+\end{tabular}
+\caption{Out-of-sample net results, \TRWindowStart{} to \TRWindowEnd{}, mean over three
+seeds. Return and MaxDD in percent; Subm.: decisions with a valid submission (\%); Lib.:
+library tool calls per decision.}
+\label{tab:trading}
+\end{table}
+
+% RESULTS PARAGRAPHS: written after the complete hash-verified batches are analysed.
