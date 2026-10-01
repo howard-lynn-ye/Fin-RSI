@@ -302,7 +302,10 @@ def decide(backend, controller, arm, date, index, holdings):
                           'fenced block. Python triple quotes are not valid JSON.')
             record['tool'] = None
         elif call.get('tool') == 'submit':
-            weights = (call.get('arguments') or {}).get('weights', call.get('arguments'))
+            arguments = call.get('arguments')
+            # A non-object argument is an invalid submission, not a controller error.
+            weights = (arguments.get('weights', arguments) if isinstance(arguments, dict)
+                       else None)
             target, problem = validate_weights(weights)
             record['tool'] = 'submit'
             if target is not None:

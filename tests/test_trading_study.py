@@ -134,3 +134,23 @@ def test_every_aborted_v2_turn_parses_the_same_way_or_better():
                 assert status in ('json', 'json+fence')
             else:
                 assert status == 'lenient' and call['tool'] == 'run_python'
+
+
+def test_a_malformed_submission_is_rejected_without_stopping_the_run():
+    class Backend:
+        seed = calls = 0
+        replies = ['{"tool": "submit", "arguments": "SPY 0.5, TLT 0.5"}',
+                   '{"tool": "submit", "arguments": {"weights": {"SPY": 0.5, "TLT": 0.5}}}']
+
+        def __call__(self, history):
+            text = self.replies[min(self.calls, 1)]
+            self.calls += 1
+            return {'choices': [{'message': {'content': text}, 'finish_reason': 'stop'}],
+                    'usage': {'prompt_tokens': 1, 'completion_tokens': 1},
+                    'generation_seconds': 0.0}
+
+    record = ts.decide(Backend(), ts.Controller(ROOT, 'raw', md.DATA_DIR), 'raw', '2025-01-02',
+                       0, {t: 0.0 for t in md.TICKERS})
+    assert record['turns'][0]['accepted'] is False
+    assert 'non-empty object' in record['turns'][0]['result']['error']
+    assert record['submitted'] and record['target']['SPY'] == 0.5
