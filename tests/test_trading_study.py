@@ -7,10 +7,10 @@ import pytest
 
 from benchmarks.agent_study import market_data as md
 from benchmarks.agent_study import trading_study as ts
-from tests.test_codegen_enforced import _confinement_available
+from benchmarks.agent_study.linux_sandbox import confinement_available
 
 ROOT = Path(__file__).resolve().parents[1]
-linux_only = pytest.mark.skipif(not _confinement_available(),
+linux_only = pytest.mark.skipif(not confinement_available(),
                                 reason='real confinement needs Linux Landlock and libseccomp')
 
 

@@ -1,0 +1,97 @@
+{
+  "version": "library-utility-pilot-v4-3",
+  "amendment": "Pilot 1810695 stopped before grading: omitted arguments on zero-argument tool calls were incorrectly rejected. Both dispatch paths now treat missing/null arguments as an empty object. Tasks and scoring unchanged.",
+  "purpose": "Real model numerical task utility, not trading returns or unseen markets",
+  "model": [
+    "14b",
+    "Qwen/Qwen2.5-Coder-14B-Instruct",
+    "aedcc2d42b622764e023cf882b6652e646b95671"
+  ],
+  "seeds": [
+    11,
+    23
+  ],
+  "tasks": [
+    {
+      "id": "equal_weight_control",
+      "method": "equal_weight",
+      "lookback": 60,
+      "tickers": [
+        "SPY",
+        "TLT",
+        "GLD"
+      ]
+    },
+    {
+      "id": "inverse_vol_60",
+      "method": "inverse_volatility",
+      "lookback": 60,
+      "tickers": [
+        "SPY",
+        "NVDA",
+        "AVGO",
+        "TLT",
+        "GLD"
+      ]
+    },
+    {
+      "id": "inverse_vol_252",
+      "method": "inverse_volatility",
+      "lookback": 252,
+      "tickers": [
+        "SPY",
+        "QQQ",
+        "EFA",
+        "EEM",
+        "TLT",
+        "IEF",
+        "GLD",
+        "DBC",
+        "NVDA",
+        "AVGO",
+        "ORLY",
+        "FAST"
+      ]
+    }
+  ],
+  "date": "2024-07-15",
+  "episodes": 12,
+  "model_selection": "Same-task 14B diagnostic selected after 7B basic controls failed to submit; 7B numerical outcomes not inspected at selection. Retain both model reports.",
+  "max_turns": 8,
+  "max_tokens": 1024,
+  "temperature": 0.1,
+  "primary": "correct numerical submission",
+  "tolerance": 0.001,
+  "source_sha256": {
+    "trading_runtime_v4.py": "603c9f494dfde117afba7c92e0c56692d1fc19d125df223cca260373390a2943",
+    "trading_tools_v4.py": "501670ed819bdc1273b4616c90792ea331b3301dfa04964f59577bc881c8b287",
+    "trading_worker_v4.py": "3c5249eabfe54a33bb4bdb4e8832a25f7065a44f52101364a849f86d8db10823",
+    "library_utility_pilot_v4.py": "a355fad311e858e51fc9439148e1fc8b3d5a04cd5da9f6c5c7c3ede87576684f",
+    "trading_study.py": "96e67a2a1308bfbee17c886974f178ba5a2ff011a1b7442a974f3a70e0d59668",
+    "trading_worker.py": "d27656263b462826dbd21ca1fc64f0d13f17dd1d56606294ddda9b899b6241db",
+    "market_data.py": "eceeb765a20c8a6043c4faec057df561ff3acb0194d46cb79e0fdd55896b4af4",
+    "linux_sandbox.py": "2beb2a2afbc6e4d1b6fe400f4286edefc66698e44a08e726ef5562cad61780e0",
+    "transformers_chat.py": "a184bbdc169509ff416eab749ab8d18c12004b331de726e89d40efa5f5dc4889"
+  },
+  "data_sha256": {
+    "quotes.csv": "e26ef7adb9b108d4b5f1fa5176df901d46307b695ee12a4feaf50afdbe2248fa",
+    "corporate_actions.csv": "6fa42da1d19a1ebeb7b237a7eaa12cde7a40aed2c33a57de93cc3874f778e735",
+    "README.md": "bd303640990d58e5614886b78d377af99b6e9aa0e352823b64cc6d29039f7b64",
+    "total_return_close.csv": "4314624478c1c88e8f8b797e0c7cf5c38bb3144c8058255d378ccf73e6188ca9"
+  },
+  "input_sha256": "0c703f7875a9f3e869128081a19c9b24fdd0cd7accf0c102397feda43d5ab620",
+  "visible_sha256": {
+    "quotes.csv": "c2a758bed4e3be53442449ff96e075f607804d162b124e4c7735f7a80b0defc8",
+    "corporate_actions.csv": "9e5c8f5676334cc4b87b02e8e41016eb7f5e2813fea0b29dd5ac7c19cdfbf059",
+    "README.md": "bd303640990d58e5614886b78d377af99b6e9aa0e352823b64cc6d29039f7b64"
+  },
+  "common_prompt_sha256": "4312ed6816376f54332860ffe2c1c072f2f1b8d9f06459bdab84adc7c96fdf08",
+  "library_prompt_sha256": "9cdb125ff8f6b8b8e2a58a164762bfed317324c27abe43b666e32ca0db3205c9",
+  "oracle": "vendor total-return close sample std or explicit equal weights; no library calls",
+  "limits": [
+    "Small development pilot, not a held-out general benchmark.",
+    "Both arms know the requested algorithm. Library adds tools and documentation.",
+    "Seeds share the same market history; no independence or significance claim.",
+    "No investment-return claim; historical data may predate model training."
+  ]
+}
