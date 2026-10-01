@@ -29,8 +29,7 @@ Linux qualification must deny real future-source and hidden-ledger reads in both
 deny network and writes, block raw imports of fin_skills, and exercise HRP/inverse-volatility
 through both interfaces. A Windows skip is not a passed sandbox test.
 
-Full trading v4, additional GPU batches, manuscript changes and slide changes are outside
-this pilot. Any expansion follows the complete pilot report and an explicit resource decision.
+Full trading v4, manuscript changes and slide changes are outside this pilot.
 
 ## Transport amendment before scoring
 
@@ -40,3 +39,16 @@ was omitted. The new protocol accepts omitted/null arguments as an empty object 
 dispatch paths and explicitly qualifies this case. Inputs, model, seeds, tasks, budgets and
 scoring tolerance are unchanged. Partial first-attempt records remain in their original
 directory; the replacement runs in a new directory and is reported separately.
+
+## Same-task model diagnostic
+
+Before inspecting numerical scores, 7B failed to submit on both seeds of the raw equal-weight
+control and on one library control. Traces showed malformed code, date-column errors, and
+attempts to write files despite a read-only contract. A single 14B diagnostic is prepared with
+the same tasks, seeds, prompts, tools, limits and scoring. This is an adaptive development
+choice, not an independently preregistered confirmatory replication. Both models and every
+failure must be reported. The original source snapshot remains pinned for the active 7B run.
+
+The 14B run may consume only the remainder of the original two GPU-hour pilot ceiling,
+including the aborted attempt. No full trading campaign or further model sweep is included.
+Select the model only at freeze time with `freeze NEW_DIR --family 14b`.

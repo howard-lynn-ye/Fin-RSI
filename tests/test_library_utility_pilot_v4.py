@@ -8,12 +8,14 @@ from benchmarks.agent_study import market_data as md
 from benchmarks.agent_study.trading_tools_v4 import Tools
 
 
-def test_freeze_pairs_identical_tasks_and_detects_input_changes(tmp_path):
+@pytest.mark.parametrize('family', ['7b', '14b'])
+def test_freeze_pairs_identical_tasks_and_detects_input_changes(tmp_path, family):
     root = tmp_path / 'pilot'
-    pilot.freeze(root)
+    pilot.freeze(root, family)
     protocol = pilot.verify(root)
     rows = json.loads((root / 'inputs.json').read_text())
     assert protocol['episodes'] == len(rows) == 12
+    assert protocol['model'][0] == family
     for task in pilot.TASKS:
         for seed in pilot.SEEDS:
             pair = [r for r in rows if r['task'] == task and r['seed'] == seed]

@@ -1,6 +1,6 @@
 """Small real-LLM paired test of financial computation, not a trading-alpha study.
 
-Twelve episodes: 3 tasks x 2 seeds x 2 arms, one pinned 7B model. Freeze before inference.
+Twelve episodes: 3 tasks x 2 seeds x 2 arms, one pinned model. Freeze before inference.
 The private numerical reference uses vendor adjusted closes, not fin_skills output.
 """
 import argparse
@@ -56,7 +56,10 @@ def expected(task, total):
     return {t: float(values.get(t, 0.)) for t in md.TICKERS}
 
 
-def freeze(root):
+def freeze(root, family='7b'):
+    model = next((m for m in v3.MODELS if m[0] == family), None)
+    if model is None or family not in ('7b', '14b'):
+        raise ValueError('pilot supports only 7b or 14b')
     root.mkdir(parents=True, exist_ok=False)
     data_hashes = md.write_dataset(root / 'data')
     md.truncate(root / 'data', root / 'visible', DATE)
@@ -65,12 +68,15 @@ def freeze(root):
             for i, task in enumerate(TASKS) for seed in SEEDS for arm in ('raw', 'library')]
     random.Random(20261001).shuffle(rows)
     v3.write(root / 'inputs.json', rows)
-    v3.write(root / 'protocol.json', dict(version='library-utility-pilot-v4-2',
+    v3.write(root / 'protocol.json', dict(version='library-utility-pilot-v4-3',
         amendment='Pilot 1810695 stopped before grading: omitted arguments on zero-argument '
                   'tool calls were incorrectly rejected. Both dispatch paths now treat '
                   'missing/null arguments as an empty object. Tasks and scoring unchanged.',
         purpose='Real model numerical task utility, not trading returns or unseen markets',
-        model=v3.MODELS[0], seeds=SEEDS, tasks=TASKS, date=DATE, episodes=len(rows),
+        model=model, seeds=SEEDS, tasks=TASKS, date=DATE, episodes=len(rows),
+        model_selection=('Original 7B development pilot' if family == '7b' else
+            'Same-task 14B diagnostic selected after 7B basic controls failed to submit; '
+            '7B numerical outcomes not inspected at selection. Retain both model reports.'),
         max_turns=8, max_tokens=1024, temperature=0.1, primary='correct numerical submission',
         tolerance=0.001, source_sha256=source_hashes(), data_sha256=data_hashes,
         input_sha256=v3.sha(root / 'inputs.json'),
@@ -168,5 +174,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['freeze', 'run', 'score'])
     parser.add_argument('root', type=Path)
+    parser.add_argument('--family', choices=('7b', '14b'),
+                        help='model family, only valid for freeze; default 7b')
     args = parser.parse_args()
-    globals()[args.mode](args.root.resolve())
+    if args.mode == 'freeze':
+        freeze(args.root.resolve(), args.family or '7b')
+    elif args.family is not None:
+        parser.error('--family is only valid for freeze; run/score use the frozen protocol')
+    else:
+        globals()[args.mode](args.root.resolve())
