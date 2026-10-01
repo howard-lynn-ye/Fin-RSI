@@ -86,6 +86,7 @@ class Tools:
         return run_guard(dict(name=name, ticker=ticker), self.workspace)
 
     def call(self, name, arguments):
+        arguments = {} if arguments is None else arguments
         common = ('read_file',)
         library = ('list_algorithms', 'describe_algorithm', 'read_skill',
                    'run_algorithm', 'run_guard')

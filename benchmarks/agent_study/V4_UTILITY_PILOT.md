@@ -31,3 +31,12 @@ through both interfaces. A Windows skip is not a passed sandbox test.
 
 Full trading v4, additional GPU batches, manuscript changes and slide changes are outside
 this pilot. Any expansion follows the complete pilot report and an explicit resource decision.
+
+## Transport amendment before scoring
+
+Initial job 1810695 was stopped before numerical grading when its traces exposed an adapter
+regression: `{"tool":"list_algorithms"}` was rejected because the empty `arguments` key
+was omitted. The new protocol accepts omitted/null arguments as an empty object in both
+dispatch paths and explicitly qualifies this case. Inputs, model, seeds, tasks, budgets and
+scoring tolerance are unchanged. Partial first-attempt records remain in their original
+directory; the replacement runs in a new directory and is reported separately.

@@ -66,6 +66,7 @@ class Controller:
         (self.root / 'tmp').mkdir(exist_ok=True, parents=True)
 
     def call(self, tool, arguments):
+        arguments = {} if arguments is None else arguments
         if not isinstance(arguments, dict):
             result = dict(ok=False, error='arguments must be an object')
         elif tool in ('read_file', 'list_algorithms', 'describe_algorithm', 'read_skill'):
@@ -178,6 +179,9 @@ def qualify(root, data_dir):
                     passed &= result.get('submission', {}).get('SPY') == 0.5
             results[f'{arm}/{name}'] = dict(passed=passed, result=result)
         if arm == 'library':
+            result = c.call('list_algorithms', None)
+            results['library/empty_arguments'] = dict(passed=bool(result.get('ok')),
+                                                     result=result)
             for name in ('inverse_volatility', 'hrp'):
                 args = dict(algorithm_id=name, tickers=['SPY', 'TLT', 'GLD'], lookback=60)
                 direct = c.call('run_algorithm', args)

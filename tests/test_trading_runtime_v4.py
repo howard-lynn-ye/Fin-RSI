@@ -91,6 +91,16 @@ def test_controller_consumes_python_submission(tmp_path):
     assert record['target']['SPY'] == 1.
 
 
+def test_no_argument_json_call_reaches_the_same_catalog_as_python(tmp_path):
+    controller = v4.Controller(tmp_path, tmp_path, 'library', menu_seed=3)
+    call, _ = v4.extract_call('{"tool":"list_algorithms"}')
+    result = controller.call(call['tool'], call.get('arguments'))
+    assert result['ok']
+    assert result == controller.tools.python_bindings()['list_algorithms']()
+    assert controller.tools.call('list_algorithms', None) == result
+    assert controller.call('list_algorithms', 'bad')['ok'] is False
+
+
 @pytest.mark.skipif(not confinement_available(), reason='requires real Linux confinement')
 def test_real_worker_denies_future_data_and_accepts_both_interfaces(tmp_path):
     md.write_dataset(tmp_path / 'data')

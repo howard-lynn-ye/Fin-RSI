@@ -65,7 +65,10 @@ def freeze(root):
             for i, task in enumerate(TASKS) for seed in SEEDS for arm in ('raw', 'library')]
     random.Random(20261001).shuffle(rows)
     v3.write(root / 'inputs.json', rows)
-    v3.write(root / 'protocol.json', dict(version='library-utility-pilot-v4-1',
+    v3.write(root / 'protocol.json', dict(version='library-utility-pilot-v4-2',
+        amendment='Pilot 1810695 stopped before grading: omitted arguments on zero-argument '
+                  'tool calls were incorrectly rejected. Both dispatch paths now treat '
+                  'missing/null arguments as an empty object. Tasks and scoring unchanged.',
         purpose='Real model numerical task utility, not trading returns or unseen markets',
         model=v3.MODELS[0], seeds=SEEDS, tasks=TASKS, date=DATE, episodes=len(rows),
         max_turns=8, max_tokens=1024, temperature=0.1, primary='correct numerical submission',
