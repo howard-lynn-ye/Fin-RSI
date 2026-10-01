@@ -43,8 +43,11 @@ qualification must pass before GPU inference. Completed decisions are never over
 resume checks their date and pre-decision holdings. Scoring requires the full paired receipt.
 An aggregate is emitted only after all six model/seed pairs finish.
 
-Two Slurm arrays, each `0-2%1`, run one seed at a time for each model, at most two GPUs
-concurrently. Each task uses one L40S: a four-hour hard limit for 7B and eight hours for 14B.
+The 14B Slurm array (`0-2%1`) runs one seed at a time. The initial 7B array submission was
+explicitly rejected by the account's submitted-job limit; its failed receipt is preserved.
+The replacement 7B job executes the same three seeds serially, with a four-hour process
+timeout per seed and a twelve-hour allocation ceiling. At most two GPUs run concurrently.
+Each task uses one L40S: a four-hour hard limit for 7B and eight hours for 14B.
 The maximum allocation is 36 GPU-hours across all six tasks; actual use may be lower.
 No automatic resubmission or time-limit extension. A timeout is an incomplete experiment,
 not a scored failure or permission to omit a seed. The existing 32B study is left running.
@@ -63,3 +66,7 @@ trading_study_v4 aggregate BATCH_DIR
 aggregation. Each pair writes its completion receipt only after its scores are saved.
 Read-only monitoring does not change prompts, infer missing decisions, or report pending
 pairs as completed returns.
+
+Submission receipts: 14B array `1812017`, 7B serial job `1812031`. The frozen code commit is
+`9a815c2461af630bc8b54afc2851eb500818bc87`; receipt hashes identify the exact staged bytes.
+Submission is not proof of completed inference or a new Return Rate result.
