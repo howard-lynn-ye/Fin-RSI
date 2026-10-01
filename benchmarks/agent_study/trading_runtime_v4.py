@@ -24,6 +24,12 @@ Return one JSON object {"tool": "name", "arguments": {...}} per turn, or one com
 ```python code fence for run_python. For example:
 {"tool":"read_file","arguments":{"path":"README.md","limit":1000}}
 The equivalent Python is print(read_file("README.md", limit=1000)).
+To inspect the actual CSV in Python, use:
+```python
+import pandas as pd
+quotes = pd.read_csv("quotes.csv")
+print(quotes.columns.tolist())
+```
 submit(weights) ends the decision. Weights are a nonempty ticker:number mapping, finite,
 nonnegative, total at most 1; omitted assets are zero and remainder is cash. Totals up to
 1.001 caused by rounding are normalized to 1, and the normalized target is recorded.
@@ -52,9 +58,15 @@ Guards diagnose; they do not repair data. These examples do not prescribe an all
 def extract_call(text):
     # A bare Python fence is code, even when its body contains a JSON tool example.
     stripped = text.strip()
-    match = v3.FENCE.fullmatch(stripped)
+    fences = list(v3.FENCE.finditer(stripped))
+    match = v3.FENCE.fullmatch(stripped) if len(fences) == 1 else None
     if match:
         return {'tool': 'run_python', 'arguments': {'code': match.group(1)}}, 'python-fence'
+    if len(fences) == 1:
+        fence = fences[0]
+        outside = stripped[:fence.start()] + stripped[fence.end():]
+        if not v3.TOOL.search(outside):
+            return {'tool': 'run_python', 'arguments': {'code': fence.group(1)}}, 'python-fence'
     return v3.extract_call(text)
 
 

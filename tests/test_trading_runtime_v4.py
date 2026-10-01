@@ -45,6 +45,15 @@ def test_bare_fence_is_code_not_an_embedded_json_tool_call():
     assert v4.extract_call('{"tool":"submit","arguments":{"SPY":1}}')[0]['tool'] == 'submit'
 
 
+def test_single_python_fence_with_prose_is_executed_without_rewriting_code():
+    code = 'submit({"SPY":1})'
+    call, status = v4.extract_call('Here is the call.\n```python\n' + code + '\n```\nDone.')
+    assert call == {'tool': 'run_python', 'arguments': {'code': code}}
+    assert status == 'python-fence'
+    # Do not silently choose between multiple code blocks without an explicit tool call.
+    assert v4.extract_call('```python\nprint(1)\n```\n```python\nprint(2)\n```')[0] is None
+
+
 def test_python_submit_ends_execution_and_invalid_submit_is_an_error(tmp_path):
     tools = Tools(tmp_path, 'raw')
     result = run_python('submit({"SPY": 0.5001, "IEF": 0.5001})\nraise Exception()', tools)
