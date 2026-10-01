@@ -1,0 +1,74 @@
+{
+  "version": "trading-study-v2",
+  "amendment": "v1 jobs never started (queue); v2 jobs were stopped after 7 minutes because the one-JSON-object format made 7B fail every turn by writing code in Python triple quotes; the code-fence option, the lenient run_python parse, the parse-failure hint and the column list apply to both arms. No return had been computed.",
+  "created_utc": "2026-09-30T18:14:25.640373+00:00",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "EFA",
+    "EEM",
+    "TLT",
+    "IEF",
+    "GLD",
+    "DBC",
+    "NVDA",
+    "AVGO",
+    "ORLY",
+    "FAST"
+  ],
+  "start": "2025-01-02",
+  "step": 10,
+  "cost_bps": 5.0,
+  "max_turns": 8,
+  "max_tokens": 1024,
+  "temperature": 0.1,
+  "top_p": 1.0,
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "arms": [
+    "raw",
+    "library"
+  ],
+  "models": [
+    [
+      "14b",
+      "Qwen/Qwen2.5-Coder-14B-Instruct",
+      "aedcc2d42b622764e023cf882b6652e646b95671"
+    ]
+  ],
+  "decisions_per_path": 44,
+  "planned_paths": 6,
+  "data_sha256": {
+    "quotes.csv": "e26ef7adb9b108d4b5f1fa5176df901d46307b695ee12a4feaf50afdbe2248fa",
+    "corporate_actions.csv": "6fa42da1d19a1ebeb7b237a7eaa12cde7a40aed2c33a57de93cc3874f778e735",
+    "README.md": "bd303640990d58e5614886b78d377af99b6e9aa0e352823b64cc6d29039f7b64",
+    "total_return_close.csv": "4314624478c1c88e8f8b797e0c7cf5c38bb3144c8058255d378ccf73e6188ca9"
+  },
+  "raw_download_sha256": "82496997f664416eb825ef225fdf24ae81e396c8d053f9b68e48120219197159",
+  "input_sha256": "a6e581d595932eb38593e59a67e1f0fbb7982a40507ab746341ce0de3bbd7049",
+  "primary_endpoint": "net Sharpe ratio and net cumulative return of each path over 2025-01-03..2026-09-25, paired library minus raw by (model, seed); block bootstrap over holding periods for confidence intervals",
+  "secondary": [
+    "submission rate",
+    "tool use and library calls",
+    "turnover",
+    "max drawdown",
+    "tokens and seconds",
+    "parse failures"
+  ],
+  "baselines": [
+    "cash",
+    "equal-weight buy and hold",
+    "equal-weight rebalanced",
+    "60/40 SPY/IEF rebalanced"
+  ],
+  "limits": [
+    "One real market path (2025-01 to 2026-09); seeds vary model sampling, not the market, so paths are not independent samples of markets.",
+    "Qwen2.5-Coder training data predates 2025 by public statements; contamination of the test window cannot be ruled out with certainty.",
+    "Long-only, daily closes, no borrowing, zero cash yield, 5 bps per side; no intraday execution, slippage or capacity modelling.",
+    "The library arm receives longer documentation; the arms differ in tools and text together.",
+    "An unchanged holding after a failed decision is a design choice; results are also reported per submission rate."
+  ]
+}
