@@ -965,7 +965,7 @@ def main() -> int:
     elapsed = round(time.time() - t0, 2)
     payload = {
         "campaign": "Fin_RSI_Model_Family_Direction_A_and_B_CoEvolution",
-        "device": "PyTorch-2.12-x86_64-AVX512-bfloat16 (shwaihe.c.googlers.com)",
+        "device": "PyTorch-2.12-x86_64-AVX512-bfloat16 (local-workstation)",
         "elapsed_seconds": elapsed,
         "n_used": int(len(eval_ret)),
         "dataset_rows": 207742,

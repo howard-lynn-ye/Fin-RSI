@@ -642,7 +642,7 @@ def evaluate_all_rsi_arms(
     elapsed = round(time.time() - t0, 2)
     return {
         "campaign_name": "fin_rsi_multimodal_alpha_campaign",
-        "device": "PyTorch-2.12-x86_64-AVX512-TensorEngine (shwaihe.c.googlers.com)",
+        "device": "PyTorch-2.12-x86_64-AVX512-TensorEngine (local-workstation)",
         "elapsed_seconds": elapsed,
         "dataset_rows": int(len(panel_df)),
         "item_feature_rows": ITEM_FEATURE_ROWS,

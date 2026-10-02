@@ -1,7 +1,7 @@
 # Governed Financial Recursive Self-Improvement (`Fin-RSI`) Multi-Seed ($M=5$) Pareto Ledger
 
 - **Campaign**: `fin_rsi_multimodal_alpha_campaign`
-- **Compute Engine**: `PyTorch-2.12-x86_64-AVX512-TensorEngine (shwaihe.c.googlers.com)` | **Elapsed**: `23.22s`
+- **Compute Engine**: `PyTorch-2.12-x86_64-AVX512-TensorEngine (local-workstation)` | **Elapsed**: `23.22s`
 - **Harness SHA-256 Lock**: `6e2da08b0bc7af051f8c344d8c9f30f7307e001da907f6226053ce452dbb4b3b` (`zero_baseline_penalty_ast_verified = True`)
 - **Dual Sample Provenance**: `n_used = 17,886 / dataset_rows = 207,742` (`799` OOS trading dates, 2018–2026)
 - **Registered Disjoint Seeds ($M=5$)**: `[20260923, 20260924, 20260925, 20260926, 20260927]`
