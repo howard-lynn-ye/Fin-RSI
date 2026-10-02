@@ -1,0 +1,56 @@
+{
+  "id": "7b-vol_target_momentum-37-raw_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"Prices and split_factors must have the same shape\")\n    \n    # Calculate the adjusted prices using the split factors\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period for calculating returns\n    lookback_period = 21\n    \n    # Iterate over the data starting from the earliest nonzero-capable row\n    for i in range(lookback_period, len(prices)):\n        # Calculate the returns for the current day\n        returns = adjusted_prices.iloc[i] / adjusted_prices.iloc[i - 1]\n        \n        # Calculate the sample standard deviation of the last 20 returns\n        std_dev = returns.iloc[:-1].std(ddof=1)\n        \n        # Calculate the momentum factor\n        momentum_factor = np.sign(returns.iloc[-1] - returns.iloc[0]) * min(1, 0.10 / (std_dev * np.sqrt(252)))\n        \n        # Assign the momentum factor to the corresponding row in the weights DataFrame\n        weights.iloc[i] = momentum_factor / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function, which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function first ensures that the input DataFrames have the same shape and index. It then calculates the adjusted prices using the split factors and initializes a DataFrame of weights with zeros. The function iterates over the data, starting from the earliest nonzero-capable row, and calculates the returns for each day. It then computes the sample standard deviation of the last 20 returns and uses this to calculate the momentum factor. Finally, it assigns the momentum factor to the corresponding row in the weights DataFrame and returns the result."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10846,
+      "completion_tokens": 439,
+      "total_tokens": 11285
+    },
+    "generation_seconds": 11.704603108111769
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"Prices and split_factors must have the same shape\")\n    \n    # Calculate the adjusted prices using the split factors\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period for calculating returns\n    lookback_period = 21\n    \n    # Iterate over the data starting from the earliest nonzero-capable row\n    for i in range(lookback_period, len(prices)):\n        # Calculate the returns for the current day\n        returns = adjusted_prices.iloc[i] / adjusted_prices.iloc[i - 1]\n        \n        # Calculate the sample standard deviation of the last 20 returns\n        std_dev = returns.iloc[:-1].std(ddof=1)\n        \n        # Calculate the momentum factor\n        momentum_factor = np.sign(returns.iloc[-1] - returns.iloc[0]) * min(1, 0.10 / (std_dev * np.sqrt(252)))\n        \n        # Assign the momentum factor to the corresponding row in the weights DataFrame\n        weights.iloc[i] = momentum_factor / 4\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-txfg47sp",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "6efb9bd21696dedf871f4ec864d26f704c3134effd2960ad7de30d03d89b711d",
+    "solve_seconds": 0.019146099220961332,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.030s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.0583547)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.028s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.0374948)"
+        }
+      ]
+    },
+    "controller_seconds": 3.757631480228156
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.030s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.0583547)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.028s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.0374948)\nReturn the complete corrected program."
+}

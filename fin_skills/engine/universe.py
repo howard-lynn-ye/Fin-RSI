@@ -36,9 +36,22 @@ class Universe:
     def dates(self, sessions) -> pd.DatetimeIndex:
         idx = sessions.index
         if isinstance(self.rebalance, str):
-            # Pandas 3 removed these offset aliases. Preserve multipliers and fiscal anchors,
-            # while leaving month/quarter-start aliases and the caller's configuration intact.
-            freq = re.sub(r"^(\d*)(B?[MQ])(?=-|$)", r"\1\2E", self.rebalance)
+            # Offset objects work before and after the Pandas 2.2 alias rename.
+            # Keep fiscal anchors, multipliers and end-of-period resampling semantics.
+            freq = self.rebalance
+            match = re.fullmatch(r"(\d*)(B?[MQ])E?(?:-([A-Z]{3}))?", freq)
+            if match:
+                count, kind, anchor = match.groups()
+                offsets = {"M": pd.offsets.MonthEnd, "BM": pd.offsets.BusinessMonthEnd,
+                           "Q": pd.offsets.QuarterEnd, "BQ": pd.offsets.BQuarterEnd}
+                if kind.endswith("Q"):
+                    months = "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split()
+                    if anchor is not None and anchor not in months:
+                        raise ValueError(f"Invalid quarter anchor: {anchor}")
+                    freq = offsets[kind](int(count or 1),
+                                         startingMonth=months.index(anchor) + 1 if anchor else 12)
+                elif anchor is None:
+                    freq = offsets[kind](int(count or 1))
             last = pd.Series(idx, index=idx).resample(freq).last().dropna()
             return pd.DatetimeIndex(sorted(set(last)))
         want = pd.DatetimeIndex(self.rebalance)

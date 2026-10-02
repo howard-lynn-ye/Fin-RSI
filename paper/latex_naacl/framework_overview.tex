@@ -1,83 +1,51 @@
-\section{Framework: tools, routing, guards, memory, and dual-layer governed evolution}
+\section{Library architecture: knowledge, computation, and verification}
 \label{sec:framework}
-We define research capability as the ability to choose appropriate quantitative methods,
-interpret their outputs, and adapt future choices, discrete skill routing specifications, and
-underlying feature operators based on realized outcomes without look-ahead leakage. Counting API
-calls alone does not measure this capability. As illustrated in Figure~\ref{fig:architecture}, our
-framework integrates progressive skill routing, counterfactual execution guards, cross-episode
-associative memory, and dual-layer governed financial recursive self-improvement (\texttt{Fin-RSI})
-spanning \textbf{Skill-Space RSI} and \textbf{Operator-Space RSI}.
+\textsc{fin-skills} connects three reusable layers. Skills describe financial assumptions
+and library conventions. Numerical interfaces execute methods against declared inputs.
+Research guards return structured findings that a controller can require before accepting
+an artifact. A successful algorithm call alone does not imply that the required audit ran.
 
-\begin{figure*}[t]
-\centering
-\IfFileExists{figures/fig1_dual_layer_fin_rsi_arch.pdf}{%
-  \includegraphics[width=0.90\textwidth]{figures/fig1_dual_layer_fin_rsi_arch.pdf}%
-}{}
-\vspace{-4pt}
-\caption{Architecture of the closed-loop \textsc{fin-skills} and \textbf{Dual-Layer Governed \texttt{Fin-RSI}} framework. \textbf{Top (Online Inference \& Verified Memory):} Point-in-time progressive routing (\texttt{RAG-Jev}, $-98.91\%$ tokens), 64-KC mushroom-body readout, and 37 counterfactual verification guards gating settlement-cleared return updates $G=\log(W_T/W_0)$. \textbf{Bottom (Offline Dual-Layer Governed Evolution):} Under SHA-256 locks, \textbf{Skill-Space RSI} (\texttt{SKILL\_HARNESS\_LOCK}) evolves contrastive \texttt{TRIGGER}/\texttt{SKIP} margins ($\Delta m \ge 0.15, |d_k| \le 1{,}024$) and one-hop cross-references, while \textbf{Operator-Space RSI} (\texttt{HARNESS\_LOCK}) optimizes bounded value-space pooling, James--Stein shrinkage, and rank-1 Woodbury--Fisher covariance updates under a three-way Pareto gate.}
-\label{fig:architecture}
-\vspace{-4pt}
-\end{figure*}
-
-\paragraph{Decision, memory, and dual-layer governed evolution cycle.}
-Let $q_t$ be the task prompt, $\mathcal{D}_{\le t}$ the market data available at time $t$,
-and $M_t$ the persistent memory state (Figure~\ref{fig:architecture}, top). A two-stage progressive router with point-in-time
-(\texttt{as\_of}) filtering selects atomic skill cards that fit the context budget without
-chunk fragmentation. The agent uses the hydrated skill specification and a readout of
-$M_t$ to select a tool, execute it with chosen parameters, and produce an asset
-allocation. When the trade clears at settlement $t+T$, the realized return updates
-$M_t$, provided it passes all 37 verification checks. Across multi-generation research cycles
-(Figure~\ref{fig:architecture}, bottom), \texttt{Fin-RSI} operates at two levels under SHA-256 harness locks: \textbf{Skill-Space RSI}
-diagnoses umbrella-versus-leaf routing collisions and mutates frontmatter \texttt{TRIGGER}/\texttt{SKIP}
-boundaries ($|d_k| \le 1{,}024$) and one-hop body cross-references under \texttt{SKILL\_HARNESS\_LOCK},
-while \textbf{Operator-Space RSI} diagnoses mathematical bottlenecks in multimodal feature and
-covariance operators and mutates candidate operators under \texttt{HARNESS\_LOCK} and a three-way
-Pareto promotion criterion.
+\paragraph{Guarded research workflow.}
+For a task and its available data, an agent selects a skill, inspects a numerical
+interface, and proposes an artifact. A controller executes the relevant checks on that
+artifact. Failures return actionable findings; missing required evidence remains
+incomplete. The controller accepts only artifacts meeting its declared policy and saves
+the associated execution records. This workflow is distinct from offering an agent
+optional tool access and trusting its claim to have validated the output.
 
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{p{0.17\textwidth}p{0.24\textwidth}p{0.24\textwidth}p{0.25\textwidth}}
+\begin{tabular}{p{0.16\textwidth}p{0.26\textwidth}p{0.25\textwidth}p{0.23\textwidth}}
 \toprule
 Component & Role in research workflow & Target question & Implementation and validation \\
 \midrule
-\textsc{fin-skills} & Document conventions and execute quantitative algorithms &
-Which methods does the model select, and how are outputs applied? &
-129 skills, 48 backends; evaluated on 64 portfolio decisions \\
-Progressive routing \& \textbf{Skill-Space RSI} & Hydrate atomic skill cards under \texttt{as\_of} cutoffs and evolve \texttt{TRIGGER}/\texttt{SKIP} boundaries &
-How to resolve umbrella-vs.-leaf collisions and future-document leakage? &
-\texttt{SKILL\_HARNESS\_LOCK}; $\SkillRSIGenZeroTrigHits{}/108 \rightarrow \SkillRSIGenThreeTrigHits{}/108$ Top-1 ($0$ thin margins, $-98.91\%$ tokens) \\
-Persistent memory & Update associative weights from completed episode returns &
-Does past experience improve future method selection across regimes? &
-64-KC mushroom-body model; $+1.71 \pm 0.14$ Sharpe across 21 episodes \\
-Execution checks & Bind verification to code artifacts and filter invalid feedback &
-Are execution outputs, panels, and learning signals free of leaks? &
-37 guards (incl.\ \texttt{check\_\-panel\_\-balance}); \PanelBalancedRows{}-row 2D panel \\
-\textbf{Operator-Space RSI} (\texttt{Fin-RSI}) & Evolve pooling, shrinkage, and covariance operators in a locked sandbox &
-Can an agent self-improve operators without backtest overfitting? &
-\texttt{HARNESS\_LOCK} + 3 probes; $\RSIGenThreeSharpeMean{} \pm \RSIGenThreeSharpeStd{}$ Sharpe ($\operatorname{ESS}\ \RSIESSRatio{}\times$) \\
+Financial skills & Route tasks and document dated conventions &
+What assumptions and failure modes apply? & 129 skill documents \\
+Numerical interfaces & Discover and execute quantitative methods &
+Do selected computations agree with references? & 48 catalog entries; E3 tests eight primitives \\
+Executable guards & Diagnose data, accounting, and validation defects &
+Which required checks passed, failed, or lack inputs? & 36 registered guards; E1 exercises 13 \\
+Execution records & Bind verification to the submitted artifacts &
+Did the required checks actually run on this code and data? & Explicit pass, fail, and incomplete states \\
+Optional extensions & Select context and retain verified experience &
+How do auxiliary context and memory services affect tasks? & HiSTrim and persistent memory; separate studies \\
 \bottomrule
 \end{tabular}
-\caption{System components, roles, and validation scope within the closed-loop financial agent framework.}
+\caption{Core financial library components and optional context and memory integrations.}
 \label{tab:framework}
 \end{table*}
 
-\paragraph{Complementary retrieval, memory, and dual-layer evolution timescales.}
-Progressive routing operates within a single task by hydrating only the 1--2 complete
-\texttt{SKILL.md} packages relevant to the query under a strict \texttt{as\_of} timestamp filter.
-Persistent memory operates across trading episodes by storing sparse Kenyon-Cell readout updates
-in an external module, while \texttt{Fin-RSI} operates across generational research cycles by
-jointly evolving discrete skill routing boundaries (\textbf{Skill-Space RSI}) and the continuous
-mathematical form of multimodal feature pooling, subspace shrinkage, and streaming covariance
-adaptation (\textbf{Operator-Space RSI}) inside immutable evaluation harnesses.
+\paragraph{Optional experience services.}
+HiSTrim operates within a single session by evicting tokens from the KV cache during
+generation. Persistent memory operates across sessions by storing parameter updates in an
+external module. The two mechanisms operate on different timescales: context pruning
+controls what the model attends to right now, whereas persistent memory retains summary
+statistics of what happened in previous episodes. Neither service is required to run
+the library's guards or reproduce its numerical primitives.
 
-\paragraph{Grounded feedback and anti-reward-hacking governance.}
+\paragraph{Grounded feedback updates.}
 When an episode concludes, the agent records the market context, the chosen tool, and the
-realized log-wealth return. Only verified, settlement-cleared outcomes update memory. Negative returns
-are retained as learning signals, while trades relying on look-ahead data, unbalanced panels, or
-unadjusted prices are rejected by guards to prevent memory corruption. Similarly, during
-\texttt{Fin-RSI} evolution, any discrete skill mutation that violates \texttt{SKILL\_HARNESS\_LOCK},
-exceeds the 1{,}024-character description cap, or leaves thin-margin routing collisions ($<15\%$),
-and any operator mutation that alters \texttt{HARNESS\_LOCK}, triggers a counterfactual guard
-violation, or regresses on sparse small-cap or crisis slices, is automatically rejected.
-
+realized return. Only verified, settlement-cleared outcomes update memory. Negative returns
+are retained as learning signals, while trades relying on look-ahead data or unadjusted
+prices are rejected by guards to prevent memory corruption.

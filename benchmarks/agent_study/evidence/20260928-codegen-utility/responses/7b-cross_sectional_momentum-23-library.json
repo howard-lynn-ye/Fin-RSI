@@ -1,0 +1,19 @@
+{
+  "id": "7b-cross_sectional_momentum-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and indices\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"prices and split_factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Iterate over the data starting from the 61st day\n    for t in range(60, len(prices)):\n        # Get the returns for the previous 60 days\n        returns = adjusted_prices.iloc[t-60:t].pct_change().dropna()\n        \n        # If there are no valid returns, skip this iteration\n        if returns.empty:\n            continue\n        \n        # Compound the returns\n        compounded_returns = (returns + 1).prod(axis=0) - 1\n        \n        # Sort the assets by their compounded returns in descending order\n        sorted_indices = compounded_returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with strictly positive momentum\n        top_two_assets = sorted_indices[:2]\n        if compounded_returns[top_two_assets[0]] > 0 and compounded_returns[top_two_assets[1]] > 0:\n            weights.loc[prices.index[t], top_two_assets] = 0.5\n    \n    return weights\n```\n\nThis function calculates the forward-adjusted close prices using the given `prices` and `split_factors`. It then iterates over the data starting from the 61st day, computes the compounded returns for the previous 60 days, sorts the assets by these returns, and assigns weights to the top two assets with strictly positive momentum. The resulting weights are returned as a DataFrame."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11648,
+      "completion_tokens": 395,
+      "total_tokens": 12043
+    },
+    "generation_seconds": 6.653297550044954
+  }
+}

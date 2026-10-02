@@ -1,0 +1,19 @@
+{
+  "id": "14b-ma_crossover-11-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Calculate adjusted prices\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 20th row\n    for i in range(20, len(prices)):\n        # Calculate the mean of the last 5 and last 20 adjusted closes\n        mean_5 = adjusted_prices.iloc[i-5:i].mean()\n        mean_20 = adjusted_prices.iloc[i-20:i].mean()\n        \n        # Compute the difference and its sign\n        diff = mean_5 - mean_20\n        sign_diff = np.sign(diff)\n        \n        # Assign weights\n        weights.iloc[i] = sign_diff / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights based on the moving average crossover strategy described. The function calculates the adjusted prices by multiplying the raw prices with the cumulative product of split factors. It then computes the mean of the last 5 and last 20 adjusted closes for each asset and determines the sign of their difference. The weights are set to one-fourth of this sign value, starting from the 20th row to ensure there is enough data for the calculation."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10782,
+      "completion_tokens": 317,
+      "total_tokens": 11099
+    },
+    "generation_seconds": 7.821682597976178
+  }
+}

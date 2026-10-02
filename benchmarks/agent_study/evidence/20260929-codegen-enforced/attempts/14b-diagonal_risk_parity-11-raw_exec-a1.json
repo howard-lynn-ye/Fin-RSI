@@ -1,0 +1,38 @@
+{
+  "id": "14b-diagonal_risk_parity-11-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=adjusted_prices.index, columns=adjusted_prices.columns)\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Apply diagonal risk parity for each session t >= 61\n    for t in range(60, len(returns)):\n        # Get the last 60 returns up to t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize inverse standard deviations to sum to 1\n        normalized_weights = inv_std_devs / inv_std_devs.sum()\n        \n        # Assign weights to the current day\n        weights.iloc[t] = normalized_weights\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights calculated using the diagonal risk parity method. The function adjusts the prices for splits, calculates simple returns, and then applies the diagonal risk parity rule starting from the 61st session."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10820,
+      "completion_tokens": 291,
+      "total_tokens": 11111
+    },
+    "generation_seconds": 16.46173841925338
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=adjusted_prices.index, columns=adjusted_prices.columns)\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Apply diagonal risk parity for each session t >= 61\n    for t in range(60, len(returns)):\n        # Get the last 60 returns up to t-1\n        recent_returns = returns.iloc[t-60:t]\n        \n        # Calculate inverse sample standard deviations\n        inv_std_devs = 1 / recent_returns.std(ddof=1)\n        \n        # Normalize inverse standard deviations to sum to 1\n        normalized_weights = inv_std_devs / inv_std_devs.sum()\n        \n        # Assign weights to the current day\n        weights.iloc[t] = normalized_weights\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-mdozkpjp",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "d68f00c12f39111b82d794f30a9f58eed1841dd02f32daa61e8520ff8bce0faf",
+    "solve_seconds": 0.017466668039560318,
+    "library_calls": 0,
+    "controller_seconds": 3.744048924650997
+  },
+  "accepted": true,
+  "feedback": null
+}

@@ -1,21 +1,81 @@
-\section{Evaluating use, retention, and adaptation}
+\section{Library evaluation: defects, execution, and numerical parity}
 \label{sec:capability_eval}
-We evaluate agent research capability across three dimensions:
+We evaluate the financial library at three boundaries: detecting invalid research inputs,
+executing declared interfaces, and reproducing numerical references; Section~\ref{sec:codegen}
+adds the code-generation audit (E4). Table~\ref{tab:core} summarizes the observed evidence.
+Each row has its own unit and denominator.
 
-\paragraph{Method selection and task quality.}
-Tasks present distinct quantitative problems requiring the agent to select tools, set
-parameters, and interpret numerical outputs. Measuring whether chosen algorithms match input
-data properties (stationarity, regime type, asset universe) alongside returns separates sound
-reasoning from fortunate price paths across matched price, text, fixed-output, and autonomous controls.
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.12\textwidth}p{0.26\textwidth}p{0.27\textwidth}p{0.26\textwidth}}
+\toprule
+Study & Endpoint & Observed result & Scope \\
+\midrule
+E1: guards & Planted-defect detection &
+\CaughtInstances{}/\DefectInstances{} detected (100\%); no clean-reference false alarms &
+12 defect families in three seeded worlds; 13 core guards exercised \\
+E2: execution & Valid decisions and successful tool requests &
+64/64 valid decisions across four conditions; 43 successful autonomous tool requests &
+16 autonomous decisions; requests include discovery, reading, advice, and computation \\
+E2: audit & Artifact validation and reporting fidelity &
+Reference submission accepted; pilot Opus Sharpe gap \OpusBase{} to \OpusLibrary{} &
+Historical pilot; self-reported guard use is not an execution receipt \\
+E3: parity & Agreement with numerical references &
+\ParityPassed{}/\ParityCount{} checks within case-specific tolerances &
+Selected primitives; maximum absolute error $1.18\times10^{-8}$ \\
+E4: code & Valid programs; accepted but wrong &
+First submission \CGOfficialValid/\CGPlanned{} (\CGPostValid/\CGPlanned{} post hoc). Enforced,
+three tries: valid \ENRawExecAllValid, \ENRawGuardsAllValid, \ENLibGuardsAllValid{} of 24;
+accepted but wrong \ENRawExecAllAcceptedInvalid, \ENRawGuardsAllAcceptedInvalid,
+\ENLibGuardsAllAcceptedInvalid &
+Two model sizes, four rules, three seeds; arms: raw, raw with checks, library with checks \\
+\bottomrule
+\end{tabular}
+\caption{Core library evidence. Detection, executable completion, audit acceptance, and
+numerical agreement are different endpoints. No row establishes universal correctness or
+profitable trading.}
+\label{tab:core}
+\end{table*}
 
-\paragraph{Context retention and progressive routing.}
-Holding the base model, input data, and tool interfaces fixed, we compare full-library
-concatenation, fixed-window BM25 chunk retrieval, and two-stage progressive skill routing
-(\texttt{RAG-Jev}) under strict point-in-time (\texttt{as\_of}) filtering across decision
-quality, retention of parameter schemas and guard signatures, token footprint, and chunk fragmentation.
+\paragraph{E1: detecting research defects.}
+The benchmark plants 12 defect families, including temporal leakage, unadjusted corporate
+actions, and universe-selection errors, in three synthetic worlds. The suite records
+\CaughtInstances{}/\DefectInstances{} detections and no false alarms on its clean
+references. This is suite-level recall: a defect may be caught by another applicable
+guard even when one intended check misses it. Repeating a family across seeds does not
+create a new defect type. Appendix~\ref{app:audit} describes the independent oracle and
+the distinction between diagnosis and agent repair.
 
-\paragraph{Experience and adaptation.}
-Holding tool access and context budgets fixed, we evaluate sequential adaptation across
-unaugmented models, frozen-memory baselines, and our multi-timescale memory module under
-identical cleared returns, tracking post-loss method shifts, turnover costs, and regime
-performance. All model outputs and portfolio weights are frozen prior to scoring.
+\paragraph{E2: execution and audit compliance.}
+We count actual dispatches and final artifacts rather than statements that a check ran.
+The exploratory portfolio study completed all 64 decisions, including 16 with autonomous
+tool access, and logged 43 successful requests in that arm. These requests include
+catalog lookup and guidance retrieval as well as numerical algorithms. In the separate
+audit feasibility study, optional guards and mandatory enforcement have different
+acceptance outcomes. Mandatory rejection protects the submission boundary but does not
+constitute successful repair: the 14B model reached its turn limit in all three mandatory
+cells. The reference submission passed the public checks and independent grading.
+
+\paragraph{E3: numerical parity.}
+Eight checks compare equal weighting, inverse-volatility weighting, minimum-variance
+optimization, normal and historical VaR/ES, historical volatility, fractional-difference
+weights, and an augmented Dickey--Fuller statistic with closed forms or independent
+NumPy, SciPy, pandas, and statsmodels references. All meet their recorded tolerances;
+the largest absolute difference is $1.18\times10^{-8}$ for the optimization weights.
+The optimization case allows $10^{-3}$ while other cases have their own tighter
+tolerances. This supports agreement for the tested calculations, not exact equality
+or validation of all catalog entries.
+
+\paragraph{Auxiliary integrations.}
+The context and memory studies test optional consumers of the library's results.
+Their methods and outcomes appear in the appendices. The public FinQA RAG and reranking
+runs retain their original official scores (\FQLegacyTotal/\FQAnswers{} correct programs
+across six model and retrieval cells). A post-hoc reanalysis bound its target-blind
+extractions by hash before grading: accepting a single fenced answer adds no correct
+program, and counting explicit correct final numbers raises the total to
+\FQRecoverableTotal/\FQAnswers. That second count is not program accuracy. Of the
+\FQMistralAnswers{} Mistral answers, \FQMistralMissingTotal{} have no final answer, so
+format repair alone cannot isolate retrieval quality (Appendix~\ref{app:library}).
+Interface corrections require a new versioned comparison rather than retrospective
+replacement of the recorded grades.

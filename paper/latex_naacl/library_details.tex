@@ -137,11 +137,110 @@ Tier-1 Finance & \texttt{FinBERT} + \texttt{BGE-v2-m3} + Calculator Receipt Gate
 \end{table*}
 
 \paragraph{Routing permutation invariance, Skill-Space RSI gains, and two-stage SEC filing retrieval.}
-Part~A of Table~\ref{tab:finqa-rerank-final} evaluates $\RoutingTotalQueries$ skill-routing queries ($36$ skills $\times 3$ query styles) under a seeded shuffled candidate order and its exact reversal before (\texttt{Gen-0}) and after (\texttt{Gen-3}) \textbf{Skill-Space RSI}. Because \texttt{Kev-0.8B} and \texttt{Kev-4B} score all candidates jointly inside an autoregressive prompt, reversing candidate order flips their Top-1 decision on $\RoutingKevZeroEightFlips/\RoutingTotalQueries$ ($\RoutingKevZeroEightFlipPct\%$) and $\RoutingKevFourBFlips/\RoutingTotalQueries$ ($\RoutingKevFourBFlipPct\%$) of queries, respectively, while \texttt{Laya} rejects all $\RoutingLayaRejections/\RoutingTotalQueries$ queries prior to inference because full skill specifications exceed its 128-token per-option budget. On the unoptimized \texttt{Gen-0} Wave-2 catalog, pointwise scoring with \texttt{BM25S} ($\RoutingBMTwoFiveTopOne/\RoutingTotalQueries$), \texttt{FinBERT} ($\RoutingFinBERTTopOne/\RoutingTotalQueries$), \texttt{BGE-Reranker-v2-m3} ($\RoutingBGERerankerTopOne/\RoutingTotalQueries$), and our \texttt{JEV System-One} calibrated router ($\RoutingJEVCalibratedTopOne/\RoutingTotalQueries = \RoutingJEVCalibratedTopOnePct\%$) guarantees exact permutation invariance ($0/\RoutingTotalQueries$ flips), while evolving $\SkillRSIEvolvedCount{}$ skill specifications via \textbf{Skill-Space RSI} (\texttt{Gen-3}, Table~\ref{tab:skill_rsi_ablation}) eliminates umbrella-versus-leaf collisions across every encoder family---lifting \texttt{eval\_triggers.py} from $\SkillRSIGenZeroTrigHits/\RoutingTotalQueries$ to $\mathbf{\SkillRSIGenThreeTrigHits/\RoutingTotalQueries}$ ($\mathbf{\SkillRSIGenThreeTrigPct\%}$), \texttt{BM25S} to $\SkillRSIGenThreeBMTwoFiveHits/\RoutingTotalQueries$ ($\SkillRSIGenThreeBMTwoFivePct\%$), \texttt{FinBERT} to $\SkillRSIGenThreeFinBERTHits/\RoutingTotalQueries$ ($\SkillRSIGenThreeFinBERTPct\%$), \texttt{BGE-Reranker-v2-m3} to $\SkillRSIGenThreeBGEHits/\RoutingTotalQueries$ ($\SkillRSIGenThreeBGEPct\%$), and \texttt{JEV System-One} to $\mathbf{\SkillRSIGenThreeJEVHits/\RoutingTotalQueries}$ ($\mathbf{\SkillRSIGenThreeJEVPct\%}$, Recall@3 $\mathbf{\SkillRSIGenThreeJEVRecallThree/\RoutingTotalQueries} = \mathbf{\SkillRSIGenThreeJEVRecallThreePct\%}$). To test whether two-stage reranking transfers to long-form corporate filings, we also indexed $\FinBenchNonemptyPages$ nonempty pages across $\FinBenchExtractedPDFs$ local SEC PDFs for the $\FinBenchQuestions$-question FinanceBench benchmark \citep{islam2023financebench}. Vectorizing lexical retrieval with \texttt{BM25S} reduces median query latency from $5.504$\,s to $\FinBenchBMTwoFiveSLatencySec$\,s ($0.125$\,s index build), while adding second-stage \texttt{BGE} cross-encoder reranking over the top-25 lexical pages improves Top-1 evidence-page hit rate by $\FinBenchTopOneRelGainPct\%$ ($\FinBenchBMTwoFiveTopOne/\FinBenchQuestions \rightarrow \FinBenchBMTwoFiveBGETopOne/\FinBenchQuestions$) and Top-5 hit rate by $\FinBenchTopFiveRelGainPct\%$ ($\FinBenchBMTwoFiveTopFive/\FinBenchQuestions \rightarrow \FinBenchBMTwoFiveBGETopFive/\FinBenchQuestions$).
+\paragraph{Storage recovery and revision ordering.}
+In a separate engineering study, we terminated collector processes before saving,
+during a batch, immediately before transaction commit, and after commit returned,
+with three repeats per boundary. All 12 cases recovered the expected atomic state
+across event records, latest-version pointers, pending alerts, and the collection
+cursor; independent read-only database checks confirmed these states. Runs with
+100, 1,000, and 10,000 synthetic events retained the expected record counts and
+cursor. These checks cover process termination, not machine power loss or financial
+task accuracy. An out-of-order revision test also exposed an interface boundary:
+the storage layer's \texttt{latest} pointer follows arrival order, so an older
+revision arriving last becomes current. Historical research must therefore apply
+an explicit chronological or availability-time selection policy rather than infer
+publication order from that pointer.
 
-\paragraph{FinQA receipt verification, citation gating, and flat tool-catalog guidance.}
-Part~B of Table~\ref{tab:finqa-rerank-final} resolves an instructive evaluation pathology on $\FinQATotalQuestions$ FinQA numerical reasoning questions \citep{chen2021finqa}. Under the legacy unconstrained harness, pairing \texttt{Mistral-Nemo-2407} or \texttt{Qwen2.5-Coder-14B} with a naive \texttt{json.loads} parser produced $0/\FinQATotalQuestions$ and $\FinQAQwenBGENaiveCorrect/\FinQATotalQuestions$ correct completions. Trajectory forensics revealed that in $\FinQAVerifiedCalcRuns/\FinQATotalQuestions$ ($\FinQAVerifiedCalcPct\%$) of runs, the agent \emph{did} execute valid intermediate \texttt{calculator} tool calls, but naive final-string parsing threw \texttt{JSONDecodeError} whenever the model wrapped its final JSON in Markdown \texttt{`{}`{}`{}json} fences ($\FinQAQwenBGEFenceErrors/\FinQATotalQuestions$ runs on Qwen; $7/\FinQATotalQuestions$ on Mistral) or hit the 8-turn LlamaIndex limit ($23/\FinQATotalQuestions$ on Mistral). Replacing naive string parsing with \textbf{Schema-Guided Receipt Recovery} recovers $\FinQAQwenSchemaReceiptCorrect/\FinQATotalQuestions$ ($\FinQAQwenSchemaReceiptPct\%$) verified answers on \texttt{Qwen2.5-Coder-14B} with $0/\FinQATotalQuestions$ parse errors, while our \textbf{\texttt{JEV} Two-Stage Reranker + \texttt{Fin-R1} Calculator Gate} achieves $\FinQAJEVFinROneCalcCorrect/\FinQATotalQuestions$ ($\FinQAJEVFinROneCalcPct\%$) gold-evidence recall and verified execution accuracy. Simultaneously, enforcing the \texttt{RAGPipeline} \textbf{Citation Gate}---which rejects any numerical claim lacking a verified calculator receipt and retrieved chunk ID---reduces \texttt{Incorrect Accepted} FinQA answers from $5/\FinQATotalQuestions$ down to $\mathbf{0/\FinQATotalQuestions}$. Across a 15-tool LlamaIndex catalog ablation comparing \texttt{Generic} (one-line descriptions), \texttt{Organized} (nested category headers), and \texttt{Flat guidance} (concise inline operational rules), \textbf{\texttt{Flat guidance}} achieves the highest verified completion ($\FrameworkFlatQwenCorrect/\FinQATotalQuestions = \FrameworkFlatQwenPct\%$ on Qwen with $0$ format errors and $0$ call-limit exceptions, vs.\ $\FrameworkOrgQwenCorrect/\FinQATotalQuestions$ Organized and $\FrameworkGenQwenCorrect/\FinQATotalQuestions$ Generic; and $\FrameworkFlatMistralCorrect/\FinQATotalQuestions$ vs.\ $\FrameworkOrgMistralCorrect/\FinQATotalQuestions$ on Mistral), demonstrating that flat, decision-oriented inline rules outperform deep tool hierarchies.
+\paragraph{Report-QA workflow ablation.}
+On 32 public FinQA questions from 16 companies, we compared BM25S components,
+the same retrieval with a frozen financial skill, the library RAG interface with
+that skill, and all supplied report text and tables. Qwen2.5-Coder-14B-Instruct
+produced 3, 2, 2, and 1 correct answers, respectively; Mistral-Nemo-Instruct-2407
+produced none in these conditions. Each model generated 128 answers. Applying
+the citation-label gate to the same frozen RAG answers changed no outcomes;
+this paired check adds no independent samples and does not test semantic support.
+For Qwen, incorrect accepted answers numbered 5, 1, 0, and 5, respectively.
+The smaller number of wrong acceptances therefore accompanies low correct
+completion and frequent rejection or format failure, rather than demonstrating
+an overall accuracy improvement. The full-context condition uses FinQA's
+extracted text and tables, not complete original annual reports.
 
-\paragraph{Storage crash recovery and arrival-order vs.\ point-in-time revision semantics.}
-Finally, we audited the SQLite collection and monitoring state store across four process-termination boundaries (\texttt{before\_save}, \texttt{mid\_batch}, \texttt{pre\_commit}, and \texttt{post\_commit}, three repeats each = $\SQLiteSigkillRecovery$ \texttt{SIGKILL} injections) and scale runs of $100$, $1{,}000$, and $10{,}000$ synthetic events ($0.154$\,s / $0.404$\,s / $3.036$\,s ingest; $45.8$\,ms / $56.6$\,ms / $58.1$\,ms reopen; $3.89$\,ms / $4.54$\,ms / $8.67$\,ms median latest-query latency). All $\SQLiteSigkillRecovery$ crash tests recovered the exact atomic database state across event records, latest-version pointers, pending alerts, and collection cursors. Crucially, an out-of-order revision injection test confirmed a vital architectural boundary: the storage engine's operational \texttt{latest} pointer tracks \emph{arrival order} rather than chronological publication order, so a delayed restatement or backfilled historical revision arriving last becomes the current operational record. Consequently, historical backtests must never treat storage arrival pointers as point-in-time knowledge, motivating our mandatory \texttt{check\_pit\_fundamentals} and \texttt{check\_safe\_asof} runtime guards.
+\paragraph{Downstream transfer from passage reranking.}
+Using the same 32 questions, we froze the ten BM25 passage candidates and
+reranked them with BGE or local Kev-4B before supplying up to five passages
+within the same context budget. The answer agent, financial skill, calculator,
+and response limits were held fixed. All 64 planned answers per model were
+saved. Table~\ref{tab:finqa-rerank-final} reports their original scores, which
+were independently replayed against the official numerical and program labels.
+These questions overlap the workflow and memory studies; the 128 generated
+answers are not 128 independent tasks.
 
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrr}
+\toprule
+Answer model & Reranker & Correct & Errors \\
+\midrule
+Qwen & BGE & 2/32 & 30/32 \\
+Qwen & Kev-4B & 0/32 & 31/32 \\
+Mistral & BGE & 0/32 & 32/32 \\
+Mistral & Kev-4B & 0/32 & 32/32 \\
+\bottomrule
+\end{tabular}
+\caption{Exploratory FinQA reranking transfer. Errors count saved scoring or
+answer-format exceptions, not failed compute jobs. One Qwen/Kev answer was
+incorrect without such an exception. Model identities are given in the text.}
+\label{tab:finqa-rerank-final}
+\end{table}
+
+\paragraph{Frozen format reanalysis.}
+To test whether answer formatting alone explains these low scores, we re-scored the
+\FQAnswers{} saved RAG and reranking answers without regenerating any of them.
+Target-blind extractions were bound by hash before the official FinQA executor and gold
+labels were loaded, and the
+original official counts were reproduced first. Table~\ref{tab:finqa-format} keeps those
+program scores, adds the prospective single-fence parser, and separately counts a final
+answer as recoverable when the parsed program is correct or the final text states one
+unambiguous correct number. Percent signs are normalized; refusals, ambiguous scales, and
+missing answers stay failures, and no tool output replaces a missing final answer.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrr}
+\toprule
+Model & Condition & Official & Fence & Recov. & No final \\
+\midrule
+Qwen & RAG & \FQQwenRagLegacy & \FQQwenRagFence & \FQQwenRagRecoverable & \FQQwenRagMissing \\
+Qwen & BGE & \FQQwenBgeLegacy & \FQQwenBgeFence & \FQQwenBgeRecoverable & \FQQwenBgeMissing \\
+Qwen & Kev-4B & \FQQwenKevLegacy & \FQQwenKevFence & \FQQwenKevRecoverable & \FQQwenKevMissing \\
+Mistral & RAG & \FQMistralRagLegacy & \FQMistralRagFence & \FQMistralRagRecoverable &
+\FQMistralRagMissing \\
+Mistral & BGE & \FQMistralBgeLegacy & \FQMistralBgeFence & \FQMistralBgeRecoverable &
+\FQMistralBgeMissing \\
+Mistral & Kev-4B & \FQMistralKevLegacy & \FQMistralKevFence & \FQMistralKevRecoverable &
+\FQMistralKevMissing \\
+\bottomrule
+\end{tabular}
+\caption{Post-hoc FinQA format reanalysis (\FQQwenRagN{} questions per row). Official: original
+strict program correctness. Fence: single-fence parser. Recov.: recoverable correct final
+answer, which is not program or citation correctness.}
+\label{tab:finqa-format}
+\end{table}
+
+Relaxing the fence adds no correct program. Recoverable final answers exceed program
+correctness in \FQRecoveredExtra{} answers (\FQRecoveredExtraQwen{} from Qwen), and most
+Mistral answers never reach a final answer.
+Formatting is therefore one failure among several, not the explanation for the scores,
+and the reanalysis does not establish a retrieval or reranking gain.
+
+\paragraph{Interpretation and runtime limitation.}
+The reranking study does not demonstrate a Kev downstream-answer advantage.
+Answer-format and scoring exceptions dominate these runs. The original Mistral
+runtime also emitted a tokenizer-regex warning; the frozen run was not modified
+after inspecting its outcomes. Consequently, its zero correct counts do not
+isolate model capability from tokenization and answer-format problems. The
+audit verifies saved outputs, tool receipts, and grades, not the validity of
+every runtime choice. These public, overlapping tasks do not establish
+unseen-task generalization, semantic citation support, or human development-time
+savings.

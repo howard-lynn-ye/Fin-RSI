@@ -1,0 +1,56 @@
+{
+  "id": "7b-ma_crossover-37-raw_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest nonzero-capable row\n    for i in range(long_window, len(prices)):\n        # Calculate the mean of the last 'short_window' adjusted prices\n        short_mean = adjusted_prices.iloc[i-short_window+1:i+1].mean()\n        \n        # Calculate the mean of the last 'long_window' adjusted prices\n        long_mean = adjusted_prices.iloc[i-long_window+1:i+1].mean()\n        \n        # Compute the sign of the difference between the two means\n        signal = np.sign(short_mean - long_mean)\n        \n        # Divide the signal by 4 to get the weight\n        weights.iloc[i] = signal / 4\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the adjusted prices using the split factors, initializes a DataFrame of zeros for the weights, and then iterates over the DataFrame to calculate the short-term and long-term moving averages of the adjusted prices. It computes the sign of the difference between these averages and divides it by 4 to get the weight for each row. The function ensures that the earliest nonzero-capable row has a weight of zero."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11967,
+      "completion_tokens": 357,
+      "total_tokens": 12324
+    },
+    "generation_seconds": 9.970790185965598
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the earliest nonzero-capable row\n    for i in range(long_window, len(prices)):\n        # Calculate the mean of the last 'short_window' adjusted prices\n        short_mean = adjusted_prices.iloc[i-short_window+1:i+1].mean()\n        \n        # Calculate the mean of the last 'long_window' adjusted prices\n        long_mean = adjusted_prices.iloc[i-long_window+1:i+1].mean()\n        \n        # Compute the sign of the difference between the two means\n        signal = np.sign(short_mean - long_mean)\n        \n        # Divide the signal by 4 to get the weight\n        weights.iloc[i] = signal / 4\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-kn79rjrd",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "858c04ebf048b553b5692843fd5b89c4f02d81da8f29b131e5fdd16287bc07e8",
+    "solve_seconds": 0.038361089769750834,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.065s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.5)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.065s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 2 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)"
+        }
+      ]
+    },
+    "controller_seconds": 3.9369539082981646
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.065s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.5)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.065s error: <lambda>: LOOK-AHEAD in <lambda>: 2 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)\nReturn the complete corrected program."
+}

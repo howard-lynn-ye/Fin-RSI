@@ -1,0 +1,136 @@
+\section{E4: Financial code generation with and without enforcement}
+\label{sec:codegen}
+Can an open code model write a correct allocation or signal rule from a specification alone,
+and does the library's documentation, or enforcing its use and checks, change that? We froze
+a paired first-submission study before model inference. Qwen2.5-Coder 7B and 14B each
+wrote one program for four rules (diagonal risk parity by inverse volatility, positive
+cross-sectional momentum, a 5/20 moving-average crossover, and volatility-targeted
+momentum), three data seeds, and two arms: \CGPlanned{} programs. Both arms received
+identical raw quotes with split jumps, cumulative split factors known on their event dates,
+the mathematical rule, the one-bar timing rule, one response of at most 2,048 tokens, and no
+execution feedback. The library arm additionally
+received the actual catalog output and interface and guard documentation (mean prompt
+\CGFourteenLibraryInTokens{} versus \CGFourteenRawInTokens{} tokens). Programs ran in the
+Landlock/seccomp worker. An independent NumPy grader, shared by both arms, requires
+execution, agreement with the reference within $10^{-8}$, unchanged positions through
+session $k$ when prices at and after $k$ are perturbed ($k=32,64$), and identical output for
+the economically equivalent split-adjusted input. A program is valid only if it passes all.
+
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcccccccc}
+\toprule
+& & \multicolumn{2}{c}{Executed} & \multicolumn{4}{c}{Post-hoc extraction} &
+\multicolumn{2}{c}{Mean per response} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-8}\cmidrule(lr){9-10}
+Model & Arm & Official & Post-hoc & Correct & Split fail & Timing fail & Valid &
+Output tok. & Gen.\ s \\
+\midrule
+7B & Raw & \CGSevenRawOfficialExec/12 & \CGSevenRawPostExec/12 & \CGSevenRawPostNumerical &
+\CGSevenRawPostSplitFail & \CGSevenRawPostTimingFail & \CGSevenRawPostValid/12 &
+\CGSevenRawOutTokens & \CGSevenRawGenSeconds \\
+7B & Library & \CGSevenLibraryOfficialExec/12 & \CGSevenLibraryPostExec/12 &
+\CGSevenLibraryPostNumerical & \CGSevenLibraryPostSplitFail & \CGSevenLibraryPostTimingFail &
+\CGSevenLibraryPostValid/12 & \CGSevenLibraryOutTokens & \CGSevenLibraryGenSeconds \\
+14B & Raw & \CGFourteenRawOfficialExec/12 & \CGFourteenRawPostExec/12 &
+\CGFourteenRawPostNumerical & \CGFourteenRawPostSplitFail & \CGFourteenRawPostTimingFail &
+\CGFourteenRawPostValid/12 & \CGFourteenRawOutTokens & \CGFourteenRawGenSeconds \\
+14B & Library & \CGFourteenLibraryOfficialExec/12 & \CGFourteenLibraryPostExec/12 &
+\CGFourteenLibraryPostNumerical & \CGFourteenLibraryPostSplitFail &
+\CGFourteenLibraryPostTimingFail & \CGFourteenLibraryPostValid/12 &
+\CGFourteenLibraryOutTokens & \CGFourteenLibraryGenSeconds \\
+\bottomrule
+\end{tabular}
+\caption{Paired first-submission code generation. Under the pre-registered parser no program
+is valid in any cell (\CGOfficialValid/\CGPlanned). Post-hoc columns take the first complete
+code fence; failure counts are among executed programs. No library-arm program called a
+library algorithm or guard.}
+\label{tab:codegen}
+\end{table*}
+
+\paragraph{Pre-registered outcome.}
+No program was valid in either arm (\CGOfficialValid/\CGPlanned). The protocol asked for
+Python only, optionally inside one fence. In all, \CGFormatFailures{} responses appended an
+explanation after the fence (\CGSevenTrailingProse{} from 7B and \CGFourteenTrailingProse{} from
+14B), so the frozen parser compiled prose and recorded a \texttt{SyntaxError}. The
+\CGOfficialExecuted{} executed programs all failed numerical agreement and split invariance.
+No response was truncated. None of the \CGLibraryArm{} library-arm responses imported or
+mentioned the library, and no algorithm or guard call was traced. The comparison therefore
+measures documentation exposure without uptake; it does not estimate the effect of using
+\textsc{fin-skills}.
+
+\paragraph{Post-hoc extraction and failure modes.}
+To separate formatting from computation, we froze an arm-blind extraction of the first
+complete fence by hash before execution and reran the same worker, sandbox, and grader on
+another Linux host; it reproduced all \CGEnvReproduced{} official executions exactly.
+Then \CGPostExecuted{} programs execute, but only \CGPostValid{} of \CGPlanned{} is valid.
+The failures are silent in the sense that matters for research: \CGRecumulated{} of 24 14B
+programs, in both arms, applied a cumulative product to split factors that the prompt defines
+as already cumulative, and \CGPostSplitFailures{} executed programs change their positions
+when the same prices are presented split-adjusted. In \CGPostTimingFailures{} executed
+programs a position moves when prices at or after its own session change; \CGSameSession{}
+use the same-session close and \CGStrictlyFuture{} use later data. The 7B programs that still fail
+raise shape, index, or pandas-API errors.
+
+\paragraph{What the library guard observed.}
+Run post hoc on each executed program, the library's causality guard flagged all
+\CGGuardCaught{} programs with strictly-future dependence and none of the \CGTimingClean{}
+programs that passed the grader's timing probes. It passed the \CGSameSessionGuardPassed{}
+same-session violations: the guard asks whether values before $k$ depend on data at or after
+$k$, which is feature causality, whereas a position must also exclude session $k$ itself.
+The execution-lag contract therefore needs its own check rather than an inference from a
+passed causality test. Together with E2, these results show that raw first submissions are
+unreliable in ways that still execute, and that optional documentation is not used.
+
+\paragraph{Enforced library calls and checks.}
+We therefore froze a follow-up on the same rules, seeds, models, prompt packet, and hidden
+grader, with up to three attempts and controller feedback in three arms of 24 episodes:
+coding from scratch with execution feedback only; coding from scratch with enforced lag and
+split checks; and the library documentation with an enforced
+\texttt{fin\_skills.algorithms.run} call plus the same checks. The lag check applies the
+library's causality guard to positions shifted up one row ($k=40,72$), closing the
+same-session gap above; the split check requires identical output for the split-adjusted
+representation. Feedback never reveals reference weights, and every arm parses the first
+complete fence. A deliverable counts only if the controller accepts it and the unchanged
+grader finds it valid.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccc}
+\toprule
+Arm & Valid & Acc. & Wrong & Lib. & Tries \\
+\midrule
+Raw & \ENRawExecAllValid/24 & \ENRawExecAllAccepted & \ENRawExecAllAcceptedInvalid & ---
+& \ENRawExecAllAttempts \\
+Raw + checks & \ENRawGuardsAllValid/24 & \ENRawGuardsAllAccepted &
+\ENRawGuardsAllAcceptedInvalid & --- & \ENRawGuardsAllAttempts \\
+Lib.\ + checks & \ENLibGuardsAllValid/24 & \ENLibGuardsAllAccepted &
+\ENLibGuardsAllAcceptedInvalid & \ENLibEpisodesCalling/24 & \ENLibGuardsAllAttempts \\
+\bottomrule
+\end{tabular}
+\caption{Enforced follow-up (job \ENJob; 7B and 14B pooled, up to three attempts). Raw
+receives execution feedback only. Valid: accepted and valid under the hidden grader. Acc.:
+accepted. Wrong: accepted but invalid. Lib.: episodes with a traced library call in any
+attempt. Tries: mean attempts.}
+\label{tab:enforced}
+\end{table}
+
+Enforcement did not produce more valid programs (Table~\ref{tab:enforced}):
+\ENRawExecAllValid, \ENRawGuardsAllValid, and \ENLibGuardsAllValid{} of 24. It changed what is
+delivered. With execution feedback alone, \ENRawExecAllAccepted{} programs were accepted and
+\ENRawExecAllAcceptedInvalid{} of them were wrong (\ENRawExecAllAcceptedInvalidPct\%),
+including \ENRawExecAllSplitFail{} split and \ENRawExecAllTimingFail{} timing failures. With
+enforced checks, accepted-but-wrong programs fell to \ENRawGuardsAllAcceptedInvalid{}
+(\ENRawGuardsAllAcceptedInvalidPct\%), both of which pass the grader's timing and split
+probes and fail only numerical agreement; with the library requirement, none was accepted.
+The library was hard to use from its interface text: \ENLibAttemptsMentioning{} of
+\ENLibAttempts{} library-arm attempts reference \textsc{fin-skills}, \ENLibAttemptsCalling{}
+trace a call, and \ENLibAttemptsFailedRun{} fail to run, mostly on output shape, nonfinite
+values, and argument errors. In \ENKeywordAttempts{} attempts the model followed a parameter
+name in the supplied interface text that the function does not accept; all
+\ENKeywordRecumulated{} also re-cumulated split factors and would have failed the split
+check. For these models and this budget, the checks turn silent errors into explicit
+rejections; correct construction still needs a stronger model, more repair budget, or a
+simpler interface.

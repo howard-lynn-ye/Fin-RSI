@@ -53,7 +53,10 @@ def audit(root):
             assert invalid==call['invalid'] and value==call['result']
         correct=program_correct=accepted=False
         try:
-            parsed=parsed_answer(row['final']);tokens=official.program_tokenization(parsed['program'])
+            # Archived v1 source has no answer_format argument. Audit it unchanged.
+            parsed=(parsed_answer(row['final'],answer_format=protocol['answer_format'])
+                    if 'answer_format' in protocol else parsed_answer(row['final']))
+            tokens=official.program_tokenization(parsed['program'])
             assert parsed['program'].strip() and len(tokens)<=81
             accepted=True
             invalid,value=official.eval_program(tokens,gold[row['id']]['table'])

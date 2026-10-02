@@ -1,0 +1,19 @@
+{
+  "id": "7b-cross_sectional_momentum-11-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure inputs are pandas DataFrames\n    if not isinstance(prices, pd.DataFrame) or not isinstance(split_factors, pd.DataFrame):\n        raise ValueError(\"Both prices and split_factors must be pandas DataFrames.\")\n    \n    # Ensure both DataFrames have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns.\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period: first 60 days\n    for t in range(60, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        returns = (prices.iloc[t] / prices.iloc[t - 60]) ** (1/60) - 1\n        \n        # Sort assets by their compounded returns in descending order\n        sorted_indices = returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if returns[sorted_indices[0]] > 0:\n            weights.loc[prices.index[t], sorted_indices[0]] = 0.5\n        if returns[sorted_indices[1]] > 0:\n            weights.loc[prices.index[t], sorted_indices[1]] = 0.5\n    \n    return weights\n```\n\nThis function calculates the compounded returns for each asset over the past 60 days and ranks them in descending order. It then assigns equal weights (0.5) to the top two assets with positive momentum, leaving the rest in cash (weight 0). The function handles the warmup period where the first 60 days do not have enough data to calculate meaningful returns."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10780,
+      "completion_tokens": 396,
+      "total_tokens": 11176
+    },
+    "generation_seconds": 5.918744198977947
+  }
+}

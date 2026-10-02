@@ -1,0 +1,19 @@
+{
+  "id": "7b-vol_target_momentum-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Calculate forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(np.zeros_like(prices), index=prices.index, columns=prices.columns)\n    \n    # Calculate returns for each asset\n    returns = adjusted_prices.pct_change()\n    \n    # Warmup period: first 21 days\n    warmup_period = 21\n    \n    # Iterate over each day starting from day 22 (index 21)\n    for t in range(warmup_period, len(returns)):\n        for asset in returns.columns:\n            # Calculate momentum signal\n            momentum_signal = np.sign((adjusted_prices.iloc[t, asset] / adjusted_prices.iloc[t - 21, asset]) - 1)\n            \n            # Calculate sample standard deviation of last 20 simple returns\n            std_dev = returns.iloc[:t, asset].dropna().std(ddof=1)\n            \n            # Calculate weight\n            if std_dev > 0:\n                weight = momentum_signal * min(1, 0.10 / (std_dev * np.sqrt(252)))\n            else:\n                weight = 0\n            \n            # Assign weight to the current day\n            weights.iloc[t, asset] = weight\n    \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the forward-adjusted close prices, computes the returns, and then iterates over each day to calculate the momentum signal, standard deviation, and weight for each asset. The weights are stored in a new DataFrame and returned at the end."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10762,
+      "completion_tokens": 379,
+      "total_tokens": 11141
+    },
+    "generation_seconds": 5.648970327340066
+  }
+}

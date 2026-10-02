@@ -1,0 +1,56 @@
+{
+  "id": "14b-ma_crossover-11-raw_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the 20th row\n    for i in range(long_window, len(adjusted_prices)):\n        # Calculate the mean of the last 5 and last 20 adjusted closes\n        short_mean = adjusted_prices.iloc[i-short_window:i].mean()\n        long_mean = adjusted_prices.iloc[i-long_window:i].mean()\n        \n        # Compute the difference and normalize by 4\n        diff = (short_mean - long_mean) / 4\n        \n        # Assign the computed weights to the current row\n        weights.iloc[i] = diff.values\n    \n    return weights\n\n# Example usage:\n# prices = pd.DataFrame(...)\n# split_factors = pd.DataFrame(...)\n# weights = solve(prices, split_factors)\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights based on the moving average crossover strategy. The function calculates the adjusted prices by multiplying the raw prices with the cumulative product of split factors. It then computes the mean of the last 5 and last 20 adjusted closes for each asset and uses these means to determine the weights for each row, starting from the 20th row. The weights are normalized by dividing the difference between the short-term and long-term means by 4."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10877,
+      "completion_tokens": 363,
+      "total_tokens": 11240
+    },
+    "generation_seconds": 20.047356916125864
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Calculate the adjusted prices\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the window sizes\n    short_window = 5\n    long_window = 20\n    \n    # Iterate over the DataFrame starting from the 20th row\n    for i in range(long_window, len(adjusted_prices)):\n        # Calculate the mean of the last 5 and last 20 adjusted closes\n        short_mean = adjusted_prices.iloc[i-short_window:i].mean()\n        long_mean = adjusted_prices.iloc[i-long_window:i].mean()\n        \n        # Compute the difference and normalize by 4\n        diff = (short_mean - long_mean) / 4\n        \n        # Assign the computed weights to the current row\n        weights.iloc[i] = diff.values\n    \n    return weights\n\n# Example usage:\n# prices = pd.DataFrame(...)\n# split_factors = pd.DataFrame(...)\n# weights = solve(prices, split_factors)",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-vzahq4as",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "1b839a5cf74fb121f4d3dbb73a57f25603424f855acf313d13fa0153379f376b",
+    "solve_seconds": 0.03495836118236184,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": false,
+        "max_abs_diff": 4641745750126851.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.058s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.059s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "controller_seconds": 3.7628143900074065
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nSplit-representation check failed: the output changed by up to 4.64e+15 when the same economic prices were passed as split-adjusted closes with unit split factors.\nReturn the complete corrected program."
+}

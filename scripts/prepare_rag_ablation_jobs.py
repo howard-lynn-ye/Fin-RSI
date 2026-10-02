@@ -29,13 +29,16 @@ MODELS = {
                 BASE+'/fin-skills-campaign-model-transfer-20260923-v1/model-cache/hub')}
 
 
-def prepare(name, family=None, afterok=None):
+def prepare(name, family=None, afterok=None, qualification_root=None):
+    if family and not qualification_root:
+        raise ValueError('New answer runs require an explicit matching --qualification-root')
     bundle = Path('runs')/('beacon-campaign-'+name)
     bundle.mkdir(exist_ok=False)
     source = bundle/'source'; source.mkdir()
     for file in ('finqa_reuse.py','finqa_rag_ablation.py','transformers_chat.py'):
         shutil.copyfile(Path('benchmarks/agent_study')/file,source/file)
     shutil.copyfile('paper/FINQA_RAG_ABLATION_PROTOCOL_20260923.md',source/'protocol.md')
+    shutil.copyfile('paper/FINQA_INTERFACE_CORRECTION_20260928.md',source/'interface-correction.md')
     shutil.copyfile('plugins/fin-market-data/skills/fundamental-and-macro-data/SKILL.md',source/'skill.md')
     # Minimal exact source snapshot, no generated substitutions or runtime dependency mutation.
     (source/'fin_skills').mkdir()
@@ -48,7 +51,7 @@ def prepare(name, family=None, afterok=None):
     if family:
         model,revision,cache=MODELS[family]
         plan.update(family=family,model=model,revision=revision,
-                    qualification_root=BASE+'/fin-skills-campaign-finqa-rag-qualification-20260923-v1')
+                    qualification_root=qualification_root)
     template=LAUNCHER
     lines=[line for line in template.splitlines() if 'finqa_memory_study.py' not in line
            and not line.startswith('export HF_HUB_CACHE=')]
@@ -68,4 +71,5 @@ def prepare(name, family=None, afterok=None):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('name');p.add_argument('--family',choices=MODELS)
-    p.add_argument('--afterok');a=p.parse_args();prepare(a.name,a.family,a.afterok)
+    p.add_argument('--afterok');p.add_argument('--qualification-root')
+    a=p.parse_args();prepare(a.name,a.family,a.afterok,a.qualification_root)

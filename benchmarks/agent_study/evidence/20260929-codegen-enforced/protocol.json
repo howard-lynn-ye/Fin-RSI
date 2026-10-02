@@ -1,0 +1,62 @@
+{
+  "version": "codegen-enforced-v1",
+  "created_utc": "2026-09-29T16:04:15.265293+00:00",
+  "tasks": [
+    "diagonal_risk_parity",
+    "cross_sectional_momentum",
+    "ma_crossover",
+    "vol_target_momentum"
+  ],
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "models": [
+    [
+      "7b",
+      "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "c03e6d358207e414f1eca0bb1891e29f1db0e242"
+    ],
+    [
+      "14b",
+      "Qwen/Qwen2.5-Coder-14B-Instruct",
+      "aedcc2d42b622764e023cf882b6652e646b95671"
+    ]
+  ],
+  "arms": [
+    "raw_exec",
+    "raw_guards",
+    "library_guards"
+  ],
+  "planned": 72,
+  "attempts": 3,
+  "max_tokens": 2048,
+  "temperature": 0.1,
+  "top_p": 1.0,
+  "parser": "first-complete-fence-v1",
+  "lag_ks": [
+    40,
+    72
+  ],
+  "tolerance": 1e-08,
+  "input_sha256": "7f2d40a434fc9862a23364164306e1408945a5ec6662593e46b1e842fa31b640",
+  "primary_endpoint": "valid deliverable: accepted by the arm controller and valid under the unchanged E4 grader (execution, 1e-8 agreement, timing probes k=32,64 including the same session, split invariance)",
+  "secondary": [
+    "grader validity of the final attempt regardless of acceptance",
+    "grader validity of the first attempt",
+    "acceptance",
+    "attempts used",
+    "traced library calls",
+    "tokens",
+    "generation and controller seconds"
+  ],
+  "limits": [
+    "Same E4 tasks, seeds, models and grader; E4 failures informed the controller checks, so this is not an independent holdout.",
+    "Controller checks overlap grader properties (timing, split); only the grader checks numerical agreement with hidden references, with other perturbations.",
+    "The first-complete-fence parser was chosen after E4 and applies to all arms.",
+    "library_guards changes documentation, enforced library use and checks together; raw_guards isolates the checks.",
+    "Synthetic author-designed rules; three seeds on four fixed rules are not twelve independent problems; two sizes of one model family.",
+    "No financial-return or profitability endpoint; one shared GPU allocation."
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "7b-ma_crossover-11-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal to get weights\n    weights = signal / 4\n    \n    # Ensure non-negative weights\n    weights[weights < 0] = 0\n    \n    # Set early rows to zero\n    weights.iloc[:20] = 0\n    \n    return weights\n```\n\nThis implementation follows the specified rules:\n1. It adjusts the prices using the provided split factors.\n2. It calculates the 5-day and 20-day moving averages of the adjusted prices.\n3. It computes the signal as the sign of the difference between the fast and slow moving averages.\n4. It normalizes the signal by dividing by 4 to get the weights.\n5. It ensures that all weights are non-negative.\n6. It sets the first 20 rows to zero since we need at least 20 observations to compute the moving averages.\n\nThe function should now be ready to be used with the provided data and verified against the given constraints."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11798,
+      "completion_tokens": 290,
+      "total_tokens": 12088
+    },
+    "generation_seconds": 8.258262227289379
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using split_factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal to get weights\n    weights = signal / 4\n    \n    # Ensure non-negative weights\n    weights[weights < 0] = 0\n    \n    # Set early rows to zero\n    weights.iloc[:20] = 0\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-sz0crcyx",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "f062444605652eee8a9ed74d083a9d7ba28bc7d07ef8901ba6846238c273ba79",
+    "solve_seconds": 0.004325807094573975,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.006s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.25)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.004s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.25)"
+        }
+      ]
+    },
+    "controller_seconds": 3.793092740699649
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLibrary requirement failed: no fin_skills.algorithms.run call was traced; compute the rule with the discovered library algorithm.\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.006s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.25)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.004s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.25)\nReturn the complete corrected program."
+}

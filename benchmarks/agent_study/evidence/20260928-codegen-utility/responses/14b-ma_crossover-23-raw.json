@@ -1,0 +1,19 @@
+{
+  "id": "14b-ma_crossover-23-raw",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Calculate adjusted prices\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Initialize weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the DataFrame starting from the 20th row\n    for i in range(20, len(prices)):\n        # Calculate the mean of the last 5 and last 20 adjusted closes\n        mean_5 = adjusted_prices.iloc[i-5:i].mean()\n        mean_20 = adjusted_prices.iloc[i-20:i].mean()\n        \n        # Compute the difference and its sign\n        diff = mean_5 - mean_20\n        sign_diff = np.sign(diff)\n        \n        # Assign the weight\n        weights.iloc[i] = sign_diff / 4\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10739,
+      "completion_tokens": 201,
+      "total_tokens": 10940
+    },
+    "generation_seconds": 5.192904619965702
+  }
+}

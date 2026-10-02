@@ -188,6 +188,7 @@ def main():
         "DefectInstances": manifest["defects"]["planted_instances"],
         "CaughtInstances": manifest["defects"]["caught_instances"],
         "ParityPassed": manifest["parity"]["passed"],
+        "ParityCount": manifest["parity"]["count"],
         "ParityTotal": manifest["parity"]["count"],
         "BeaconSevenAccepted": beacon_models["Qwen/Qwen2.5-Coder-7B-Instruct"]["accepted"],
         "BeaconFourteenAccepted": beacon_models["Qwen/Qwen2.5-Coder-14B-Instruct"]["accepted"],

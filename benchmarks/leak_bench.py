@@ -792,7 +792,8 @@ def _adapt_pit_universe(ds, res, w, ctx):
     cols = list(ds.close.columns)
     members = (w.listings[w.listings.ticker.isin(cols)]
                .rename(columns={"listing_date": "start_date", "delisting_date": "end_date"}))
-    rebals = pd.bdate_range(res.px.index[0], res.px.index[-1], freq="BQE")
+    # The offset object works before and after pandas renamed BQ to BQE in 2.2.
+    rebals = pd.bdate_range(res.px.index[0], res.px.index[-1], freq=pd.offsets.BQuarterEnd())
     universe = pu_mod.rebalance_universe(rebals, members)
     return dict(universe=universe)
 

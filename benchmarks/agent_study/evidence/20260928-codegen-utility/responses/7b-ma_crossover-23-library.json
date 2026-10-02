@@ -1,0 +1,19 @@
+{
+  "id": "7b-ma_crossover-23-library",
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate the moving averages\n    fast_ma = adjusted_prices.rolling(window=5).mean()\n    slow_ma = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Normalize the signal and divide by 4\n    weights = signal / 4\n    \n    # Ensure the earliest nonzero-capable row is t=20\n    weights.iloc[:20] = 0\n    \n    return weights\n```\n\nThis function first adjusts the raw prices using the provided split factors to get the continuous forward-adjusted close. It then calculates the 5-day and 20-day simple moving averages of these adjusted prices. The signal is computed as the sign of the difference between the fast and slow moving averages. This signal is normalized by dividing by 4 and set to zero for the earliest 20 rows to ensure that the earliest nonzero-capable row is at t=20. Finally, it returns the resulting weights DataFrame."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11650,
+      "completion_tokens": 250,
+      "total_tokens": 11900
+    },
+    "generation_seconds": 3.875677132047713
+  }
+}

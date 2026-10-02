@@ -35,14 +35,16 @@ old three-condition scaffold receipt is historical test data, not a model experi
 
 ## Migration notes for the algorithm workflow
 
-The supported base dependencies are NumPy >=1.24, pandas >=2.2.2 and SciPy >=1.11.4.
-The former pandas >=2.0 / SciPy >=1.10 declarations admitted environments that failed
-existing code: quarter/month-end aliases, `future_stack`, and the multivariate-t CDF.
-The floor now uses pandas' NumPy-2-compatible 2.2.2 release and the final SciPy 1.11 patch.
-CI pins the exact lower bounds on Python 3.10; its development extra includes `tomli`
-there for TOML checks. Upgrade these dependencies when installing this revision.
-See the [pandas release notes](https://pandas.pydata.org/docs/whatsnew/v2.2.2.html)
-and [SciPy CDF addition](https://scipy.github.io/devdocs/release/1.11.0-notes.html).
+The supported base dependencies are NumPy >=1.24, pandas >=2.1.4 and SciPy >=1.11.4.
+As of 2026-09-28, month/quarter-end scheduling uses offset objects across the pandas 2.2
+alias rename. The universe interface accepts both old and new alias spellings, including
+fiscal quarter anchors and multipliers. Full local suites passed with pandas 2.1.4, 2.2.2
+and 3.0.6; optional-backend skips differ by environment. These checks do not establish
+support for every intermediate release or every NumPy/pandas combination. Install through
+the dependency resolver so each pandas version's own NumPy constraints are respected.
+CI pins the lower bounds on Python 3.10; its development extra includes `tomli` there.
+The older pandas >=2.0 declaration remains unsupported by code using `future_stack`.
+See the [verification record](../paper/LIBRARY_RELIABILITY_CORRECTION_20260928.md).
 
 Automatic selection now checks actual data and supplied parameters. Constant assets can route
 to equal weight; HRP is excluded until `linkage` is explicit. Metadata-only recommendations

@@ -6,6 +6,19 @@ import platform
 import sys
 
 
+def confinement_available():
+    """Capability probe shared by tests; never applies restrictions to the caller."""
+    if sys.platform != 'linux' or platform.machine() != 'x86_64':
+        return False
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.syscall.restype = ctypes.c_long
+        ctypes.CDLL('libseccomp.so.2')
+        return libc.syscall(444, 0, 0, 1) >= 3
+    except OSError:
+        return False
+
+
 def confine(writable, readonly):
     if sys.platform != "linux" or platform.machine() != "x86_64":
         raise RuntimeError("confinement requires Linux x86_64")

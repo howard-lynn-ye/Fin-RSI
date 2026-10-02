@@ -1,0 +1,42 @@
+{
+  "id": "14b-cross_sectional_momentum-23-raw_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period\n    weights.iloc[:60] = 0.0\n    \n    # Calculate compound returns over the last 60 days\n    for i in range(60, len(prices)):\n        compound_returns = (1 + returns.iloc[i-60:i]).prod()\n        ranked_assets = compound_returns.sort_values(ascending=False)\n        \n        # Select top two assets\n        top_two = ranked_assets.head(2)\n        if not top_two.empty:\n            weights.iloc[i, top_two.index] = 0.5 / len(top_two)\n    \n    return weights\n\n# Example usage:\n# prices_df = pd.DataFrame(..., index=pd.to_datetime(...))\n# split_factors_df = pd.DataFrame(..., index=pd.to_datetime(...))\n# weights_df = solve(prices_df, split_factors_df)\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified cross-sectional momentum strategy. The function first adjusts the prices for splits, calculates daily returns, and then computes the compound returns over the last 60 days for each asset. It ranks the assets based on these compound returns and assigns equal weights to the top two assets, ensuring that the weights are causal by using information strictly before each trading day."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11770,
+      "completion_tokens": 361,
+      "total_tokens": 12131
+    },
+    "generation_seconds": 20.277830021921545
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices for splits\n    adjusted_prices = prices * split_factors.cumprod()\n    \n    # Calculate daily returns\n    returns = adjusted_prices.pct_change().shift(1)\n    \n    # Initialize weights DataFrame\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Warmup period\n    weights.iloc[:60] = 0.0\n    \n    # Calculate compound returns over the last 60 days\n    for i in range(60, len(prices)):\n        compound_returns = (1 + returns.iloc[i-60:i]).prod()\n        ranked_assets = compound_returns.sort_values(ascending=False)\n        \n        # Select top two assets\n        top_two = ranked_assets.head(2)\n        if not top_two.empty:\n            weights.iloc[i, top_two.index] = 0.5 / len(top_two)\n    \n    return weights\n\n# Example usage:\n# prices_df = pd.DataFrame(..., index=pd.to_datetime(...))\n# split_factors_df = pd.DataFrame(..., index=pd.to_datetime(...))\n# weights_df = solve(prices_df, split_factors_df)",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-96rwraq7",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "IndexError",
+      "message": "only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"submission.py\", line 25, in solve\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/indexing.py\", line 911, in __setitem__\n    iloc._setitem_with_indexer(indexer, value, self.name)\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/indexing.py\", line 1944, in _setitem_with_indexer\n    self._setitem_single_block(indexer, value, name)\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/indexing.py\", line 2218, in _setitem_single_block\n    self.obj._mgr = self.obj._mgr.setitem(indexer=indexer, value=value)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/internals/managers.py\", line 415, in setitem\n    return self.apply(\"setitem\", indexer=indexer, value=value)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/internals/managers.py\", line 363, in apply\n    applied = getattr(b, f)(**kwargs)\n              ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/internals/blocks.py\", line 1429, in setitem\n    values[indexer] = casted\n    ~~~~~~^^^^^^^^^\nIndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices\n"
+    },
+    "solve_seconds": 0.012871397193521261,
+    "library_calls": 0,
+    "controller_seconds": 3.7439516191370785
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nExecution failed: IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices\nTraceback tail:\n    values[indexer] = casted\n    ~~~~~~^^^^^^^^^\nIndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices\nReturn the complete corrected program."
+}

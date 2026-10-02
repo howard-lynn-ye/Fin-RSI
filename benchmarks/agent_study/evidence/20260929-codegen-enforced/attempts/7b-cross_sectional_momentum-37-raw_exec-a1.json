@@ -1,0 +1,38 @@
+{
+  "id": "7b-cross_sectional_momentum-37-raw_exec",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"Prices and split factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the data starting from the 61st day\n    for t in range(60, len(prices)):\n        # Extract the relevant subset of prices and split factors\n        sub_prices = adjusted_prices.iloc[:t+1]\n        sub_split_factors = split_factors.iloc[:t+1]\n        \n        # Calculate the simple returns\n        simple_returns = (sub_prices / sub_prices.shift(1)) - 1\n        \n        # Compound the simple returns\n        compounded_returns = (simple_returns + 1).cumprod()\n        \n        # Get the top 2 assets with the highest compounded returns\n        top_assets = compounded_returns.iloc[t].nlargest(2).index\n        \n        # Assign equal weight to the top 2 assets\n        weights.loc[prices.index[t], top_assets] = 0.5\n        \n    return weights\n```\n\nThis code defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function calculates the forward-adjusted close prices, iterates over the data starting from the 61st day, computes the simple returns, compounds them, and assigns weights to the top 2 assets with the highest compounded returns."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10761,
+      "completion_tokens": 369,
+      "total_tokens": 11130
+    },
+    "generation_seconds": 10.006473727989942
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure prices and split_factors have the same shape and index\n    if prices.shape != split_factors.shape:\n        raise ValueError(\"Prices and split factors must have the same shape\")\n    \n    # Calculate the forward-adjusted close prices\n    adjusted_prices = prices * split_factors\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the data starting from the 61st day\n    for t in range(60, len(prices)):\n        # Extract the relevant subset of prices and split factors\n        sub_prices = adjusted_prices.iloc[:t+1]\n        sub_split_factors = split_factors.iloc[:t+1]\n        \n        # Calculate the simple returns\n        simple_returns = (sub_prices / sub_prices.shift(1)) - 1\n        \n        # Compound the simple returns\n        compounded_returns = (simple_returns + 1).cumprod()\n        \n        # Get the top 2 assets with the highest compounded returns\n        top_assets = compounded_returns.iloc[t].nlargest(2).index\n        \n        # Assign equal weight to the top 2 assets\n        weights.loc[prices.index[t], top_assets] = 0.5\n        \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-c_47su9m",
+      "subprocesses": "denied"
+    },
+    "weights_sha256": "f17e3eb3c9e3c62e8d0ac8a84eacc95c01e7680e8f167fba11d32a3d3b805262",
+    "solve_seconds": 0.05198797769844532,
+    "library_calls": 0,
+    "controller_seconds": 4.103494976647198
+  },
+  "accepted": true,
+  "feedback": null
+}

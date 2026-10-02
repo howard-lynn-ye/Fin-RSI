@@ -1,0 +1,42 @@
+{
+  "id": "7b-cross_sectional_momentum-11-raw_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure inputs are pandas DataFrames\n    if not isinstance(prices, pd.DataFrame) or not isinstance(split_factors, pd.DataFrame):\n        raise ValueError(\"Both prices and split_factors must be pandas DataFrames.\")\n    \n    # Ensure both DataFrames have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns.\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the DataFrame starting from the 61st row\n    for t in range(60, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        returns = (prices.iloc[t] / prices.iloc[t - 60]) ** (1 / 60) - 1\n        \n        # Sort assets by their compounded returns in descending order\n        sorted_indices = returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if returns[sorted_indices[0]] > 0:\n            weights.loc[t, sorted_indices[0]] = 0.5\n        if returns[sorted_indices[1]] > 0:\n            weights.loc[t, sorted_indices[1]] = 0.5\n    \n    return weights\n```\n\nThis solution defines the `solve` function which takes two pandas DataFrames, `prices` and `split_factors`, and returns a DataFrame of weights according to the specified rules. The function ensures that both input DataFrames have the same shape and columns, initializes a result DataFrame with zeros, and iterates over the DataFrame starting from the 61st row to calculate compounded returns and assign weights accordingly."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 11443,
+      "completion_tokens": 398,
+      "total_tokens": 11841
+    },
+    "generation_seconds": 10.859537715092301
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Ensure inputs are pandas DataFrames\n    if not isinstance(prices, pd.DataFrame) or not isinstance(split_factors, pd.DataFrame):\n        raise ValueError(\"Both prices and split_factors must be pandas DataFrames.\")\n    \n    # Ensure both DataFrames have the same shape and columns\n    if prices.shape != split_factors.shape or not all(prices.columns == split_factors.columns):\n        raise ValueError(\"prices and split_factors must have the same shape and columns.\")\n    \n    # Initialize the result DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over the DataFrame starting from the 61st row\n    for t in range(60, len(prices)):\n        # Calculate the compounded returns for the last 60 days\n        returns = (prices.iloc[t] / prices.iloc[t - 60]) ** (1 / 60) - 1\n        \n        # Sort assets by their compounded returns in descending order\n        sorted_indices = returns.sort_values(ascending=False).index\n        \n        # Assign weights to the top two assets with positive momentum\n        if returns[sorted_indices[0]] > 0:\n            weights.loc[t, sorted_indices[0]] = 0.5\n        if returns[sorted_indices[1]] > 0:\n            weights.loc[t, sorted_indices[1]] = 0.5\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/tmp/enforced-z4hjiovk",
+      "subprocesses": "denied"
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "output index/columns do not match input",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\n"
+    },
+    "solve_seconds": 0.024077024776488543,
+    "library_calls": 0,
+    "controller_seconds": 3.6200937391258776
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nExecution failed: ValueError: output index/columns do not match input\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 87, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20260929-v1/work/benchmarks/agent_study/codegen_controller_worker.py\", line 20, in _frame\nValueError: output index/columns do not match input\nReturn the complete corrected program."
+}
