@@ -1,0 +1,174 @@
+{
+  "passed": true,
+  "results": {
+    "truncated": {
+      "last_date": "2025-01-02",
+      "expected": "2025-01-02"
+    },
+    "read_file": {
+      "ok": true,
+      "path": "README.md",
+      "offset": 0,
+      "total_chars": 534,
+      "text": "# Market data (raw vendor-style feed)\n\n`quotes.csv`: daily open, high, low, clos"
+    },
+    "python_raw": {
+      "ok": true,
+      "output": "2025-01-02\n",
+      "seconds": 5.279
+    },
+    "python_raw_blocked_library": {
+      "ok": false,
+      "output": "[stderr]\nTraceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-trading-32b-20260930-v3/work/benchmarks/agent_study/trading_worker.py\", line 61, in run_python\n    exec(compile(code, 'agent_code.py', 'exec'), {'__name__': '__main__'})\n  File \"agent_code.py\", line 1, in <module>\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-trading-32b-20260930-v3/work/benchmarks/agent_study/trading_worker.py\", line 51, in find_spec\n    raise ImportError('fin_skills is not available in this condition')\nImportError: fin_skills is not available in this condition\n",
+      "seconds": 4.806
+    },
+    "python_network": {
+      "ok": false,
+      "output": "[stderr]\nTraceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-trading-32b-20260930-v3/work/benchmarks/agent_study/trading_worker.py\", line 61, in run_python\n    exec(compile(code, 'agent_code.py', 'exec'), {'__name__': '__main__'})\n  File \"agent_code.py\", line 2, in <module>\n  File \"/usr/lib64/python3.12/socket.py\", line 233, in __init__\n    _socket.socket.__init__(self, family, type, proto, fileno)\nPermissionError: [Errno 1] Operation not permitted\n",
+      "seconds": 4.689
+    },
+    "python_write": {
+      "ok": false,
+      "output": "[stderr]\nTraceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-trading-32b-20260930-v3/work/benchmarks/agent_study/trading_worker.py\", line 61, in run_python\n    exec(compile(code, 'agent_code.py', 'exec'), {'__name__': '__main__'})\n  File \"agent_code.py\", line 1, in <module>\nPermissionError: [Errno 13] Permission denied: 'quotes.csv'\n",
+      "seconds": 4.503
+    },
+    "raw_denied_algorithm": {
+      "ok": false,
+      "error": "tool 'run_algorithm' is not available in this condition"
+    },
+    "library_algorithm": {
+      "ok": true,
+      "algorithm_id": "inverse_volatility",
+      "tickers": [
+        "SPY",
+        "TLT",
+        "GLD"
+      ],
+      "lookback": 120,
+      "parameters": {},
+      "adjusted": true,
+      "result": {
+        "weights": {
+          "SPY": 0.339553,
+          "TLT": 0.344954,
+          "GLD": 0.315492
+        }
+      },
+      "seconds": 4.719
+    },
+    "library_signal": {
+      "ok": true,
+      "algorithm_id": "ma_crossover",
+      "tickers": [
+        "SPY"
+      ],
+      "lookback": 120,
+      "parameters": {},
+      "adjusted": true,
+      "result": {
+        "per_ticker": {
+          "SPY": {
+            "2024-12-16": 1.0,
+            "2024-12-17": 1.0,
+            "2024-12-18": 1.0,
+            "2024-12-19": -1.0,
+            "2024-12-20": -1.0,
+            "2024-12-23": -1.0,
+            "2024-12-24": -1.0,
+            "2024-12-26": -1.0,
+            "2024-12-27": -1.0,
+            "2024-12-30": -1.0,
+            "2024-12-31": -1.0,
+            "2025-01-02": -1.0
+          }
+        },
+        "note": "signal/regime values are for the last sessions; the library lags signal exposures by one session already"
+      },
+      "seconds": 4.671
+    },
+    "library_guard_raw_orly": {
+      "ok": true,
+      "guard": "adjustment_check",
+      "ticker": "NVDA",
+      "passed": false,
+      "summary": "FAIL  adjustment_check  [market-data-sourcing]  0.003s\n  error: convention: series is RAW (high confidence): 1/1 action dates show a price jump matching the ratio. pct_change() books the split as a return; use it for price LEVELS only, or adjust before computing anything return-based.",
+      "seconds": 4.492
+    },
+    "library_python": {
+      "ok": true,
+      "output": "48\n",
+      "seconds": 4.536
+    },
+    "describe": {
+      "ok": true,
+      "card": {
+        "id": "hrp",
+        "name": "Hierarchical risk parity",
+        "task": "portfolio",
+        "library": "fin-skills",
+        "inputs": [
+          "asset_returns"
+        ],
+        "objectives": [
+          "allocation",
+          "risk_balance"
+        ],
+        "tags": [
+          "correlated_assets",
+          "robust"
+        ],
+        "capabilities": [
+          "long_only"
+        ],
+        "complexity": "medium",
+        "min_observations": 20,
+        "priority": 2,
+        "skill": "portfolio-optimizers",
+        "source": "skill:portfolio-optimizers",
+        "verified_on": "2026-09-14",
+        "caveat": "Explicit linkage required. Weights are fit on the supplied history; apply only to subsequent returns.",
+        "status": "ready"
+      }
+    },
+    "skill": {
+      "ok": true,
+      "name": "portfolio-optimizers",
+      "text": "---\nname: portfolio-optimizers\ndescription: >-\n  Turn expected returns and a covariance matrix into weights, and measure what the optimizer did\n  to your estimation error on the way. TRIGGER - portfolio optimization, mean-variance,\n  Markowitz, efficient frontier, tangency or max-Sharpe portfolio, minimum-variance portfolio,\n  long-only and budget constraints, scipy SLSQP or linprog for weights, Black-Litterman,\n  BlackLittermanModel, tau, Omega, market-implied prior, views matrix P and Q, risk parity, equal\n  risk contribution, ERC, inverse volatility, minimum CVaR, Rockafellar-Uryasev linear program,\n  1/N benchmark, DeMiguel Garlappi Uppal, weight turnover; \"my optimizer puts 90% in one asset\",\n  \"the weights change completely every month\". SKIP for choosing between optimizer libraries and\n  reporting the result (portfolio-and-risk), for the covariance matrix and its N > T failure\n  (covariance-and-risk-models), for expected returns (factor-models), for VaR and ES\n  (risk-measures-var-cvar), and for HRP and PyPortfolioOpt's API traps (lib-pyportfolioopt).\nlicense: MIT\nmetadata:\n  version: \"0.1.0\"\n  verified_on: \"2026-09-09\"\n---\n\n# Portfolio optimizers\n\n**An optimizer returns the weights that are best for the inputs. Nobody has the inputs.** Two\nmeasurements should travel with every weight vector, and a backtest shows neither: how much the\nbook turns over when the expected returns move by a basis point, and what the rule earns out of\nsample against 1/N. This skill measures both, on a universe where 1/N is genuinely suboptimal so\nthe comparison is not rigged.\n\nEvery number below is printed by `scripts/optimizers.py` (numpy / scipy, seeds fixed, about 9 s;\nPyPortfolioOpt optional and cross-checked when present).\n\n## 1. \ud83d\udea8 A one-basis-point change in mu turns over 7.5 % of the book\n\n\u2705 Measured: 25 assets, 120 months of estimates, `mu` perturbed by +-1 bp per asset with random\nsigns, 20 draws. Turnover is `0.5 * sum |w_new - w_old|`. The sample covariance has condition\nnumber 66.0; Ledoit-Wolf shrinkage (intensity 0.067) brings it to 44.6.\n\n| solver | gross leverage | turnover per bp | max | sign flips |\n|---|---|---|---|---|\n| \ud83d\udea8 tangency, sample Sigma | 5.87 | **7.54 %** | 10.30 % | 0.6 |\n| \ud83d\udea8 tangency, Ledoit-Wolf Sigma | 5.85 | **7.43 %** | 9.85 % | 0.0 |\n| mean-variance long-only, gamma = 3, sample | 1.00 | **1.38 %** | 1.76 % | 0.0 |\n| mean-variance long-only, gamma = 3, Ledoit-Wolf | 1.00 | 1.35 % | 1.71 % | 0.0 |\n| **min-variance long-only (mu-free)** | 1.00 | **0.00 %** | 0.00 % | 0.0 |\n\n\u2705 For scale: the standard error of each of these 120-month means is **44 to 91 bp a month**\n(median 69). **The perturbation that moved 7.5 % of the book is 69 times smaller than the noise\nalready in `mu_hat`.** That is what \"the optimizer is an error maximizer\" means in numbers - not\nthat it is sensitive, but that it is sensitive far below the resolution of its own inputs.\n\n- **Constraints do more than shrinkage here.** Long-only plus a budget cuts turnover from 7.5 %\n  to 1.4 % and gross leverage from 5.9 to 1.0; shrinking the covariance alone moves turnover by\n  0.11 pp. Shrink `mu`, not only `Sigma` - or constrain.\n- **A mu-free rule has no mu sensitivity at all**, by construction. If you cannot defend your\n  expected returns, that is not a rhetorical point, it is a solver choice.\n\n**The guard.** `assert_stable_weights(mu, Sigma, solver, max_turnover=0.05)` raises:\n\n```\nValueError: a 1 bp perturbation of mu turns over 7.5% of the book (limit 5%): the weights are\nestimation error, not a view. Shrink mu and Sigma, add constraints, or use a mu-free rule\n(min-variance, risk parity, 1/N).\n```\n\n## 2. \ud83d\udea8 Out of sample, the optimizer gives back an edge it really had\n\n\u2705 Measured: 25 assets from a one-factor DGP with per-asset alpha, 120-month rolling window, 360\ntest months, 6 seeds. **At the true moments the tangency portfolio's Sharpe is 0.708 against\n1/N's 0.376 - a real 1.88x edge**, so this universe is not one where 1/N wins by construction.\n\n| strategy | OOS Sharpe (mean of 6 seeds) | worst | best |\n|---|---|---|---|\n| oracle: tangency weights at the TRUE moments | **0.747** | 0.62 | 0.84 |\n| **mean-variance long-only (sample)** | **0.387** | 0.23 | 0.51 |\n| **1/N** | **0.382** | 0.29 | 0.52 |\n| min-variance (Ledoit-Wolf) | 0.327 | 0.10 | 0.61 |\n| min-variance (sample) | 0.292 | 0.04 | 0.60 |\n| \ud83d\udea8 mean-variance (sample, unconstrained) | **-0.028** | -0.25 | 0.17 |\n| \ud83d\udea8 mean-variance (Ledoit-Wolf, unconstrained) | -0.068 | -0.19 | 0.14 |\n\n**Read the gap between the top and bottom rows.** The oracle earns 0.747. The same rule fed\n120 months of its own data earns **-0.028** - it does not merely fail to capture the edge, it\ndelivers a negative Sharpe on a universe with a positive one. 1/N, which knows nothing, earns\n0.382. Shrinking the covariance does not rescue it (-0.068), because the damage is in `mu`;\nadding long-only constraints does (0.387, marginally the best rule here), which is the\nJagannathan-Ma effect - a constraint is an implicit shrinkage of the inputs it binds on.\n\n\u2705 The estimation window it takes for the unconstrained sample rule to catch 1/N, same test\nmonths, mean over seeds:\n\n| window M (months) | 60 | 120 | 240 | 480 | **960** | 1920 |\n|---|---|---|---|---|---|---|\n| sample mean-variance | 0.03 | -0.03 | 0.09 | 0.36 | **0.45** | 0.60 |\n| 1/N | 0.38 | 0.38 | 0.38 | 0.38 | 0.38 | 0.38 |\n\n**960 months - 80 years - is the first window at which it wins on this DGP.** \u2705 DeMiguel,\nGarlappi and Uppal's own abstract, read at the working-paper PDF (NBER SI 2006 draft of what\nbecame *Optimal Versus Naive Diversification*, RFS 22(5), 1915-1953, 2009): for parameters\ncalibrated to U.S. stock market data, a 25-asset portfolio needs an estimation window of **more\nthan 3,000 months**, and a 50-asset portfolio **more than 6,000**, \"although in practice these\nparameters are estimated using 120 months of data\". They also report that across fourteen\noptimal-portfolio models and seven datasets, **none** is c"
+    },
+    "baselines": {
+      "cash": {
+        "cumulative_return": 0.0,
+        "annualized_return": 0.0,
+        "annualized_volatility": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "sessions": 433
+      },
+      "equal_weight_buy_and_hold": {
+        "cumulative_return": 0.39515302874628677,
+        "annualized_return": 0.2144027545730005,
+        "annualized_volatility": 0.14307977239875191,
+        "sharpe": 1.4293388780783445,
+        "max_drawdown": -0.11491864202349722,
+        "sessions": 433
+      },
+      "equal_weight_rebalanced": {
+        "cumulative_return": 0.42203071199768183,
+        "annualized_return": 0.22799586017045814,
+        "annualized_volatility": 0.141409609762143,
+        "sharpe": 1.5231833769839829,
+        "max_drawdown": -0.12193774975434213,
+        "sessions": 433
+      },
+      "sixty_forty_rebalanced": {
+        "cumulative_return": 0.2094181837450384,
+        "annualized_return": 0.11729954393329667,
+        "annualized_volatility": 0.10506311856354109,
+        "sharpe": 1.1081257352990128,
+        "max_drawdown": -0.10531168554465364,
+        "sessions": 433
+      }
+    }
+  },
+  "scope": "Sandbox, tools and ledger on the frozen data; not model performance."
+}

@@ -41,7 +41,7 @@ STUDIES = {  # study label -> (job id, remote root)
                                  'fin-skills-campaign-trading-7b-20260930-v3'),
     'trading-14b-v3': ('1782625', '/beacon-projects/radfm/wy891/'
                                   'fin-skills-campaign-trading-14b-20260930-v3'),
-    'trading-32b-v3': ('1782626', '/beacon-projects/radfm/wy891/'
+    'trading-32b-v3': ('1789830', '/beacon-projects/radfm/wy891/'
                                   'fin-skills-campaign-trading-32b-20260930-v3')}
 STUDY = 'utility-v2'
 TOP = ('protocol.json', 'inputs.json', 'qualification.json', 'inference-started.json',
