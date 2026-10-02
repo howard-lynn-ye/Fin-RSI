@@ -311,9 +311,13 @@ def test_later_pit_cases_never_enter_earlier_requests(tmp_path, monkeypatch):
         return response(q["id"], "none")
     monkeypatch.setenv("OPENAI_API_KEY", "fake")
     finish((pub, key, out), monkeypatch, model)
-    assert "999" not in se.canonical(bodies[0]).decode()
-    assert "111" not in se.canonical(bodies[0]).decode()
-    assert "999" in se.canonical(bodies[1]).decode()
+    # Random request IDs can contain "111" or "999" without exposing future prices.
+    # Check the actual model-visible observations, including the later positive control.
+    questions = [json.loads(body["messages"][1]["content"])["question"]
+                 for body in bodies]
+    features = [[row["features"] for row in q["context"]["observations"]]
+                for q in questions]
+    assert features == [[{"price": 10}], [{"price": 10}, {"price": 999}, {"price": 111}]]
 
 
 @pytest.mark.parametrize("change_kind", ["overlap", "unsettled-label", "naive-time", "early-decision",
