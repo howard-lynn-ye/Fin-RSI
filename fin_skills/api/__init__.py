@@ -53,10 +53,13 @@ from fin_skills.api.guards.cross_board_spillover import check_cross_board_spillo
 from fin_skills.api.guards.lob_liquidity_gate import check_lob_liquidity_gate
 from fin_skills.api.guards.macro_fx_beta_gate import check_macro_fx_beta_gate
 from fin_skills.api.guards.panel_balance import check_panel_balance
+from fin_skills.api.guards.stock_jev_gate import check_stock_jev_gate
 
 __all__ = [
     "Bundle", "Coverage", "Finding", "Guard", "GuardResult", "Outcome", "RunReport", "Slot",
     "Suite", "check", "check_cross_board_spillover", "check_lob_liquidity_gate", "check_macro_fx_beta_gate", "check_panel_balance",
+    "check_stock_jev_gate",
     "conventions", "coverage", "get", "input_names", "register",
     "registry", "run_all", "slots", "vocabulary",
 ]
+

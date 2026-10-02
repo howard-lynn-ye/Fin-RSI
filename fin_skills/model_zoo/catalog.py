@@ -103,6 +103,17 @@ def model_catalog(task=None):
         source="https://github.com/jaredpalmer/kev", verified_on="2026-09-23",
         caveat="Local typed decisions; needs trusted head.pt and matching base revision. "
                "No automatic downloads or date preprocessing; Python lifecycle only.", json_run=False))
+    cards.append(dict(id="stock_jev", kind="decision", task="structured_decision", adapter="stock_decision",
+        inputs=["state", "questions"], operations=["predict", "run"],
+        status="ready", library="fin_skills.jev", pretrained=False,
+        weights_bundled=True, deployment="local", credentials=None,
+        install="Base dependencies; PyTorch optional for NeuralStockJEVNet",
+        license="MIT", stage="production",
+        source="fin_skills/jev", verified_on="2026-10-02",
+        caveat="Financial JEV meta-decision framework for macro regime choice, universe noul filter, "
+               "and ordinal alpha score calibration. Both analytical Bayesian and neural models supported.",
+        json_run=True))
     if task is not None and task not in {c["task"] for c in cards}:
+
         raise ValueError(f"unknown model task: {task!r}")
     return [c for c in cards if task is None or c["task"] == task]

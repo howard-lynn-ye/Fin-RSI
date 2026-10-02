@@ -28,6 +28,13 @@ def create_model(model_id, **parameters):
     if family == "decision":
         from .jev import JevModel
         return JevModel(**parameters)
+    if family == "stock_decision":
+        from fin_skills.jev.stock_jev import AnalyticalStockJEV
+        from fin_skills.jev.neural_jev import NeuralStockJEVAdapter
+        if parameters.pop("use_neural", False):
+            return NeuralStockJEVAdapter(**parameters)
+        return AnalyticalStockJEV(**parameters)
+
     if family == "upstream":
         from .upstream import UpstreamModel
         return UpstreamModel(model_id, parameters)
