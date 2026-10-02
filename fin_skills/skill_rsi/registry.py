@@ -138,6 +138,8 @@ def make_synthetic_ashare_panel(n_days: int = 35, n_stocks: int = 16, seed: int 
                 "high_52w_ratio": float(rng.uniform(0.70, 0.99)),
                 "idio_vol_20d": float(rng.uniform(0.012, 0.040)),
                 "parkinson_volatility": float(rng.uniform(0.012, 0.040)),
+                "garman_klass_volatility": float(rng.uniform(0.011, 0.042)),
+                "volume": float(rng.uniform(1.0e6, 5.0e7)),
                 "amihud_illiquidity": float(rng.uniform(0.0005, 0.005)),
                 "upper_shadow_ratio": float(rng.uniform(0.0, 0.5)),
                 "lower_shadow_ratio": float(rng.uniform(0.0, 0.5)),
@@ -262,6 +264,16 @@ def _compute_macro_fx_industry_beta_shield(df: pd.DataFrame) -> pd.Series:
 def _audit_macro_fx_industry_beta_shield(df: pd.DataFrame) -> dict[str, Any]:
     from fin_skills.macro.macro_fx_industry_beta_shield import audit_macro_fx_beta_causality
     return audit_macro_fx_beta_causality(df)
+
+
+def _compute_lob_liquidity_shock_shield(df: pd.DataFrame) -> pd.Series:
+    from fin_skills.microstructure.lob_liquidity_shock_shield import compute_lob_liquidity_shock_shield
+    return compute_lob_liquidity_shock_shield(df)
+
+
+def _audit_lob_liquidity_shock_shield(df: pd.DataFrame) -> dict[str, Any]:
+    from fin_skills.microstructure.lob_liquidity_shock_shield import audit_lob_liquidity_causality
+    return audit_lob_liquidity_causality(df)
 
 
 def _compute_garp_valuation_quality(df: pd.DataFrame) -> pd.Series:
@@ -403,6 +415,22 @@ def _populate_default_registry(reg: SkillOperatorRegistry) -> None:
             audit_fn=_audit_macro_fx_industry_beta_shield,
             guard_name="macro_fx_beta_gate",
             horizon_target="10d",
+            version="1.0.0",
+        )
+    )
+    reg.register(
+        SkillChannelSpec(
+            channel_id="lob_liquidity_shock_shield",
+            skill_name="lob-liquidity-shock-shield",
+            plugin="fin-microstructure",
+            module_path="fin_skills.microstructure.lob_liquidity_shock_shield",
+            role="microstructure_router",
+            summary="Strictly causal 20-day rolling order-book volatility-of-volatility, return dispersion, and Amihud illiquidity absorption shield.",
+            required_columns=("date", "symbol", "garman_klass_volatility", "ret_1d", "volume", "amihud_illiquidity"),
+            compute_fn=_compute_lob_liquidity_shock_shield,
+            audit_fn=_audit_lob_liquidity_shock_shield,
+            guard_name="lob_liquidity_gate",
+            horizon_target="5d",
             version="1.0.0",
         )
     )

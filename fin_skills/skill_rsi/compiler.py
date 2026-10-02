@@ -82,6 +82,7 @@ def sync_cross_repo_package(
             if target_skill_dir.exists() or skill_name in (
                 "cross-board-supply-chain-rsi",
                 "macro-fx-industry-beta-shield",
+                "lob-liquidity-shock-shield",
             ):
                 target_skill_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(md, target_skill_dir / "SKILL.md")
@@ -108,12 +109,53 @@ def _run_script(root: Path, rel_script: str, args: Sequence[str] = ()) -> dict[s
     }
 
 
+def _run_pytest_suite(root: Path) -> dict[str, Any]:
+    cmd = [sys.executable, "-m", "pytest", "-q", "tests/test_api.py", "tests/test_skill_rsi_scaffold.py"]
+    t0 = time.time()
+    proc = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
+    return {
+        "command": "pytest -q tests/test_api.py tests/test_skill_rsi_scaffold.py",
+        "returncode": proc.returncode,
+        "passed": proc.returncode == 0,
+        "elapsed_s": round(time.time() - t0, 3),
+        "stdout": proc.stdout.strip(),
+        "stderr": proc.stderr.strip(),
+    }
+
+
+def _run_multi_seed_operator_stress(
+    seeds: Sequence[int] = (11, 17, 23, 31, 37, 42, 59, 73),
+    n_days: int = 252,
+) -> dict[str, Any]:
+    from fin_skills.skill_rsi.registry import make_synthetic_ashare_panel
+    t0 = time.time()
+    seed_verdicts: dict[str, Any] = {}
+    all_ok = True
+    for s in seeds:
+        panel_s = make_synthetic_ashare_panel(n_days=n_days, n_stocks=16, seed=int(s))
+        res_s = DEFAULT_SKILL_OPERATOR_REGISTRY.verify_all_operators(df_panel=panel_s)
+        seed_verdicts[f"seed_{s}"] = {
+            "passed": bool(res_s["passed"]),
+            "n_operators": int(res_s["n_operators"]),
+            "n_passed": int(res_s["n_passed"]),
+        }
+        if not res_s["passed"]:
+            all_ok = False
+    return {
+        "passed": all_ok,
+        "seeds": list(seeds),
+        "n_days_per_seed": n_days,
+        "elapsed_s": round(time.time() - t0, 3),
+        "seed_verdicts": seed_verdicts,
+    }
+
+
 def compile_and_verify_skills(
     root: Path | None = None,
     probe_queries: Sequence[dict[str, str]] | None = None,
     sync_repos: bool = True,
 ) -> dict[str, Any]:
-    """Execute the full 5-Stage Build, 4-Gate Verification, and Cross-Repo Sync pipeline."""
+    """Execute the full 5-Stage Build, 6-Gate Verification, and Cross-Repo Sync pipeline."""
     t0 = time.time()
     repo_root = root or Path(__file__).resolve().parent.parent.parent
 
@@ -125,12 +167,14 @@ def compile_and_verify_skills(
     # Stage 3: Sync live guard & tool counts in README.md before running validate.py
     live_counts = sync_readme_live_counts(repo_root)
 
-    # Stage 4: Execute the 4 Hard Gates
+    # Stage 4: Execute the 6 Hard Gates
     gate1_validate = _run_script(repo_root, "scripts/validate.py")
     gate2_triggers = _run_script(repo_root, "scripts/eval_triggers.py")
     gate3_blind = _run_script(repo_root, "scripts/eval_blind.py")
     routing_report = audit_catalog_routing(repo_root, probe_queries=probe_queries)
     gate4_operators = DEFAULT_SKILL_OPERATOR_REGISTRY.verify_all_operators()
+    gate5_multi_seed = _run_multi_seed_operator_stress()
+    gate6_pytest = _run_pytest_suite(repo_root)
 
     # Stage 5: Cross-repo sync
     sync_status = (
@@ -148,6 +192,8 @@ def compile_and_verify_skills(
         and gate3_blind["passed"]
         and routing_report.passed
         and gate4_operators["passed"]
+        and gate5_multi_seed["passed"]
+        and gate6_pytest["passed"]
     )
 
     elapsed = round(time.time() - t0, 3)
@@ -166,6 +212,8 @@ def compile_and_verify_skills(
             "gate2_trigger_routing": gate2_triggers,
             "gate3_blind_holdout": gate3_blind,
             "gate4_operator_causality": gate4_operators,
+            "gate5_multi_seed_stress": gate5_multi_seed,
+            "gate6_pytest_suite": gate6_pytest,
         },
         "routing_audit": routing_report.to_dict(),
         "cross_repo_sync": sync_status,
@@ -177,3 +225,20 @@ def compile_and_verify_skills(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return report
+
+
+if __name__ == "__main__":
+    from fin_skills.skill_rsi.blueprints import (
+        LOB_LIQUIDITY_SKILL_BLUEPRINT,
+        MACRO_FX_SKILL_BLUEPRINT,
+    )
+
+    probes = MACRO_FX_SKILL_BLUEPRINT.probe_queries + LOB_LIQUIDITY_SKILL_BLUEPRINT.probe_queries
+    rep = compile_and_verify_skills(probe_queries=probes, sync_repos=True)
+    print(
+        f"compile_and_verify_skills: passed={rep['passed']}, "
+        f"elapsed_seconds={rep['elapsed_seconds']}s, "
+        f"live_counts={rep['live_counts']}"
+    )
+
+

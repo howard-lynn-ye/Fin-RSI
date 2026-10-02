@@ -50,12 +50,13 @@ from fin_skills.api.bundle import (Bundle, Coverage, Slot, Suite, check, coverag
 # Importing the guards package populates the registry.
 from fin_skills.api import guards  # noqa: F401,E402  (registration side effect)
 from fin_skills.api.guards.cross_board_spillover import check_cross_board_spillover
+from fin_skills.api.guards.lob_liquidity_gate import check_lob_liquidity_gate
 from fin_skills.api.guards.macro_fx_beta_gate import check_macro_fx_beta_gate
 from fin_skills.api.guards.panel_balance import check_panel_balance
 
 __all__ = [
     "Bundle", "Coverage", "Finding", "Guard", "GuardResult", "Outcome", "RunReport", "Slot",
-    "Suite", "check", "check_cross_board_spillover", "check_macro_fx_beta_gate", "check_panel_balance",
+    "Suite", "check", "check_cross_board_spillover", "check_lob_liquidity_gate", "check_macro_fx_beta_gate", "check_panel_balance",
     "conventions", "coverage", "get", "input_names", "register",
     "registry", "run_all", "slots", "vocabulary",
 ]

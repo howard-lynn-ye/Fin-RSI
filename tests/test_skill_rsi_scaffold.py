@@ -4,7 +4,11 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from fin_skills.api import check_cross_board_spillover, check_macro_fx_beta_gate
+from fin_skills.api import (
+    check_cross_board_spillover,
+    check_lob_liquidity_gate,
+    check_macro_fx_beta_gate,
+)
 from fin_skills.skill_rsi import (
     DEFAULT_SKILL_OPERATOR_REGISTRY,
     SkillChannelSpec,
@@ -15,12 +19,16 @@ from fin_skills.skill_rsi import (
     validate_skill_blueprint,
     verify_operator_causality,
 )
-from fin_skills.skill_rsi.blueprints import MACRO_FX_SKILL_BLUEPRINT
+from fin_skills.skill_rsi.blueprints import (
+    LOB_LIQUIDITY_SKILL_BLUEPRINT,
+    MACRO_FX_SKILL_BLUEPRINT,
+)
 from fin_skills.tools import call_tool, frame_to_payload
 
 
 def test_blueprint_validator_enforces_agent_skills_spec():
     assert validate_skill_blueprint(MACRO_FX_SKILL_BLUEPRINT) == []
+    assert validate_skill_blueprint(LOB_LIQUIDITY_SKILL_BLUEPRINT) == []
 
     bad_bp = SkillUpgradeBlueprint(
         name="Bad_Skill_Name",
@@ -40,9 +48,10 @@ def test_blueprint_validator_enforces_agent_skills_spec():
 
 
 def test_routing_auditor_and_collision_diagnosis():
-    report = audit_catalog_routing(probe_queries=MACRO_FX_SKILL_BLUEPRINT.probe_queries)
+    all_probes = MACRO_FX_SKILL_BLUEPRINT.probe_queries + LOB_LIQUIDITY_SKILL_BLUEPRINT.probe_queries
+    report = audit_catalog_routing(probe_queries=all_probes)
     assert report.passed
-    assert report.n_skills >= 131
+    assert report.n_skills >= 132
     assert report.top1_accuracy == pytest.approx(1.0)
     assert len(report.thin_margins) == 0
     assert all(p["passed"] and p["margin"] >= 0.15 for p in report.probe_results)
@@ -54,12 +63,19 @@ def test_routing_auditor_and_collision_diagnosis():
     assert diag["top1"] == "macro-fx-industry-beta-shield"
     assert diag["margin"] >= 0.15
 
+    diag_lob = diagnose_query_collision(
+        "How do I compute compute_lob_liquidity_shock_shield and estimate_intraday_lob_execution_cost for L2 queue position participation slippage?",
+        expected_skill="lob-liquidity-shock-shield",
+    )
+    assert diag_lob["top1"] == "lob-liquidity-shock-shield"
+    assert diag_lob["margin"] >= 0.15
+
 
 def test_all_registered_skill_operators_pass_future_perturbation_causality():
     panel = make_synthetic_ashare_panel(n_days=25, n_stocks=12, seed=7)
     res = DEFAULT_SKILL_OPERATOR_REGISTRY.verify_all_operators(panel)
     assert res["passed"] is True
-    assert res["n_operators"] == 8
+    assert res["n_operators"] == 9
     for v in res["verdicts"]:
         assert v["passed"] is True, v
         assert v["max_future_perturbation_diff"] <= 1e-10
@@ -68,7 +84,7 @@ def test_all_registered_skill_operators_pass_future_perturbation_causality():
 
     # Also verify compute_all_channels returns a clean DataFrame
     mat = DEFAULT_SKILL_OPERATOR_REGISTRY.compute_all_channels(panel)
-    assert mat.shape == (len(panel), 8)
+    assert mat.shape == (len(panel), 9)
     assert not mat.isna().any().any()
 
 
@@ -114,3 +130,15 @@ def test_new_guards_work_in_python_and_over_json_mcp_tools():
     fx_fail = check_macro_fx_beta_gate(defect_panel, signal_col="uniform_macro")
     assert fx_fail.passed is False
     assert "Uniform 1-D macro broadcast" in fx_fail.summary()
+
+    # 3. lob_liquidity_gate guard
+    lob_pass = check_lob_liquidity_gate(panel)
+    assert lob_pass.passed is True
+    lob_json = call_tool("check_lob_liquidity_gate", {"panel": frame_to_payload(panel)})
+    assert lob_json["passed"] is True
+
+    lob_defect = panel.copy()
+    lob_defect["flat_lob"] = 0.0
+    lob_fail = check_lob_liquidity_gate(lob_defect, signal_col="flat_lob")
+    assert lob_fail.passed is False
+    assert "dispersion" in lob_fail.summary()

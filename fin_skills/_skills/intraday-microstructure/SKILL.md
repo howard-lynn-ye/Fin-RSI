@@ -300,3 +300,7 @@ tick-rounded market maker, four execution locations, a vendor clock and a plante
 (classification, spreads, λ, OFI, VPIN). numpy + pandas only, fixed seed, ASCII output, about
 20 s. Change `LAMBDAS`, `PERSIST`, `DELAY_MS` or the world definitions in `part1_bars()` to see
 how the failures scale — that is what it is for.
+
+## Related Skills
+
+- `lob-liquidity-shock-shield` — [fin-microstructure] Compute a 20-day order-book volatility-of-volatility liquidity absorption shield and estimate L2 queue-position slippage, limit-lockout penalty, and A-share short-borrow fee schedules.

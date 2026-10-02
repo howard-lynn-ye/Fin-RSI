@@ -10,27 +10,34 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from fin_skills.skill_rsi.blueprints import MACRO_FX_SKILL_BLUEPRINT  # noqa: E402
+from fin_skills.skill_rsi.blueprints import (  # noqa: E402
+    LOB_LIQUIDITY_SKILL_BLUEPRINT,
+    MACRO_FX_SKILL_BLUEPRINT,
+)
 from fin_skills.skill_rsi.compiler import compile_and_verify_skills  # noqa: E402
 from fin_skills.skill_rsi.scaffold import apply_skill_blueprint  # noqa: E402
 
 
 def main() -> int:
-    print("[1/2] Applying declarative SkillUpgradeBlueprint: macro-fx-industry-beta-shield ...")
-    scaffold_res = apply_skill_blueprint(MACRO_FX_SKILL_BLUEPRINT, root=ROOT)
-    if not scaffold_res.passed:
-        print("FAIL during skill blueprint validation:", scaffold_res.validation_errors)
-        return 1
-    print(
-        f"      Scaffolded {scaffold_res.skill_name} ({scaffold_res.plugin}) | "
-        f"desc={scaffold_res.description_chars} chars | "
-        f"xref_neighbors_updated={scaffold_res.xref_updated_neighbors}"
-    )
+    blueprints = (MACRO_FX_SKILL_BLUEPRINT, LOB_LIQUIDITY_SKILL_BLUEPRINT)
+    all_probes = []
+    for idx, bp in enumerate(blueprints, start=1):
+        print(f"[1.{idx}/2] Applying declarative SkillUpgradeBlueprint: {bp.name} ...")
+        scaffold_res = apply_skill_blueprint(bp, root=ROOT)
+        if not scaffold_res.passed:
+            print(f"FAIL during skill blueprint validation ({bp.name}):", scaffold_res.validation_errors)
+            return 1
+        print(
+            f"        Scaffolded {scaffold_res.skill_name} ({scaffold_res.plugin}) | "
+            f"desc={scaffold_res.description_chars} chars | "
+            f"xref_neighbors_updated={scaffold_res.xref_updated_neighbors}"
+        )
+        all_probes.extend(bp.probe_queries)
 
     print("[2/2] Running 5-Stage Compilation, 4-Gate Verification & Cross-Repo Sync ...")
     report = compile_and_verify_skills(
         root=ROOT,
-        probe_queries=MACRO_FX_SKILL_BLUEPRINT.probe_queries,
+        probe_queries=all_probes,
         sync_repos=True,
     )
     print(json.dumps({

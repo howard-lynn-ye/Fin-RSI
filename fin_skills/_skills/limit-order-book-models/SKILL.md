@@ -231,3 +231,4 @@ extensions it leaves out.
   Poisson standard errors on a clustered arrival rate are too narrow by a measured factor.
 - `../monte-carlo-methods/SKILL.md` — the standard errors above are binomial; §4's `± 0.004`
   is an error bar on the estimator, not on the model.
+- `lob-liquidity-shock-shield` — [fin-microstructure] Compute a 20-day order-book volatility-of-volatility liquidity absorption shield and estimate L2 queue-position slippage, limit-lockout penalty, and A-share short-borrow fee schedules.

@@ -480,6 +480,29 @@ def build_macro_fx_beta_gate() -> dict:
     }
 
 
+def build_lob_liquidity_gate() -> dict:
+    rng = np.random.default_rng(23)
+    rows = []
+    for d in range(1, 15):
+        for sym in ("SH600036", "SH601318", "SH688981", "SZ300750"):
+            rows.append({
+                "date": f"2025-04-{d:02d}",
+                "symbol": sym,
+                "garman_klass_volatility": float(rng.uniform(0.012, 0.040)),
+                "ret_1d": float(rng.normal(0.0, 0.018)),
+                "volume": float(rng.uniform(1e6, 5e7)),
+                "margin_balance_z30": float(rng.normal(0.0, 1.0)),
+                "amihud_illiquidity": float(rng.uniform(0.0005, 0.004)),
+            })
+    clean_df = pd.DataFrame(rows)
+    defect_df = clean_df.copy()
+    defect_df["flat_lob"] = 0.0
+    return {
+        "clean": dict(panel=clean_df),
+        "defect": dict(panel=defect_df, signal_col="flat_lob"),
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict]] = {
     k[len("build_"):]: v for k, v in dict(globals()).items() if k.startswith("build_")}
 

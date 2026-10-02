@@ -56,3 +56,4 @@ The reference implementation in `scripts/cross_board_supply_chain_rsi.py` (expor
 - `kol-credibility-registry` — Dynamic Brier-score KOL credibility weighting.
 - `signal-reconciler` — Multi-channel entropy-weighted signal conflict resolution.
 - `macro-fx-industry-beta-shield` — [fin-macro] Convert a 1-D macro liquidity or USD/CNH FX shock into a causal cross-sectional equity shield by multiplying lagged stock-and-industry sensitivity beta by the regime impulse.
+- `lob-liquidity-shock-shield` — [fin-microstructure] Compute a 20-day order-book volatility-of-volatility liquidity absorption shield and estimate L2 queue-position slippage, limit-lockout penalty, and A-share short-borrow fee schedules.
