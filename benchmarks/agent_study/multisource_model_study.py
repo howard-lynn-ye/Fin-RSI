@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 import os
@@ -24,8 +25,10 @@ from benchmarks.agent_study.trading_tools_v5 import turn_counts
 
 GUIDE = Path(__file__).with_name("trading_library_guide_multisource.md")
 MODELS = old.MODELS + (("mistral12b", "mistralai/Mistral-Nemo-Instruct-2407",
-                        "04d8a90549d23fc6bd7f642064003592df51e9b3"),)
-BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b")}
+                        "04d8a90549d23fc6bd7f642064003592df51e9b3"),
+                      ("assistant", "assistant_in_current_conversation", "not_independently_attested"))
+BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
+           "personal": ("assistant",)}
 COMMON = runtime.COMMON.replace(
     "Use only the visible market files for the task.",
     "Use only the visible market files and the dated evidence packet supplied in the user message for the task.",
@@ -37,7 +40,8 @@ def sources():
     here = Path(__file__).parent
     extra = list(here.glob("trading_*v6.*")) + [Path(__file__), here / "manual_multisource.py", GUIDE,
         here / "trading_capabilities.py", here / "trading_worker_v7.py",
-        here / "audit_manual_multisource.py", here / "audit_model_multisource.py"]
+        here / "audit_manual_multisource.py", here / "audit_model_multisource.py",
+        here / "personal_chat.py"]
     result.update({p.relative_to(previous.REPO).as_posix(): old.sha(p)
                    for p in extra if p.suffix in (".py", ".md")})
     return result
@@ -67,6 +71,8 @@ def evidence_text(packet):
 def model_spec(family, seed, batch):
     if batch not in BATCHES or family not in BATCHES[batch] or seed not in previous.SEEDS:
         raise ValueError("model/seed is outside the declared batch")
+    if batch == 'personal' and seed != 11:
+        raise ValueError('personal case has one run; 11 controls menu/order, not model sampling')
     return next(m for m in MODELS if m[0] == family)
 
 
@@ -77,6 +83,8 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
     model = model_spec(family, seed, batch)
     if interface not in ("v6", "v7"):
         raise ValueError("unknown interface")
+    if batch == 'personal' and interface != 'v7':
+        raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
     root.mkdir(parents=True, exist_ok=False)
     data_hashes = md.write_dataset(root / "data")
@@ -86,9 +94,10 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
     old.write(root / "evidence.json", records)
     old.write(root / "evidence-packets.json", packets)
     arms = list(old.ARMS)
-    random.Random(20261005 + seed).shuffle(arms)
+    if batch != 'personal':
+        random.Random(20261005 + seed).shuffle(arms)
     old.write(root / "inputs.json", dict(arms=arms, picks=picks, dates=list(packets)))
-    old.write(root / "protocol.json", dict(
+    protocol = dict(
         version="multisource-model-v2" if interface == "v7" else "multisource-model-v1",
         interface=interface, created_utc=datetime.now(timezone.utc).isoformat(),
         model=model, seed=seed, batch=batch, batch_families=BATCHES[batch],
@@ -108,7 +117,19 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
                 "unverified archive vintages and assumed CFTC/House availability",
                 "selected surveys/futures/House actors and monetary news, not exhaustive coverage",
                 "single combined information/interface treatment; not causal attribution to one feature",
-                "not the manual assistant case or an equal-budget comparison with it"]))
+                "not the earlier manual assistant case or an equal-budget comparison with it"])
+    if batch == 'personal':
+        protocol.update(executor='conversation_authored_responses', temperature=None, top_p=None,
+            personal_order='each date: raw locked, then library locked, then next date',
+            counts_toward_twenty_models=False,
+            reference_tokenizer=old.MODELS[0][1:],
+            response_budget=f'{old.MAX_TOKENS} reference-tokenizer tokens; internal reasoning budget unmeasured')
+        protocol['limits'] = [x for x in protocol['limits'] if not x.startswith('three seeds')]
+        protocol['limits'] += ['non-blind current conversation; prior library and market-result exposure',
+            'library knowledge from earlier dates cannot be erased from the conversation',
+            'one personally authored pair; menu seed is not an inference sampling seed',
+            'same external interface, information and accounting; no equal internal reasoning claim']
+    old.write(root / "protocol.json", protocol)
 
 
 def verify(root):
@@ -133,6 +154,25 @@ def verify(root):
     return p
 
 
+@contextmanager
+def decision_workspace(root, arm, index, personal):
+    if personal:
+        yield root / 'personal-visible' / arm / f'{index:02d}'
+    else:
+        with tempfile.TemporaryDirectory(dir=root / 'tmp') as td:
+            yield Path(td) / 'visible'
+
+
+def decision_groups(inputs, personal):
+    if personal:
+        for i, pick in enumerate(inputs['picks']):
+            for arm in ('raw', 'library'):
+                yield arm, [(i, pick)]
+    else:
+        for arm in inputs['arms']:
+            yield arm, list(enumerate(inputs['picks']))
+
+
 def run(root):
     p = verify(root)
     q = old.load(root / "qualification" / "qualification.json")
@@ -155,18 +195,27 @@ def run(root):
         binding['capability_qualification_sha256'] = old.sha(root / 'capability-qualification.json')
     started = root / "inference-started.json"
     if started.exists():
-        assert all(old.load(started)[k] == v for k, v in binding.items())
+        if any(old.load(started)[k] != v for k, v in binding.items()):
+            raise ValueError('started run has different protocol or qualification')
     else:
         old.write(started, dict(binding, job_id=os.environ.get("SLURM_JOB_ID")))
-    from benchmarks.agent_study.transformers_chat import TransformersChat
-    backend = TransformersChat(p["model"][1], p["model"][2], max_tokens=p["max_tokens"])
+    if p.get('batch') == 'personal':
+        from transformers import AutoTokenizer
+        from benchmarks.agent_study.personal_chat import PersonalChat
+        name, revision = p['reference_tokenizer']
+        tokenizer = AutoTokenizer.from_pretrained(name, revision=revision, local_files_only=True)
+        backend = PersonalChat(root, tokenizer, max_tokens=p['max_tokens'], max_turns=p['max_turns'])
+    else:
+        from benchmarks.agent_study.transformers_chat import TransformersChat
+        backend = TransformersChat(p["model"][1], p["model"][2], max_tokens=p["max_tokens"])
     inputs, packets = old.load(root / "inputs.json"), old.load(root / "evidence-packets.json")
     total = pd.read_csv(root / "data" / md.HIDDEN, index_col=0)
     returns, picks, receipts = total.pct_change().fillna(0.), inputs["picks"], {}
     (root / "tmp").mkdir(exist_ok=True)
-    for arm in inputs["arms"]:
-        holdings = dict.fromkeys(md.TICKERS, 0.)
-        for i, pick in enumerate(picks):
+    holdings_by_arm = {arm: dict.fromkeys(md.TICKERS, 0.) for arm in inputs['arms']}
+    for arm, visits in decision_groups(inputs, p.get('batch') == 'personal'):
+        holdings = holdings_by_arm[arm]
+        for i, pick in visits:
             day, path = str(total.index[pick]), root / "decisions" / arm / f"{i:02d}.json"
             supplied = evidence_text(packets[day])
             if path.exists():
@@ -175,13 +224,20 @@ def run(root):
                 assert max(abs(record["holdings_before"][t] - holdings[t]) for t in md.TICKERS) < 1e-12
             else:
                 backend.seed, backend.calls = p["seed"] * 1000 + i, 0
-                with tempfile.TemporaryDirectory(dir=root / "tmp") as td:
-                    workspace = Path(td) / "visible"
+                if p.get('batch') == 'personal':
+                    backend.arm, backend.decision_index, backend.receipts = arm, i, []
+                with decision_workspace(root, arm, i, p.get('batch') == 'personal') as workspace:
                     md.truncate(root / "data", workspace, day)
                     c = runner.Controller(root, workspace, arm, p["seed"] * 1000 + i)
                     if p.get("interface") == "v7":
-                        snapshot_sha256 = runner.write_evidence_snapshot(
-                            old.load(root / "evidence.json"), packets[day], workspace)
+                        if p.get('batch') == 'personal' and (workspace / 'evidence.json').exists():
+                            expected = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
+                            if old.load(workspace / 'evidence.json') != expected:
+                                raise ValueError('resumed personal evidence snapshot changed')
+                            snapshot_sha256 = old.sha(workspace / 'evidence.json')
+                        else:
+                            snapshot_sha256 = runner.write_evidence_snapshot(
+                                old.load(root / "evidence.json"), packets[day], workspace)
                         record = runner.decide(backend, c, previous.task(day, pick, holdings) + supplied,
                                                orientation_path=GUIDE)
                         record['evidence_snapshot_sha256'] = snapshot_sha256
@@ -190,6 +246,8 @@ def run(root):
                                                 common_instructions=COMMON, orientation_path=GUIDE)
                 record.update(date=day, index=pick, holdings_before=dict(holdings),
                               evidence_packet_sha256=digest(packets[day]))
+                if p.get('batch') == 'personal':
+                    record['personal_response_receipts'] = list(backend.receipts)
                 old.write(path, record)
                 print(json.dumps(dict(family=p["model"][0], seed=p["seed"], arm=arm,
                                       decision=i+1, planned=len(picks), submitted=record["submitted"])), flush=True)
@@ -206,6 +264,7 @@ def run(root):
                 holdings, _ = old.drift(holdings, returns.iloc[k])
                 if k == pick+1 and record["target"] is not None:
                     holdings = dict(record["target"])
+        holdings_by_arm[arm] = holdings
     assert len(receipts) == 2 * len(picks)
     verify(root)
     old.write(root / "inference-receipt.json", dict(binding, decisions=receipts))
@@ -219,8 +278,22 @@ def validate_receipt(root):
     expected = {f"decisions/{a}/{i:02d}.json" for a in inputs["arms"] for i in range(len(inputs["picks"]))}
     assert set(receipt["decisions"]) == expected
     assert {f.relative_to(root).as_posix() for f in (root / "decisions").glob("*/*.json")} == expected
+    personal_exchanges = []
     for n, sha in receipt["decisions"].items():
         assert old.sha(root / n) == sha
+        record = old.load(root / n)
+        if old.load(root / 'protocol.json').get('batch') == 'personal':
+            from benchmarks.agent_study.personal_chat import validate_exchange
+            if not record.get('personal_response_receipts'):
+                raise ValueError('personal response provenance missing')
+            if len(record['personal_response_receipts']) != len(record['turns']):
+                raise ValueError('personal response count differs from executed turns')
+            for t, (item, turn) in enumerate(zip(record['personal_response_receipts'], record['turns'])):
+                personal_exchanges.append(validate_exchange(root, Path(n).parent.name,
+                    int(Path(n).stem), t, item, turn))
+    if old.load(root / 'protocol.json').get('batch') == 'personal':
+        from benchmarks.agent_study.personal_chat import validate_exchange_inventory
+        validate_exchange_inventory(root, personal_exchanges)
     return inputs
 
 
@@ -237,6 +310,9 @@ def score(root):
                          **turn_counts([t for r in records for t in r["turns"]]))
         old.write(root / "nav" / f"{arm}.json", dict(nav=nav.to_dict(), trades=trades))
     result = dict(family=p["model"][0], seed=p["seed"], window=p["window"], paths=paths,
+                  batch=p.get('batch', 'original'), executor=p.get('executor', 'transformers'),
+                  counts_toward_twenty_models=p.get('counts_toward_twenty_models', True),
+                  reference_tokenizer=p.get('reference_tokenizer'),
                   return_difference_pp=paths["library"]["return_rate_pct"]-paths["raw"]["return_rate_pct"],
                   limits=p["limits"], inference_receipt_sha256=old.sha(root / "inference-receipt.json"))
     old.write(root / "scores.json", result)
@@ -251,6 +327,8 @@ def score(root):
 
 
 def aggregate(batch, group="original"):
+    if group == 'personal':
+        raise ValueError('report the personal pair separately; it is not a multi-model seed mean')
     roots = [batch / f"{f}-{s}" for f in BATCHES[group] for s in previous.SEEDS]
     missing = [r.name for r in roots if not (r / "completed.json").exists()]
     if missing:
