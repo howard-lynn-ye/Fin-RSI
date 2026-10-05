@@ -102,10 +102,14 @@ def extract_call(text):
 
 
 class Controller:
+    tools_type = Tools
+    worker_module = 'benchmarks.agent_study.trading_worker_v6'
+    extra_worker_tools = ()
+
     def __init__(self, root, workspace, arm, menu_seed=0):
         self.root, self.workspace = Path(root), Path(workspace)
         self.arm, self.menu_seed, self.calls = arm, menu_seed, []
-        self.tools = Tools(workspace, arm, menu_seed)
+        self.tools = self.tools_type(workspace, arm, menu_seed)
         (self.root / 'tmp').mkdir(exist_ok=True, parents=True)
 
     def call(self, tool, arguments):
@@ -114,7 +118,7 @@ class Controller:
             result = dict(ok=False, error='arguments must be an object')
         elif tool in ('read_file', 'list_algorithms', 'describe_algorithm', 'read_skill', 'list_skills'):
             result = self.tools.call(tool, arguments)
-        elif tool in ('run_python', 'run_algorithm', 'run_guard', 'read_market', 'read_snapshot', 'read_history'):
+        elif tool in ('run_python', 'run_algorithm', 'run_guard', 'read_market', 'read_snapshot', 'read_history') + self.extra_worker_tools:
             with tempfile.TemporaryDirectory(dir=self.root / 'tmp') as temp:
                 box = Path(temp) / 'box'
                 box.mkdir()
@@ -125,7 +129,7 @@ class Controller:
                     TMPDIR=str(box), MPLCONFIGDIR=str(box))
                 try:
                     proc = subprocess.run([sys.executable, '-B', '-m',
-                        'benchmarks.agent_study.trading_worker_v6', str(box),
+                        self.worker_module, str(box),
                         str(self.workspace)], env=env, capture_output=True, text=True,
                         timeout=v3.TOOL_TIMEOUT)
                     result = (json.loads((box / 'result.json').read_text())
@@ -147,10 +151,12 @@ class Controller:
         return result
 
 
-def decide(backend, controller, task, *, common_instructions=None, orientation_path=None):
+def decide(backend, controller, task, *, common_instructions=None, orientation_path=None,
+           library_instructions=None):
     guide, guide_receipt = orientation(controller.arm, orientation_path)
     common = COMMON if common_instructions is None else common_instructions
-    history = [dict(role='system', content=common + (LIBRARY + '\n' + guide
+    library = LIBRARY if library_instructions is None else library_instructions
+    history = [dict(role='system', content=common + (library + '\n' + guide
                               if controller.arm == 'library' else '')),
                dict(role='user', content=task)]
     turns, target = [], None
