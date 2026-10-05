@@ -7,197 +7,173 @@
 \input{evidence_numbers}
 \input{merge_numbers}
 \input{codegen_numbers}
-\title{When Financial Agents Code: Auditing Spurious Alpha, Data Leakage,\\
-and Execution Errors with Guarded Domain Libraries}
+\input{factorial_numbers}
+\title{Financial Knowledge and Numerical Tools for Trading Agents:\\
+A Factorial Study of Access, Use, and Returns}
 \author{Anonymous NAACL Submission}
 \date{}
 \begin{document}
 \maketitle
 \nolinenumbers
 \begin{abstract}
-Financial agents increasingly write the quantitative code behind their conclusions, yet a
-plausible backtest can conceal future information, a misapplied corporate action, or a
-validation claim that never executed. We present \textsc{fin-skills}, a financial library of
-129 skills, 48 algorithm--backend catalog entries, and 36 executable research guards that
-turn dated domain conventions into structured computation and artifact-bound audit records.
-Across three seeded worlds, the guard suite detects all \CaughtInstances{} of
-\DefectInstances{} planted defects with no false alarms on the clean references, and
-\ParityPassed{} of \ParityCount{} numerical checks meet their stated tolerances. In a frozen
-paired study of first-submission code generation with two open code models, none of
-\CGPlanned{} programs meets the pre-registered validity criteria: \CGFormatFailures{} responses
-break the code-only format and every executed program fails numerical and split checks. With
-the first code fence extracted post hoc, \CGPostExecuted{} programs execute but only
-\CGPostValid{} is valid; \CGRecumulated{} programs mishandle cumulative split factors and
-\CGPostTimingFailures{} use same-session or future prices; documentation alone produced no
-library calls. In a frozen follow-up with three attempts, enforcing lag and split checks cut
-accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
-\ENRawGuardsAllAcceptedInvalid{}, and to \ENLibGuardsAllAcceptedInvalid{} with an enforced library
-call, but did not raise valid programs (\ENRawExecAllValid, \ENRawGuardsAllValid, and
-\ENLibGuardsAllValid{} of 24). The checks prevent silent errors from being delivered; they
-do not make small models write correct code. HiSTrim and persistent memory are optional
-integrations whose results are reported separately.
+Financial agents can be given domain guidance and numerical algorithms, but access does
+not establish that the agent uses either resource or improves its decisions. We present
+\textsc{fin-skills}, a library of financial skills, quantitative interfaces, and executable
+research checks, and evaluate optional document and algorithm access in a frozen factorial
+trading study. Qwen2.5-Coder 7B and 14B make \FTDecisions{} decisions across four conditions,
+three sampling seeds, and two asset baskets on a shared historical calendar. All conditions
+see identical adjusted prices and use the same budget, next-close execution, and costs.
+Full access changes mean cumulative net return relative to the base condition by
+\FTOriginalSevenDifference{} and \FTOriginalFourteenDifference{} percentage points on the
+original assets, and \FTTransferSevenDifference{} and \FTTransferFourteenDifference{} points
+on preselected transfer assets, for 7B and 14B respectively. Every full-access group trails
+equal-weight rebalancing. There are \FTSkillReads{} successful skill-document reads and only
+\FTAlgorithmDecisions{} decisions with a successful algorithm call. Calendar-block intervals
+span zero for every reported effect. The experiment measures access under limited uptake;
+it does not establish gains from knowledge consumption or general trading superiority.
+Separate guard and code-generation audits describe the library's ability to detect specified
+financial errors, without attributing those effects to the trading intervention.
 \end{abstract}
 
 \section{Introduction}
-A financial agent can produce a convincing research report while joining a disclosure
-to dates before publication, treating a stock split as a return, or reporting a check
-that never executed. These failures can create apparent alpha without a usable investment
-signal, and they increasingly arise in code the agent writes itself. Preventing them
-requires financial conventions to be expressed as executable input requirements and tests,
-alongside the algorithms that consume the data.
+A library can make financial knowledge and quantitative methods available to a trading
+agent without making the agent consult them. Even when an interface is used successfully,
+a higher historical return may reflect exposure choices on a particular market path.
+Evaluating a financial tool library therefore requires observing the chain from access to
+use to submitted decisions, alongside returns, risk, and simple strategy references.
 
-\textsc{fin-skills} provides this infrastructure. Its domain skills identify appropriate
-libraries and dated failure modes; its numerical interfaces expose parameter and data
-contracts; and its research guards check availability times, corporate actions,
-validation splits, costs, and other declared assumptions. Structured findings distinguish
-a detected defect from a missing input or a successful check. Artifact-bound execution
-records allow a controller to enforce those checks rather than trust an agent's prose.
+\textsc{fin-skills} combines dated financial guidance with numerical interfaces and
+executable research checks. Domain skills describe suitable libraries and failure modes;
+method interfaces expose input and parameter contracts; guards check declared assumptions
+such as timing, corporate actions, and validation splits. These components support different
+claims. A working algorithm establishes availability, a recorded call establishes use,
+and a guard result establishes only that its specified check ran.
 
-We ask whether language models can reliably build quantitative computations without such
-a library, and what the library's checks and primitives establish. E1 measures whether the
-guard suite detects known defects without flagging clean references. E2 measures whether
-agents discover and execute the interfaces and whether submitted artifacts meet the audit
-contract. E3 compares numerical primitives with independent references. E4 freezes a paired
-code-generation study in which two open code models implement four allocation and signal
-rules with and without the library's documentation, graded by an independent executable
-oracle, then repeats the tasks with three attempts while a controller enforces the library
-call and lag and split checks. First submissions are almost never valid, and the dominant
-errors (re-cumulated split factors and same-session prices) execute without raising an error.
-Enforcement stops most wrong programs from being accepted but does not produce more correct
-ones, which separates the library's auditing value from any claim of better generation.
+We ask what changes when a trading agent receives skill-document access, numerical-tool
+access, or both. The main experiment separates these two access interventions in a
+four-cell design with identical price data. It retains every planned decision, including
+failed calls and missing submissions. An original basket is already exposed to development;
+a second basket changes assets within the same period and broad economic environment.
+The comparison is consequently a bounded historical study of access and agent behavior.
 
-The distinction matters for interpreting an earlier portfolio experiment. That experiment
-exposed a price-compatible subset of algorithms on one short, anonymized currency path,
-without mandatory guard enforcement. It is an exploratory component ablation of algorithm
-access, not a comparison of the complete guarded library against an unguarded system.
-We retain its returns and execution traces, but do not use its losses to infer either
-that financial tools are ineffective or that memory would repair those losses.
+The results vary by model, basket, and sampling seed. Full access improves three of four
+group means relative to base, but falls below equal-weight rebalancing in all four. No
+successful skill reads are observed, and successful algorithm calls concentrate in one
+model--basket--condition group. This behavior limits the interpretation of the factorial
+effects: they describe changed interfaces and prompts, not the benefits of financial
+knowledge that the model demonstrably consumed. We publish complete aggregate results,
+frozen protocols, source hashes, and decision receipts, keeping earlier studies separate.
 
-Our contributions are (1) a library of 129 financial skills, 48 algorithm--backend
-catalog entries, and 36 executable research guards; (2) structured computation and
-artifact-bound verification interfaces connecting financial assumptions to actual
-execution; (3) evidence on planted-defect detection, execution behavior, and numerical
-parity; and (4) frozen, hash-bound audits of financial code generation that separate format
-failure, silent financial error, and library uptake, and measure what enforced checks change:
-fewer wrong programs accepted, not more correct programs written. HiSTrim and persistent
-memory provide optional context and experience services; their auxiliary studies do not
-determine the core contribution.
+Our contributions are a reusable financial skill and algorithm library; a frozen study
+that distinguishes document and numerical-tool access under common data and accounting;
+and an analysis that connects returns to actual uptake, failures, risk, and computational
+cost. Guard detection, numerical parity, code-generation audits, and optional memory and
+context services provide supporting evidence in the appendices.
 
 \section{Related work}
 FinAgent combines multimodal financial information with trading tools, reflection, and
 memory \cite{zhang2024finagent}; StockBench evaluates sequential portfolio decisions
 using prices, fundamentals, and news \cite{chen2025stockbench}. The Finance Agent
-Benchmark evaluates financial research tasks \cite{bigeard2025finance}. These works
-study tool use and memory within language-model agents. Our contribution supplies the
-financial knowledge, numerical contracts, and executable research checks that such agents
-can reuse. A separate exploratory comparison varies algorithm access under identical data.
+Benchmark evaluates financial research tasks \cite{bigeard2025finance}. Our experiment
+focuses on optional access to reusable documents and numerical interfaces while holding
+the available price history fixed. It does not compare complete trading systems or
+establish a ranking against these benchmarks.
 
-Behavioral testing offers a structured view of model capabilities beyond aggregate
-scores \cite{ribeiro2020checklist}. Financial backtest overfitting and selection bias
-\cite{bailey2014deflated,bailey2017pbo}, alongside look-ahead leakage in financial agents
-\cite{li2025profit}, motivate explicit checks on decision evidence. The persistent memory
-component adapts the mushroom-body model of \citet{huang2024memory} to update state from
-delayed financial returns, linking within-task attention dynamics with cross-episode
-retention.
+Behavioral testing motivates measuring concrete capabilities beyond an aggregate score
+\cite{ribeiro2020checklist}. Backtest overfitting and selection bias
+\cite{bailey2014deflated,bailey2017pbo}, together with look-ahead leakage in financial
+agents \cite{li2025profit}, motivate frozen analysis choices and explicit exposure limits.
+Our supporting guard studies examine specified financial errors; the trading study does
+not vary mandatory guard enforcement. The optional memory component adapts the
+mushroom-body model of \citet{huang2024memory}; no memory treatment is included here.
 
-\input{framework_overview}
-
-\section{Professional tools and domain knowledge}
+\section{Library and access interventions}
 \label{sec:library}
-\textsc{fin-skills} exposes financial methods alongside the information an agent needs
-to run them: task scopes, input requirements, dependencies, parameter conventions, and
-dated source verifications. Domain skills route requests to relevant libraries; per-library
-skills provide implementation guidance. The algorithm catalog covers portfolio
-construction, forecasting, volatility estimation, technical signals, and execution
-schedules, providing uniform programmatic contracts over quantitative methods.
+\textsc{fin-skills} supplies domain and per-library skills, quantitative algorithms,
+structured data adapters, and research checks. Skill documents identify task scopes,
+input conventions, dependencies, and dated sources. Numerical methods cover portfolio
+construction, signals, forecasting, volatility, and execution schedules. Structured
+responses distinguish computed results from missing dependencies and runtime errors.
+The broader architecture and interface inventory appear in
+Appendix~\ref{app:library} and the supporting framework description.
 
-\paragraph{Agent-selected execution.}
-An agent can discover candidate algorithms, inspect their requirements, and execute them
-with custom parameters. Structured outputs separate numerical results from missing
-dependencies or runtime errors. An optional strategy adviser provides rule-based
-suggestions without overriding model choices. In our evaluation, agents access 18
-price-compatible algorithms, with requests and executions logged independently from
-free-form text.
+For the main experiment, knowledge access (K) exposes eight predeclared skills through
+paginated discovery and reading functions: portfolio optimization, covariance and risk,
+corporate actions, backtest validation, backtest overfitting, data quality, signal
+construction, and trend following. Numerical access (T) exposes a price-compatible menu,
+method descriptions, calling contracts, and execution. T therefore includes the minimal
+documentation needed to call its interfaces; K is additional domain material. The menu
+order is seeded, and neither condition prescribes a strategy. Computed weights require an
+explicit submission and are never adopted automatically.
 
-\paragraph{Information and model interfaces.}
-Retrieval interfaces chunk packaged skills and documents, returning relevant passages
-under strict as-of cutoffs to prevent look-ahead bias. Forecasting and prediction
-adapters provide a unified fit--predict lifecycle, while portfolio optimizers expose
-specialized execution interfaces. Appendix~\ref{app:library} details the complete
-interface inventory, model lifecycle, and retrieval pipeline.
+Every cell has the same price readers and NumPy/pandas/SciPy execution environment.
+Direct package imports are disabled, so numerical-library access occurs through the
+assigned interfaces. Skill documents are optional resources, not inserted readings.
+This design measures the total effect of offering each interface, including its prompt
+text and discovery burden; it does not separately identify prose length or content effects.
 
-\input{feedback_checks}
-\input{capability_evaluation}
-\input{codegen_study}
-\input{autonomous_study}
+\input{factorial_trading}
 
-\section{Discussion: financial reliability as an executable contract}
-The strongest evidence for \textsc{fin-skills} concerns defects that its checks can
-observe and computations that can be independently reproduced. E1 establishes detection
-on the fixed planted families; E3 establishes numerical agreement for the tested
-primitives. E2 shows why optional access and enforced verification must be distinguished:
-an agent may describe a check without executing it, while mandatory verification may
-reject a submission that the agent cannot repair within its budget. Detection, acceptance,
-and task success must therefore be reported separately.
+\section{Discussion}
+The main finding is a gap between resource availability and resource use. Scripted
+qualification established that the selected numerical methods could execute and submit
+valid weights. The agents nevertheless rarely called them and never successfully read a
+skill document. A favorable return in a knowledge-access cell therefore cannot establish
+that financial knowledge improved the strategy. Similarly, higher submission rates can
+coexist with lower return; reaching a valid output and making a profitable allocation are
+different outcomes.
 
-E4 sharpens both points. Unassisted first submissions from open code models failed in the
-ways a backtest would not reveal: split conventions, the execution lag, and output
-contracts. Supplying documentation is not the same as supplying the library, because no
-program used it, and a guard certifies only its stated contract: the causality check caught
-every strictly-future dependence but not a same-session lag until it was composed with a
-one-row shift. Enforced, these checks reduced accepted-but-wrong programs from
-\ENRawExecAllAcceptedInvalidPct\% to \ENRawGuardsAllAcceptedInvalidPct\% of episodes, yet no arm
-produced more valid programs, and enforced library use mostly failed on interface errors.
-The library's measured value here is refusing wrong results; making agents use its
-algorithms correctly requires a clearer calling interface and stronger models.
+The return differences are sensitive to model, basket, and sampling seed. The original
+7B tools-only condition has the highest group mean on that basket, but its full-access
+condition performs worse. The original 14B tools-only mean falls below base, while the
+transfer full-access means improve for both model sizes. These patterns do not support a
+stable ordering of the four interfaces. Common-period asset transfer adds a useful check
+on asset dependence while retaining shared market direction and exposures.
 
-The portfolio component ablation leaves the causal contribution of guard enforcement
-unmeasured. Exposure choices, market direction, and transaction costs all affect its
-returns; the saved losses do not identify which factor caused the difference between
-conditions. A matched guarded arm is needed to measure what enforcement changes.
-
-Context pruning and persistent memory can consume the library's verified records, but
-their gains are separate empirical questions. In the auxiliary report-QA studies, a
-post-hoc reanalysis keeps the official program scores and shows that relaxing fence
-parsing adds no correct program; missing final answers, not formatting alone, limit
-those runs. The current context-pruning study shows quality loss. These findings motivate
-interface and retention checks, not a replacement of the library's contribution with an
-unproven memory benefit.
+Research guards answer a separate reliability question. The supporting audits test
+known defects, numerical parity, and whether an enforced controller rejects erroneous
+programs. Their results cannot explain the trading return differences because guard
+enforcement is not a factor in this experiment. The retained code-generation study also
+shows that rejecting wrong programs need not produce more correct programs. Together,
+these studies motivate reporting availability, use, acceptance, and outcome separately.
 
 \section{Conclusion}
-\textsc{fin-skills} makes professional financial guidance executable through quantitative
-interfaces and research guards. Its fixed defect benchmark records
-\CaughtInstances{}/\DefectInstances{} detections with no clean-reference false alarms,
-and \ParityPassed{}/\ParityCount{} numerical checks pass their stated tolerances.
-A frozen code-generation audit finds \CGOfficialValid{}/\CGPlanned{} valid first submissions
-under its pre-registered parser and \CGPostValid{}/\CGPlanned{} after post-hoc extraction,
-with silent split and timing errors dominating the executable programs. Enforcing the
-library's checks cut accepted-but-wrong programs from \ENRawExecAllAcceptedInvalid{} of 24 to
-\ENRawGuardsAllAcceptedInvalid{} without raising valid ones. These results support reusable
-infrastructure that refuses spurious research findings and reproduces computations; they do
-not show that the library makes small models write correct financial code.
+A frozen four-condition experiment of \textsc{fin-skills} finds mixed historical return
+effects and limited voluntary uptake of financial documents and algorithms. Full access
+improves three group means against base but none against equal-weight rebalancing; the
+reported dependence-aware intervals all span zero. The released evidence supports a
+bounded account of what these models did when interfaces were offered. It does not
+establish a general advantage for tool-equipped trading agents or a causal benefit from
+knowledge consumption. The library's separate verification functions remain useful
+capabilities whose effects must be tested with their own interventions.
 
 \section*{Limitations}
-The defect benchmark repeats fixed synthetic families across seeds; its 100\% recall is
-not a universal leakage-detection guarantee. Numerical parity covers eight primitives,
-not every backend. The code-generation study uses author-designed synthetic tasks, two
-model sizes from one family, and three seeds on four fixed rules, which are not twelve
-independently sampled problems; training contamination is not ruled out. Its fence
-extraction is a post-hoc sensitivity analysis run on another host. The enforced follow-up
-reuses these tasks after seeing E4's failures, allows only three attempts, and its interface
-text named one argument differently from the library function. Passing sampled
-perturbations does not certify universal causality. The currency component ablation uses
-daily reference prices, two Qwen model sizes, and one short path, without a matched
-mandatory-guard arm or executable quotes and carry. Auxiliary QA comparisons use public,
-development-exposed, overlapping tasks and retain format and runtime failures; their
-format reanalysis is post hoc. Research guards enforce specified checks, not regulatory
-certification, complete adversarial isolation, or investment profitability. Human workflow
-efficiency and independent prospective validation remain unmeasured.
+The original assets were exposed during development. Transfer assets were selected before
+this batch's outcomes were downloaded, but share the same dates and broad economic
+exposures; they are not an independent market or prospective test. Model pretraining
+contamination is not ruled out. Frozen present-day skill documents are not claimed to
+have been available at the historical decision dates. The two models are sizes of one
+family, and three sampling seeds share one market path. Neither decisions nor seeds
+are treated as independently sampled markets.
+
+The study is long-only with zero cash yield, a fixed proportional transaction cost,
+and close-price execution. It does not model executable quotes, capacity, additional
+slippage, or market impact. Block resampling describes sensitivity within the observed
+path, not out-of-market validity. Rare tool use prevents identifying benefits among
+users, and no counterfactual removal of individual calls is performed. Costs, errors,
+and non-submissions remain in the analysis rather than selecting successful episodes.
+The supporting synthetic guard and code-generation tasks have their own exposure and
+coverage limits, reported with those studies. Human productivity and prospective trading
+performance remain unmeasured.
 
 \section*{Ethics and Reproducibility}
-All models, tools, and evaluation benchmarks adhere to open, reproducible protocols.
-Software environments, execution digests, and audit traces are publicly available to
-facilitate independent verification.
+The experiments are simulated and place no live orders. The release includes experiment
+code, the frozen protocol and analysis plan, aggregate results for every cell and seed,
+and source, data, and decision hashes. Market datasets, model weights, and raw model
+outputs remain on the controlled research host and are not redistributed in this release.
+Readers can verify the published aggregate tables and their receipt linkage; reproducing
+inference requires the recorded model revisions and separately obtained market data.
+This working manuscript is not a claim of venue submission or completed authorship review.
 
 \bibliography{references}
 \clearpage
@@ -208,6 +184,35 @@ facilitate independent verification.
 \setlength{\@fpsep}{14pt}
 \setlength{\@fpbot}{0pt plus 1fil}
 \makeatother
+\section{Complete factorial results}
+\label{app:factorial}
+The following tables retain every group and sampling seed. All values are generated from
+the verified aggregate evidence. The repository also preserves separate execution and
+delivery failures, complete per-seed risk and exposure measures, source and protocol hashes,
+and the decision receipt map. No failed decision or unfavorable cell is excluded.
+\input{factorial_detail_tables}
+\clearpage
+\section{Earlier bundled-access trading study}
+Before the factorial experiment, a separate development study compared a bundled library
+interface against a raw-data interface on the original basket. It retained all 528
+scheduled decisions, including failures and missing submissions. The bundle changed data
+adapters, documentation, and numerical tools together; its contrast cannot identify the
+contribution of any one component and is not pooled with the factorial cells.
+
+The complete positive and negative results, seed-level risk and cost metrics, failure
+counts, and post hoc exposure and adoption analysis are archived separately in
+\texttt{evidence/20261002-trading-v5}. A Slurm memory failure occurred after one pair's
+complete inference receipt had been written; CPU scoring subsequently verified those
+saved decisions without new inference. The archive preserves this recovery record.
+
+\input{prior_trading_table}
+\clearpage
+\input{framework_overview}
+\input{feedback_checks}
+\input{capability_evaluation}
+\input{codegen_study}
+\input{autonomous_study}
+\clearpage
 \input{supporting_evidence}
 \clearpage
 \input{library_details}
