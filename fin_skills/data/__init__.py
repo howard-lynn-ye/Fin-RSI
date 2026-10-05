@@ -42,6 +42,7 @@ from fin_skills.data.ratelimit import (PerAccount, PerDay, PerHourDayMonth, PerI
 from fin_skills.data.schema import (Adjustment, Bars, Fundamentals, Macro, stack_fields)
 from fin_skills.data.validate import (validate_bars, validate_fundamentals,
                                       validate_macro)
+from fin_skills.data.history import market_snapshot, prepare_history
 
 # Importing the eight adapter modules registers their Declarations so `adapters()` can
 # print the whole table. None of them imports a vendor library at module scope - that is
@@ -75,5 +76,5 @@ __all__ = [
     "content_hash", "credential", "declarations", "describe", "fills", "get",
     "guard_convention", "lookup", "pit_used", "recommend", "register", "sample",
     "stack_fields", "to_bundle", "to_long", "validate_bars", "validate_fundamentals",
-    "validate_macro",
+    "validate_macro", "market_snapshot", "prepare_history",
 ]
