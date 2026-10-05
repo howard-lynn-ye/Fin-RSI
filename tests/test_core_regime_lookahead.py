@@ -103,6 +103,34 @@ def test_strategy_stats_conventions(dgp):
     assert np.isnan(flat["sharpe"]) and flat["cagr"] == 0.0
 
 
+def test_legacy_fit_seeds_search_and_restores_callers_random_state(monkeypatch):
+    class Legacy:
+        def fit(self, search_reps, disp, **kwargs):
+            assert 'rng' not in kwargs  # 0.14 silently forwards it to the optimizer.
+            return np.random.uniform(size=3)
+    monkeypatch.setattr(rl, '_model', lambda y: Legacy())
+    state = np.random.get_state()
+    expected_next = np.random.uniform()
+    np.random.set_state(state)
+    first = rl._seeded_fit(np.zeros(3), 5, 7)
+    assert np.random.uniform() == expected_next
+    np.testing.assert_array_equal(first, rl._seeded_fit(np.zeros(3), 5, 7))
+
+
+def test_multistart_reports_failed_start_and_refuses_all_failed(monkeypatch):
+    from types import SimpleNamespace
+    def fit(y, reps, seed):
+        if reps == 0:
+            raise np.linalg.LinAlgError('SVD did not converge')
+        return SimpleNamespace(llf=12., params=np.array([1.]))
+    monkeypatch.setattr(rl, '_seeded_fit', fit)
+    with pytest.warns(RuntimeWarning, match='start failed'):
+        result, llfs = rl.fit_ms(np.zeros(3), starts=((0, 1), (5, 1)))
+    assert result.llf == 12. and np.isnan(llfs[0]) and llfs[1] == 12.
+    with pytest.raises(RuntimeError, match='all Markov-switching starts failed'):
+        rl.fit_ms(np.zeros(3), starts=((0, 1),))
+
+
 @requires("statsmodels")
 def test_numpy_recursions_reproduce_statsmodels_at_the_fitted_parameters(dgp):
     r, _ = dgp

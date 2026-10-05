@@ -59,7 +59,7 @@ def readonly_paths(workspace, arm, package):
     return paths
 
 
-def main():
+def main(tools_type=Tools):
     box, workspace = (Path(p).resolve() for p in sys.argv[1:3])
     request = json.loads((box / 'request.json').read_text())
     arm = request['arm']
@@ -88,11 +88,13 @@ def main():
         sys.meta_path.insert(0, Blocker())
     os.chdir(workspace)
     confine(box, paths)
-    tools = Tools(workspace, arm, request.get('menu_seed', 0))
+    tools = tools_type(workspace, arm, request.get('menu_seed', 0))
     if request['tool'] == 'run_python':
         result = run_python(request['arguments'].get('code', ''), tools)
     else:
         result = tools.call(request['tool'], request['arguments'])
+    if hasattr(tools, 'worker_result'):
+        result = tools.worker_result(request, result)
     (box / 'result.json').write_text(json.dumps(result, allow_nan=False))
 
 

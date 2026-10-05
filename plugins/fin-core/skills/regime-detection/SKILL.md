@@ -147,6 +147,9 @@ detections are spent.
   `switching_variance=True` for vol regimes; `exog_tvtp=` for time-varying transition
   probabilities; `fit(search_reps=, rng=)` for random starts; `res.expected_durations`,
   `res.mle_retvals['converged']`.
+  Compatibility checked 2026-10-05: 0.14.6 has no explicit `rng` argument and uses
+  NumPy's global RNG for start search. The bundled script seeds and restores that state
+  on 0.14.x; on 0.15 it passes `rng`. Failed numerical starts are reported, not scored as fits.
 - ✅ `hmmlearn` 0.3.3 (2024-10-31), BSD-3-Clause, not archived, **no push to the repository since
   2024-10-31**, 3,420 stars, 80 open issues plus PRs. ✅ Read from `src/hmmlearn/base.py` on
   `main`: `predict()` decodes with Viterbi and `predict_proba()` returns forward-backward
