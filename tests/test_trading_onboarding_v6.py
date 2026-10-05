@@ -32,7 +32,8 @@ def test_actual_first_backend_request_contains_the_guide_only_in_library(arm, tm
     assert result["initial_request"] == requests[0]
     assert result["library_orientation"] == manifest
     assert result["backend_responses"] == 2
-    assert result["submitted"] and result["target"] == {"SPY": 1}
+    assert result["submitted"] and result["target"]["SPY"] == 1
+    assert all(weight == 0 for ticker, weight in result["target"].items() if ticker != "SPY")
     assert all("Current call" in r[0]["content"] for r in requests)
     if arm == "library":
         assert all(r[0]["content"].count(guide) == 1 for r in requests)
