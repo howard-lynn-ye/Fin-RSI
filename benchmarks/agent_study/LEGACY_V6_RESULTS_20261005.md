@@ -33,4 +33,6 @@ Archived runs are under
 The auditor source SHA256 was
 `4210099d28ce19e42522c58a577a4668107b7709122479ce17106f49f9f54e06`.
 Each run now has an additional `independent-model-audit.json` receipt. The three older pending
-array tasks remain held. Future experiments use a fresh source snapshot and protocol.
+array tasks (1905959_3/4/5) and their dependent aggregate (1905960) were cancelled before
+starting when the new v7 batch replaced them, freeing this project's submission slots.
+Future experiments use a fresh source snapshot and protocol.
