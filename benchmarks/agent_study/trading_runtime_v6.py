@@ -147,9 +147,10 @@ class Controller:
         return result
 
 
-def decide(backend, controller, task):
-    guide, guide_receipt = orientation(controller.arm)
-    history = [dict(role='system', content=COMMON + (LIBRARY + '\n' + guide
+def decide(backend, controller, task, *, common_instructions=None, orientation_path=None):
+    guide, guide_receipt = orientation(controller.arm, orientation_path)
+    common = COMMON if common_instructions is None else common_instructions
+    history = [dict(role='system', content=common + (LIBRARY + '\n' + guide
                               if controller.arm == 'library' else '')),
                dict(role='user', content=task)]
     turns, target = [], None

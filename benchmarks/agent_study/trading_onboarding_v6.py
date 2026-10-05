@@ -6,16 +6,17 @@ from pathlib import Path
 GUIDE = Path(__file__).with_name("trading_library_guide_v6.md")
 
 
-def orientation(arm):
+def orientation(arm, path=None):
     if arm == "raw":
         return "", None
     if arm != "library":
         raise ValueError(f"unknown arm: {arm}")
     # Never silently omit or truncate the guide if it is missing or oversized.
-    text = GUIDE.read_text(encoding="utf-8")
+    source = GUIDE if path is None else Path(path)
+    text = source.read_text(encoding="utf-8")
     if not text.strip() or len(text) > 6500:
         raise ValueError("library orientation must be nonempty and <=6500 characters")
-    return text, {"source": GUIDE.name, "sha256": hashlib.sha256(text.encode()).hexdigest(),
+    return text, {"source": source.name, "sha256": hashlib.sha256(text.encode()).hexdigest(),
                   "chars": len(text), "scope": "initial request; not proof of comprehension"}
 
 
