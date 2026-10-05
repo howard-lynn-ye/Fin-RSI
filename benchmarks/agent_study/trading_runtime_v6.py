@@ -10,6 +10,7 @@ import tempfile
 import pandas as pd
 
 from benchmarks.agent_study import trading_study as v3
+from benchmarks.agent_study.trading_onboarding_v6 import orientation, document_retrieval
 from benchmarks.agent_study.trading_tools_v6 import OUTPUT_LIMIT, Tools, validate_weights, wire, execution_status
 
 COMMON = """Use only the visible market files for the task. Both arms have the same budget.
@@ -135,6 +136,8 @@ class Controller:
         else:
             result = dict(ok=False, error=f'unknown tool {tool!r}')
         receipt = dict(tool=tool, ok=bool(result.get('ok')))
+        if tool == 'read_skill':
+            receipt.update(document_retrieval(result))
         if tool == 'run_algorithm' and result.get('ok'):
             receipt.update(algorithm_id=result['algorithm_id'], history=result['history'],
                            weights=result['result'].get('weights'),
@@ -145,10 +148,12 @@ class Controller:
 
 
 def decide(backend, controller, task):
-    history = [dict(role='system', content=COMMON + (LIBRARY if controller.arm == 'library'
-                                                     else '')),
+    guide, guide_receipt = orientation(controller.arm)
+    history = [dict(role='system', content=COMMON + (LIBRARY + '\n' + guide
+                              if controller.arm == 'library' else '')),
                dict(role='user', content=task)]
     turns, target = [], None
+    initial_request, backend_responses = None, 0
     base_system = history[0]["content"]
     for turn_index in range(v3.MAX_TURNS):
         remaining = v3.MAX_TURNS - turn_index
@@ -157,8 +162,11 @@ def decide(backend, controller, task):
             f"{remaining} calls remain including this one. Finish with submit(weights).")
         if remaining == 1:
             history[0]["content"] += " This is the last call; no later response can execute."
+        if initial_request is None:
+            initial_request = [dict(message) for message in history]
         try:
             response = backend(history)
+            backend_responses += 1
         except ValueError as exc:
             turns.append(dict(response='', parse='backend-error', tool=None, usage={},
                               result=dict(ok=False, error=str(exc))))
@@ -199,7 +207,9 @@ def decide(backend, controller, task):
         history += [dict(role='assistant', content=text),
                     dict(role='user', content=row['model_feedback'])]
     return dict(target=target, submitted=target is not None, turns=turns,
-                tool_calls=controller.calls, menu_seed=controller.menu_seed)
+                tool_calls=controller.calls, menu_seed=controller.menu_seed,
+                initial_request=initial_request, library_orientation=guide_receipt,
+                backend_responses=backend_responses)
 
 
 def ledger(total, picks, targets):
@@ -257,7 +267,8 @@ def qualify(root, data_dir):
     report = dict(passed=all(r['passed'] for r in results.values()), results=results,
                   scope='CPU qualification only; no model performance or return claim',
                   source_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                    for p in Path(__file__).parent.glob('trading_*v6.py')})
+                    for p in Path(__file__).parent.glob('trading_*v6.*')
+                    if p.suffix in ('.py', '.md')})
     (root / 'qualification.json').write_text(json.dumps(report, indent=2))
     return report
 

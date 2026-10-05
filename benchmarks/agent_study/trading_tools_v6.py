@@ -4,6 +4,8 @@ import json
 import numpy as np
 import pandas as pd
 
+from benchmarks.agent_study.trading_onboarding_v6 import document_retrieval
+
 from benchmarks.agent_study.trading_tools_v5 import (
     Tools as PreviousTools, OUTPUT_LIMIT, rows_page, validate_weights, wire,
     execution_status, positive_integer, method_defaults,
@@ -103,6 +105,8 @@ class Tools(PreviousTools):
 
     def call(self, name, arguments):
         result = super().call(name, arguments)
+        if name == "read_skill":
+            self.calls[-1].update(document_retrieval(result))
         if not result.get("ok"):
             if name == "read_market":
                 result["hint"] = ("read_market pages RAW rows; it has no lookback argument. "
