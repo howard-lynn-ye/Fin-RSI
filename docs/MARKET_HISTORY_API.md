@@ -68,3 +68,25 @@ raw files and common snapshot tools. Any comparison with equal adjusted inputs m
 declare that input treatment separately. Use a new frozen experimental protocol for
 v6; no v5 or factorial run is resumed with this code. CPU tests establish interface
 and arithmetic properties, not model uptake, improved decisions, or higher returns.
+
+## Model orientation before the first decision
+
+The v6 library condition inserts `trading_library_guide_v6.md` into the initial
+system request automatically. It explains the wider knowledge and collection
+capabilities, gives relevant skill IDs and pagination examples, and distinguishes
+installed capabilities from the data and permissions actually supplied by this
+price-only environment. It does not select an investment strategy for the model.
+The raw condition retains the common data and execution instructions.
+
+Each decision saves the exact initial request, the guide's content hash and length,
+and the number of backend responses received. `read_skill` receipts additionally
+identify the skill, reference, returned range and page hash. These record requested
+context and retrieval, not comprehension or causal use in the decision. Python
+can retrieve a document without printing it to the model; inspect the saved model
+feedback before claiming that its content was exposed. No extra read is counted
+merely because the guide was injected. Prompt lengths differ across conditions;
+freeze and report the exact prompts and token budgets in any new evaluation.
+
+The guide does not supply missing news, sentiment, crowd activity or public-official
+disclosures. A study requiring those inputs must assemble and validate their dated
+source records first. The frozen v5/factorial results remain unchanged.
