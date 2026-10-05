@@ -184,6 +184,8 @@ def decide(backend, controller, task, *, common_instructions=None, orientation_p
         else:
             call, status = extract_call(text)
         row = dict(response=text, parse=status, usage=response.get('usage'),
+                   input_messages_sha256=hashlib.sha256(json.dumps(history, ensure_ascii=False,
+                       sort_keys=True, allow_nan=False).encode()).hexdigest(),
                    turn_index=turn_index + 1, calls_remaining=remaining,
                    generation_seconds=response.get('generation_seconds', 0.),
                    finish_reason=response['choices'][0]['finish_reason'])
