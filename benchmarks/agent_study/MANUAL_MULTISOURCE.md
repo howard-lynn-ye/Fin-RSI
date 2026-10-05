@@ -154,7 +154,11 @@ The initial CPU preflight (1905670) was stopped before model inference after rev
 contradictory inherited price-only instructions and an aggregate function that could accept
 older experiments. Both were fixed. The corrected CPU job 1905777 passed regeneration,
 validation and 37 related tests, including both arms' actual initial messages. A separate
-review confirmed those two fixes. Qualification runs separately for all six pairs.
+review confirmed those two fixes. All six pairs then passed their confinement qualification.
+GPU array 1905959 contains the six model/seed pairs, with at most three running together;
+it is gated on the real-prompt token-budget check in CPU job 1905916. Dependent CPU job
+1905960 runs the strict aggregate after the array ends. A failed or incomplete pair yields
+a pending aggregate, not a partial model mean. These job IDs record submission, not success.
 
 Aggregate reporting requires all six model/seed pairs with matching evidence, market data,
 code and protocol, plus score-to-inference-to-decision hash checks. It refuses older study
