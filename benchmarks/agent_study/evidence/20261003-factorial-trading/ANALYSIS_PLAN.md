@@ -1,0 +1,9 @@
+# Fixed analysis choices, written before model exposure
+All groups are retained. Three sampling seeds share one market path; do not treat them as independent markets.
+Primary paired endpoints: Full-Base; mean marginal Knowledge and Tools effects; K-by-T interaction, all cumulative net-return differences in percentage points.
+Report risk metrics, average risky/cash exposure, mean asset weights, largest holding, turnover, submission, algorithm discovery/use and exact adoption, financial-document reads, execution/delivery failures, tokens and generation time. Optional-tool uptake is not a gate.
+Fixed-decision transaction-cost sensitivity: 0,10,25 bps per traded side in addition to primary 5. These reprice the same decisions and do not model behavioral response to cost changes.
+Portfolio baselines: equal_weight, inverse_volatility, min_variance and hrp with 252 past returns and frozen algorithm defaults, every ten sessions. Additional cash, equal-weight buy-and-hold, and original-only 60/40 SPY/IEF rebalanced every ten sessions. All trade at next close under the identical ledger.
+Descriptive uncertainty: circular moving calendar blocks of 10,20,40 sessions, 2000 draws with seed 20261003, sampled jointly for every condition and seed within a basket/model. Display 2.5/97.5 percentiles for paired effects; no broad significance claim and no independent seed pooling.
+Original and transfer groups remain separate. Transfer uses preselected sector ETF assets on the same historical calendar. Training contamination is not ruled out, and present-day documents are not point-in-time historical knowledge.
+Only a fully verified batch creates RESULTS.md, analysis.json and completed.json. Missing receipts create incomplete.json and fail the score job. Slurm failures are reported separately even if a complete receipt permits scoring.
