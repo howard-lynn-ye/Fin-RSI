@@ -23,6 +23,9 @@ from benchmarks.agent_study.manual_multisource import AGE_LIMITS, asof_records, 
 from benchmarks.agent_study.trading_tools_v5 import turn_counts
 
 GUIDE = Path(__file__).with_name("trading_library_guide_multisource.md")
+MODELS = old.MODELS + (("mistral12b", "mistralai/Mistral-Nemo-Instruct-2407",
+                        "04d8a90549d23fc6bd7f642064003592df51e9b3"),)
+BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b")}
 COMMON = runtime.COMMON.replace(
     "Use only the visible market files for the task.",
     "Use only the visible market files and the dated evidence packet supplied in the user message for the task.",
@@ -59,11 +62,16 @@ def evidence_text(packet):
             f"Evidence packet SHA256: {digest(packet)}\n" + json.dumps(packet, ensure_ascii=False))
 
 
-def freeze(root, family, seed, evidence_path, *, allow_retrospective=False):
+def model_spec(family, seed, batch):
+    if batch not in BATCHES or family not in BATCHES[batch] or seed not in previous.SEEDS:
+        raise ValueError("model/seed is outside the declared batch")
+    return next(m for m in MODELS if m[0] == family)
+
+
+def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batch="original"):
     if not allow_retrospective:
         raise ValueError("historical archive vintages unverified; explicit retrospective opt-in required")
-    if family not in previous.FAMILIES or seed not in previous.SEEDS:
-        raise ValueError("declared batch is 7B/14B with seeds 11,23,37")
+    model = model_spec(family, seed, batch)
     records = old.load(evidence_path)
     root.mkdir(parents=True, exist_ok=False)
     data_hashes = md.write_dataset(root / "data")
@@ -77,7 +85,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False):
     old.write(root / "inputs.json", dict(arms=arms, picks=picks, dates=list(packets)))
     old.write(root / "protocol.json", dict(
         version="multisource-model-v1", created_utc=datetime.now(timezone.utc).isoformat(),
-        model=next(m for m in old.MODELS if m[0] == family), seed=seed,
+        model=model, seed=seed, batch=batch, batch_families=BATCHES[batch],
         source_sha256=sources(), data_sha256=data_hashes,
         input_hashes={n: old.sha(root / n) for n in ("inputs.json", "evidence.json", "evidence-packets.json")},
         raw_download_sha256=old.sha(md.RAW), universe=md.TICKERS,
@@ -100,6 +108,11 @@ def verify(root):
     p = old.load(root / "protocol.json")
     if p["version"] != "multisource-model-v1" or p["source_sha256"] != sources():
         raise ValueError("protocol/source changed")
+    batch = p.get("batch", "original")
+    if tuple(p["model"]) != model_spec(p["model"][0], p["seed"], batch):
+        raise ValueError("model revision changed")
+    if tuple(p.get("batch_families", BATCHES["original"])) != BATCHES[batch]:
+        raise ValueError("declared batch changed")
     if p["raw_download_sha256"] != old.sha(md.RAW):
         raise ValueError("raw market archive changed")
     for n, sha in p["input_hashes"].items():
@@ -202,14 +215,16 @@ def score(root):
     return result
 
 
-def aggregate(batch):
-    roots = [batch / f"{f}-{s}" for f in previous.FAMILIES for s in previous.SEEDS]
+def aggregate(batch, group="original"):
+    roots = [batch / f"{f}-{s}" for f in BATCHES[group] for s in previous.SEEDS]
     missing = [r.name for r in roots if not (r / "completed.json").exists()]
     if missing:
         return dict(status="pending", missing=missing)
     rows, reference = [], None
     for root in roots:
         p = verify(root)
+        if p.get("batch", "original") != group:
+            raise ValueError("wrong declared model batch")
         inputs = validate_receipt(root)
         common = {k: p[k] for k in ("version", "source_sha256", "data_sha256", "raw_download_sha256",
                   "universe", "max_turns", "max_tokens", "temperature", "top_p", "execution", "cost_bps",
@@ -221,7 +236,7 @@ def aggregate(batch):
         elif common != reference:
             raise ValueError("mixed evidence, market data, sources or protocols in batch")
         family, seed = root.name.split("-")
-        if tuple(p["model"]) != next(m for m in old.MODELS if m[0] == family) or p["seed"] != int(seed):
+        if tuple(p["model"]) != model_spec(family, int(seed), group) or p["seed"] != int(seed):
             raise ValueError("model/seed does not match declared pair")
         assert set(inputs["arms"]) == {"raw", "library"}
         assert old.load(root / "completed.json")["scores_sha256"] == old.sha(root / "scores.json")
@@ -230,12 +245,12 @@ def aggregate(batch):
         assert row["inference_receipt_sha256"] == old.sha(root / "inference-receipt.json")
         rows.append(row)
     summary = {}
-    for family in previous.FAMILIES:
-        group = [r for r in rows if r["family"] == family]
-        summary[family] = {arm: sum(r["paths"][arm]["return_rate_pct"] for r in group) / len(group)
+    for family in BATCHES[group]:
+        family_rows = [r for r in rows if r["family"] == family]
+        summary[family] = {arm: sum(r["paths"][arm]["return_rate_pct"] for r in family_rows) / len(family_rows)
                            for arm in ("raw", "library")}
         summary[family]["difference_pp"] = summary[family]["library"] - summary[family]["raw"]
-    result = dict(status="complete", version="multisource-model-v1", return_rate_pct=summary,
+    result = dict(status="complete", version="multisource-model-v1", batch=group, return_rate_pct=summary,
                   seed_results=rows, interpretation="Three seeds on one development market path with retrospective evidence assumptions.")
     path = batch / "aggregate.json"
     if path.exists():
@@ -249,14 +264,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("freeze", "qualify", "run", "score", "aggregate"))
     parser.add_argument("root", type=Path)
-    parser.add_argument("--family", choices=previous.FAMILIES)
+    parser.add_argument("--family", choices=[m[0] for m in MODELS])
+    parser.add_argument("--batch", choices=BATCHES, default="original")
     parser.add_argument("--seed", type=int, choices=previous.SEEDS)
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--allow-retrospective", action="store_true")
     args = parser.parse_args()
     if args.command == "freeze":
         freeze(args.root, args.family, args.seed, args.evidence,
-               allow_retrospective=args.allow_retrospective)
+               allow_retrospective=args.allow_retrospective, batch=args.batch)
     elif args.command == "qualify":
         verify(args.root)
         if not runtime.qualify(args.root / "qualification", args.root / "data")["passed"]:
@@ -277,4 +293,4 @@ if __name__ == "__main__":
     elif args.command == "score":
         print(json.dumps(score(args.root)))
     else:
-        print(json.dumps(aggregate(args.root)))
+        print(json.dumps(aggregate(args.root, args.batch)))

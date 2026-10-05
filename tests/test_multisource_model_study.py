@@ -2,7 +2,7 @@ import pytest
 
 pytest.importorskip("bs4")
 from benchmarks.agent_study.multisource_model_study import (
-    COMMON, GUIDE, aggregate, evidence_packet, evidence_text, freeze,
+    BATCHES, COMMON, GUIDE, aggregate, evidence_packet, evidence_text, freeze, model_spec,
 )
 
 
@@ -34,6 +34,66 @@ def test_retrospective_opt_in_required_before_creating_output(tmp_path):
     with pytest.raises(ValueError, match="explicit retrospective"):
         freeze(root, "7b", 11, tmp_path / "absent.json")
     assert not root.exists()
+
+
+@pytest.mark.parametrize("family", ["32b", "mistral12b"])
+def test_expansion_requires_explicit_batch_and_pinned_revision(family):
+    with pytest.raises(ValueError, match="outside the declared batch"):
+        model_spec(family, 11, "original")
+    model = model_spec(family, 11, "expansion")
+    assert model[0] == family and len(model[2]) == 40
+    assert all(c in "0123456789abcdef" for c in model[2])
+
+
+def test_expansion_cannot_report_partial_or_original_model_mean(tmp_path):
+    for family in BATCHES["original"]:
+        for seed in (11, 23, 37):
+            root = tmp_path / f"{family}-{seed}"
+            root.mkdir()
+            (root / "completed.json").write_text("{}")
+    result = aggregate(tmp_path, "expansion")
+    assert result["status"] == "pending"
+    assert set(result["missing"]) == {f"{f}-{s}" for f in BATCHES["expansion"] for s in (11, 23, 37)}
+
+
+def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, monkeypatch):
+    from benchmarks.agent_study import multisource_model_study as study
+    old = study.old
+    for family in BATCHES["expansion"]:
+        for seed in (11, 23, 37):
+            root = tmp_path / f"{family}-{seed}"
+            inputs = dict(arms=["raw", "library"], picks=[1], dates=["fixture"])
+            old.write(root / "inputs.json", inputs)
+            keys = ("source_sha256", "data_sha256", "raw_download_sha256", "universe",
+                    "max_turns", "max_tokens", "temperature", "top_p", "execution", "cost_bps",
+                    "cash_interest", "objective", "primary_report", "window", "decisions_per_arm", "treatment")
+            protocol = dict.fromkeys(keys, "synthetic common condition")
+            protocol.update(version="multisource-model-v1", batch="expansion", seed=seed,
+                            model=model_spec(family, seed, "expansion"),
+                            input_hashes={n: "fixture" for n in ("evidence.json", "evidence-packets.json")})
+            old.write(root / "protocol.json", protocol)
+            files = {}
+            for arm in inputs["arms"]:
+                path = root / "decisions" / arm / "00.json"
+                old.write(path, dict(synthetic_fixture=True))
+                files[path.relative_to(root).as_posix()] = old.sha(path)
+            old.write(root / "inference-receipt.json", dict(
+                protocol_sha256=old.sha(root / "protocol.json"), decisions=files))
+            row = dict(family=family, seed=seed,
+                       paths={a: dict(return_rate_pct=seed + i) for i, a in enumerate(inputs["arms"])},
+                       inference_receipt_sha256=old.sha(root / "inference-receipt.json"))
+            old.write(root / "scores.json", row)
+            old.write(root / "completed.json", dict(scores_sha256=old.sha(root / "scores.json")))
+    # Isolate aggregation from machine-specific source/market files, but exercise its
+    # real protocol-to-receipt-to-decisions-to-score checks on the synthetic files.
+    monkeypatch.setattr(study, "verify", lambda root: old.load(root / "protocol.json"))
+    result = aggregate(tmp_path, "expansion")
+    assert result["status"] == "complete" and result["batch"] == "expansion"
+    assert len(result["seed_results"]) == 6
+    assert set(result["return_rate_pct"]) == set(BATCHES["expansion"])
+    for metrics in result["return_rate_pct"].values():
+        assert metrics["raw"] == pytest.approx((11 + 23 + 37) / 3)
+        assert metrics["difference_pp"] == pytest.approx(1.)
 
 
 @pytest.mark.parametrize("arm", ["raw", "library"])

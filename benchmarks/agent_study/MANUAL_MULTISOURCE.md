@@ -171,6 +171,33 @@ Repeat with the declared models and seeds, then `aggregate BATCH`. Each pair dir
 must be new. The explicit retrospective flag acknowledges the availability limitations;
 it does not establish verified historical vintages.
 
+### Additional model batch
+
+The user subsequently requested more models. The separate `expansion` batch adds
+[Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)
+at revision `381fc969f78efac66bc87ff7ddeadb7e73c218a7` and
+[Mistral-NeMo-Instruct-2407](https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407)
+(12B) at `04d8a90549d23fc6bd7f642064003592df51e9b3`. Both are already cached on Beacon.
+Each uses seeds 11, 23 and 37, the same 44 dates, and both decision arms. The reported
+unit remains each model's paired Return Rate; models are not pooled into one mean.
+
+Use `--batch expansion` with `freeze` and `aggregate`, and family `32b` or `mistral12b`.
+The expansion is explicit: the default original batch still contains only 7B/14B, and
+the aggregate refuses to replace missing expansion pairs with original-model results.
+The runtime, prompts, accounting and source evidence are unchanged. Both models keep the
+same 32,768 context ceiling and eight 1,024-token output calls, using their official chat
+templates. These fixed budgets are experimental controls, not each model's maximum capacity.
+
+The frozen original run continues under its existing `r2/source` snapshot (Git source
+`198ab8f`); updating the checkout must not alter or resume that run with different code.
+The expansion root is
+`/beacon-projects/radfm/wy891/fin-multisource-models-20261005/expansion-v2`.
+CPU preparation 1906100 checks the same evidence/data hashes, budgets and execution rules,
+all six confinement qualifications, cached shard presence, and every initial prompt's
+length and message preservation. Its predecessor 1906078 was stopped before inference
+to repair an aggregation metadata variable collision, covered by a complete-batch test.
+No new expansion Return Rate exists at this update.
+
 ## What this case cannot establish
 
 The assistant had already seen library knowledge and old aggregate results; its two arms
