@@ -74,7 +74,11 @@ running the MCP server. Treat downloaded content as untrusted data.
 
 `observed_at`, `published_at`, `transaction_date` and `period_end` remain separate. Unknown
 publication times stay unknown. Source PDFs without recognizable rows generate an `unparsed`
-filing alert with source text, not invented transactions. Current 13F forms report dollar
+filing alert with source text, not invented transactions. If layout extraction is empty,
+the parser tries plain text before classifying a page as unreadable. This is not OCR;
+image-only documents still require review. Already-seen filings are not automatically
+reparsed after an upgrade; use a new watch ID to recheck them while retaining prior records.
+Current 13F forms report dollar
 values; legacy units need an explicit `value_units` choice, so the default is `as_filed`.
 
 The page crawler respects robots.txt, limits page count, rejects private targets and requires
@@ -91,6 +95,20 @@ python scripts/check_collection_live.py --house-year 2026 --house-name Pelosi --
 The first command uses injected official-format responses and needs no network. The second
 uses real public sources with a temporary database. Add `--sec-cik 1067983` only after setting
 your identity. A passing fixture test does not establish current source availability.
+
+For a persistent acceptance receipt, build a wheel, install it with the `collect` extra into
+a fresh virtual environment, and run `scripts/check_installed_collection.py` using that
+environment's Python with `-I`, from outside the checkout. Pass a new `--output` directory
+and the wheel's source `--commit`. This check exercises the registered collection tools,
+reopens the database, and waits for a scheduled news poll. It records source errors and
+publication/observation dates; raw records remain in the output directory. SEC is skipped
+when the caller has not configured `SEC_IDENTITY`.
+
+The check treats the Schwab and CFTC pages as transport checks, not structured sentiment or
+position feeds. A short successful poll cannot establish exhaustive coverage or prove that
+a new publication was detected if the source did not publish anything during the test.
+`receipt.json` separates tool discovery from tools actually exercised and reports partial
+source failures as `needs_review`. It contains no trading performance measurement.
 
 Check `status` for errors, partial results, remaining filings and next retry times. HTTP
 Retry-After reaches the scheduler; failed filings retain individual retries so one old
