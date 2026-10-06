@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -87,6 +88,19 @@ Guards diagnose data; they do not repair it or guarantee a profitable allocation
 
 
 def extract_call(text):
+    # Reasoning may contain hypothetical JSON or Python examples. Execute only
+    # the final answer after a balanced reasoning section, never its contents.
+    markers = list(re.finditer(r'</?think>', text))
+    if markers:
+        thinking = False
+        for marker in markers:
+            opening = marker.group() == '<think>'
+            if opening == thinking:
+                return None, 'reasoning-malformed'
+            thinking = opening
+        if thinking:
+            return None, 'reasoning-incomplete'
+        text = text[markers[-1].end():]
     # A bare Python fence is code, even when its body contains a JSON tool example.
     stripped = text.strip()
     fences = list(v3.FENCE.finditer(stripped))
@@ -184,6 +198,7 @@ def decide(backend, controller, task, *, common_instructions=None, orientation_p
         else:
             call, status = extract_call(text)
         row = dict(response=text, parse=status, usage=response.get('usage'),
+                   backend_metadata=response.get('backend_metadata'),
                    input_messages_sha256=hashlib.sha256(json.dumps(history, ensure_ascii=False,
                        sort_keys=True, allow_nan=False).encode()).hexdigest(),
                    turn_index=turn_index + 1, calls_remaining=remaining,

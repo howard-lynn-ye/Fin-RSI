@@ -36,6 +36,14 @@ def test_retrospective_opt_in_required_before_creating_output(tmp_path):
     assert not root.exists()
 
 
+def test_new_matrix_cannot_use_legacy_backend_error_accounting(tmp_path):
+    root = tmp_path / 'never-created'
+    with pytest.raises(ValueError, match='requires the repaired v7'):
+        freeze(root, 'phi4-mini', 11, tmp_path / 'absent.json', batch='matrix_hf',
+               interface='v6', allow_retrospective=True)
+    assert not root.exists()
+
+
 @pytest.mark.parametrize("family", ["32b", "mistral12b"])
 def test_expansion_requires_explicit_batch_and_pinned_revision(family):
     with pytest.raises(ValueError, match="outside the declared batch"):
@@ -56,10 +64,11 @@ def test_expansion_cannot_report_partial_or_original_model_mean(tmp_path):
     assert set(result["missing"]) == {f"{f}-{s}" for f in BATCHES["expansion"] for s in (11, 23, 37)}
 
 
-def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, monkeypatch):
+@pytest.mark.parametrize('group', ['expansion', 'matrix_hf'])
+def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, monkeypatch, group):
     from benchmarks.agent_study import multisource_model_study as study
     old = study.old
-    for family in BATCHES["expansion"]:
+    for family in BATCHES[group]:
         for seed in (11, 23, 37):
             root = tmp_path / f"{family}-{seed}"
             inputs = dict(arms=["raw", "library"], picks=[1], dates=["fixture"])
@@ -68,8 +77,8 @@ def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, mo
                     "max_turns", "max_tokens", "temperature", "top_p", "execution", "cost_bps",
                     "cash_interest", "objective", "primary_report", "window", "decisions_per_arm", "treatment")
             protocol = dict.fromkeys(keys, "synthetic common condition")
-            protocol.update(version="multisource-model-v1", batch="expansion", seed=seed,
-                            model=model_spec(family, seed, "expansion"),
+            protocol.update(version="multisource-model-v1", batch=group, seed=seed,
+                            model=model_spec(family, seed, group),
                             input_hashes={n: "fixture" for n in ("evidence.json", "evidence-packets.json")})
             old.write(root / "protocol.json", protocol)
             files = {}
@@ -87,13 +96,24 @@ def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, mo
     # Isolate aggregation from machine-specific source/market files, but exercise its
     # real protocol-to-receipt-to-decisions-to-score checks on the synthetic files.
     monkeypatch.setattr(study, "verify", lambda root: old.load(root / "protocol.json"))
-    result = aggregate(tmp_path, "expansion")
-    assert result["status"] == "complete" and result["batch"] == "expansion"
-    assert len(result["seed_results"]) == 6
-    assert set(result["return_rate_pct"]) == set(BATCHES["expansion"])
+    result = aggregate(tmp_path, group)
+    assert result["status"] == "complete" and result["batch"] == group
+    assert len(result["seed_results"]) == 3 * len(BATCHES[group])
+    assert set(result["return_rate_pct"]) == set(BATCHES[group])
     for metrics in result["return_rate_pct"].values():
         assert metrics["raw"] == pytest.approx((11 + 23 + 37) / 3)
         assert metrics["difference_pp"] == pytest.approx(1.)
+
+
+def test_hf_matrix_uses_pinned_declarations_without_aliases_and_binds_manifest():
+    from benchmarks.agent_study import multisource_model_study as study
+    from benchmarks.agent_study.model_matrix import MANIFEST, matrix
+    declared = {(r['model'], r['revision']) for r in matrix() if r['transport'] == 'hf'}
+    specs = [model_spec(family, 11, 'matrix_hf') for family in BATCHES['matrix_hf']]
+    assert {(m[1], m[2]) for m in specs} == declared
+    assert len(specs) == len(declared)
+    key = MANIFEST.relative_to(study.previous.REPO).as_posix()
+    assert study.sources()[key] == study.old.sha(MANIFEST)
 
 
 @pytest.mark.parametrize("arm", ["raw", "library"])
