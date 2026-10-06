@@ -36,6 +36,32 @@ def test_full_history_stays_in_python_and_has_explicit_provenance(workspace):
     assert not r["ok"] and "Python-only" in r["hint"]
 
 
+@pytest.mark.parametrize("method,dependency", [
+    ("hrp", None), ("pypfopt_hrp", "pypfopt"), ("riskfolio_hrp", "riskfolio")])
+def test_advertised_hrp_examples_execute_and_preserve_explicit_linkage_guard(
+        workspace, method, dependency):
+    if dependency:
+        pytest.importorskip(dependency)
+    from benchmarks.agent_study.trading_capabilities import Tools as CompleteTools
+    tools = CompleteTools(workspace, "library")
+    card = tools.call("describe_algorithm", {"algorithm_id": method})
+    assert card["ok"], card
+    if dependency:
+        missing = tools.call("run_algorithm", {"algorithm_id": method})
+        assert not missing["ok"] and "linkage" in missing["error"].lower()
+        assert "linkage" in card["required_parameters"]
+    else:
+        assert card["required_parameters"] == {}
+    result = run_python(card["python_example"], tools)
+    assert result["ok"] and result["submission"] is not None, result
+    from benchmarks.agent_study.market_data import TICKERS
+    assert set(result["submission"]) == set(TICKERS)
+    assert {t for t, w in result["submission"].items() if w} == {"SPY", "IEF", "GLD"}
+    assert sum(result["submission"].values()) == pytest.approx(1, abs=1e-5)
+    executions = [c for c in tools.calls if c["tool"] == "run_algorithm" and c["ok"]]
+    assert executions[-1]["effective_parameters"]["linkage"] == "single"
+
+
 def test_snapshot_and_history_pages_never_claim_to_be_full_matrices(workspace):
     tools = Tools(workspace, "library")
     snapshot = tools.call("read_snapshot", {})

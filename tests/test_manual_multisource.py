@@ -41,6 +41,25 @@ def test_stale_is_explicit_not_silently_fresh():
     assert asof_records([record()], "2025-05-01")[0]["stale"]
 
 
+def test_shutdown_position_report_remains_visible_but_is_marked_aged_context():
+    row = record(category="behavior", event_date="2025-09-23",
+                 eligible_date="2025-10-07")
+    result = asof_records([row], "2025-11-18")[0]
+    assert result["age_days"] == 56
+    assert result["stale"] is False  # retained, not certified current
+    assert result["recency_status"] == "aged_context_review_required"
+    assert "false does not establish freshness" in result["stale_definition"]
+
+
+@pytest.mark.parametrize("category,meaning", [
+    ("psychology", "not survey fieldwork age"),
+    ("officials", "not transaction or holdings age")])
+def test_recent_publication_does_not_relabel_underlying_events_as_recent(category, meaning):
+    result = asof_records([record(category=category)], "2025-01-03")[0]
+    assert result["recency_status"] == "within_review_window_underlying_dates_still_required"
+    assert meaning in result["age_interpretation"]
+
+
 @pytest.mark.parametrize("bad", [{"SPY": float("nan")}, {"SPY": -0.1},
     {"SPY": 0.6, "QQQ": 0.5}, {"SPY": True}, {"NOT_REAL": 1}, {}])
 def test_invalid_weights_rejected(bad):

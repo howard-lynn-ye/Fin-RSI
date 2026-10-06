@@ -80,3 +80,36 @@ def test_high_dispersion_uncertainty_damping(reconciler: SignalReconciler):
     res = reconciler.reconcile_asset_signals("510500", signals)
     assert res.disagreement_index > 0.35
     assert res.confidence_multiplier < 1.0
+
+
+@pytest.mark.parametrize("channel", ["SMART_MONEY_FLOW", "FUNDAMENTAL_VALUATION", "MAINSTREAM_NEWS"])
+@pytest.mark.parametrize("score", [float("nan"), float("inf"), -1.01, 1.01, True])
+def test_invalid_scores_cannot_become_maximum_positive_tilt(reconciler, channel, score):
+    with pytest.raises(ValueError):
+        reconciler.reconcile_asset_signals("fixture", [ChannelSignal(channel, score)])
+
+
+@pytest.mark.parametrize("signals", [
+    [ChannelSignal("UNKNOWN", .3)],
+    [ChannelSignal("SMART_MONEY_FLOW", .3), ChannelSignal("SMART_MONEY_FLOW", -.3)],
+    [ChannelSignal("MAINSTREAM_NEWS", .3, confidence=float("nan"))],
+    [ChannelSignal("MAINSTREAM_NEWS", .3, confidence=1.1)],
+    [ChannelSignal("MAINSTREAM_NEWS", .3, veto_flag=True)],
+])
+def test_ambiguous_or_invalid_channels_are_rejected(reconciler, signals):
+    with pytest.raises(ValueError):
+        reconciler.reconcile_asset_signals("fixture", signals)
+
+
+@pytest.mark.parametrize("options", [
+    {"max_tilt": float("nan")}, {"max_tilt": -0.1},
+    {"dispersion_damping": float("inf")}, {"dispersion_damping": -1},
+])
+def test_invalid_configuration_is_rejected(options):
+    with pytest.raises(ValueError):
+        SignalReconciler(**options)
+
+
+def test_nonfinite_premium_is_rejected_even_without_signals(reconciler):
+    with pytest.raises(ValueError):
+        reconciler.reconcile_asset_signals("fixture", [], qdii_premium_pct=float("nan"))

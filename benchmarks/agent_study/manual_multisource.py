@@ -35,6 +35,9 @@ DELAYED = dict(zip(
      "2025-12-09", "2025-12-10", "2025-12-12", "2025-12-15", "2025-12-17",
      "2025-12-19", "2025-12-23", "2025-12-29")))
 AGE_LIMITS = {"news": 100, "psychology": 210, "behavior": 100, "officials": 550}
+# Retention above is not a claim of current information. These shorter windows
+# are declared review heuristics, not verified release calendars or alpha rules.
+RECENCY_REVIEW_DAYS = {"news": 60, "psychology": 120, "behavior": 28, "officials": 90}
 
 
 def dump(value):
@@ -194,7 +197,20 @@ def asof_records(records, cutoff, *, strict=False):
     selected = []
     for row in latest.values():
         age = (date.fromisoformat(cutoff) - date.fromisoformat(row["event_date"])).days
-        selected.append(dict(row, age_days=age, stale=age > AGE_LIMITS[row["category"]]))
+        kind = row["category"]
+        notes = {
+            "news": "Publication age; the underlying events may be older.",
+            "psychology": "Publication age, not survey fieldwork age. Compare the same sampled population; opinions are not trades.",
+            "behavior": "Position report age, not publication age. Classified futures positions may hedge other exposures.",
+            "officials": "Filing age, not transaction or holdings age. Annual reports and option exercises are not fresh purchases.",
+        }
+        selected.append(dict(row, age_days=age, stale=age > AGE_LIMITS[kind],
+            stale_definition="exceeds category retention limit; false does not establish freshness",
+            retention_limit_days=AGE_LIMITS[kind],
+            recency_review_days=RECENCY_REVIEW_DAYS[kind],
+            recency_status=("aged_context_review_required" if age > RECENCY_REVIEW_DAYS[kind]
+                            else "within_review_window_underlying_dates_still_required"),
+            age_interpretation=notes[kind]))
     return sorted(selected, key=lambda r: (r["category"], r["series"]))
 
 

@@ -1,33 +1,23 @@
-"""Multi-Source Financial Signal Conflict Resolution & Hierarchical Consensus Engine.
+"""Heuristic conflict rules for caller-supplied financial channel scores.
 
-Why this exists:
-In real-world financial markets, different information channels frequently contradict each other:
-- Central bank / exchange warns of risk (Bearish), while retail social forums scream "Buy the dip!" (Bullish).
-- Northbound smart money quietly accumulates (Bullish) and PE/dividend yield is at a 10-year bottom (Bullish),
-  while mainstream news and retail forums panic over short-term headlines (Bearish).
-- US StockTwits is euphoric on Tech (Bullish), while domestic A-share QDII ETF trades at a 3% premium (Toxic).
-
-A naive linear average across conflicting channels is fatal:
-1. Averaging Smart Money selling (-0.8) with Retail FOMO (+1.0) yields +0.1 (neutral/buy), walking straight
-   into a classic Distribution Trap (主力派发、散户接盘).
-2. Averaging Valuation/Smart Money buying (+0.8) with Retail Capitulation (-1.0) yields -0.1, missing the
-   Golden Contrarian Accumulation bottom (黄金坑背离).
-
-This module implements a 5-Tier Hierarchical Precedence & Conflict Matrix:
-- Tier 1: Regulatory & Structural Veto (Level 1 Policy / QDII Premium / VIX Shock) -> Hard Veto Override
-- Tier 2: Smart Money Flows (Northbound / Margin / Institutional Skin-in-the-Game) -> Primary Directional Anchor
-- Tier 3: Fundamental Valuation & Events (PE/PB/Dividend Yield / Verified Filings) -> Value Safety Margin
-- Tier 4: Mainstream Financial Telegraph News (7x24 Macro Feeds) -> Contextual Catalyst
-- Tier 5: Retail Social Sentiment (Xueqiu / StockTwits / Guba) -> Contrarian Exhaustion Indicator
+The fixed institutional-flow and valuation preference is a design assumption,
+not verified source credibility or a profitable strategy. Branch names classify
+input patterns; they do not establish market manipulation or a market bottom.
+The China/QDII examples do not generalize automatically to other instruments.
+No data collection, event-time validation, execution guard or order placement is
+implemented here. Read the accompanying skill for input and confidence limits.
+The __main__ demonstrations use invented observations, not investment results.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass, field
+from numbers import Real
 from typing import Any
 
 
-# Channel Hierarchy Weights (prior to conflict regime adjustment)
+# Legacy channel registry values, retained for compatibility. Numerical branches
+# below do not read these values; changing them does not change the allocation.
 CHANNEL_BASE_WEIGHTS = {
     "REGULATORY_POLICY": 1.00,      # Gatekeeper / Hard Veto
     "SMART_MONEY_FLOW": 0.40,       # Primary Institutional Anchor
@@ -42,8 +32,8 @@ CHANNEL_BASE_WEIGHTS = {
 class ChannelSignal:
     channel: str  # Key in CHANNEL_BASE_WEIGHTS
     score: float  # -1.0 (extreme bearish) to +1.0 (extreme bullish)
-    confidence: float = 1.0  # 0.0 to 1.0 (e.g. from DataQualityAuditor)
-    veto_flag: bool = False  # True if hard circuit breaker triggered
+    confidence: float = 1.0  # 0.0 to 1.0; only social scores are weighted by this
+    veto_flag: bool = False  # Only supported on REGULATORY_POLICY
     evidence: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -54,10 +44,10 @@ class ChannelSignal:
 class ReconciliationResult:
     asset_code: str
     final_score: float  # -1.0 to +1.0
-    recommended_tilt: float  # -0.02 to +0.02
+    recommended_tilt: float  # Within +/-max_tilt, default 0.015
     conflict_type: str
     disagreement_index: float  # 0.0 (unanimous) to 1.0 (polar opposite)
-    confidence_multiplier: float  # 0.2 to 1.0
+    confidence_multiplier: float  # 0.25 to 1.0; heuristic, not a probability
     dominant_channel: str
     resolution_rationale: str
     channel_breakdown: dict[str, float] = field(default_factory=dict)
@@ -70,6 +60,8 @@ class SignalReconciler:
     """Hierarchical conflict resolver for multi-modal financial signals."""
 
     def __init__(self, max_tilt: float = 0.015, dispersion_damping: float = 1.2):
+        _finite(max_tilt, "max_tilt", 0.0, 1.0)
+        _finite(dispersion_damping, "dispersion_damping", 0.0)
         self.max_tilt = max_tilt
         self.dispersion_damping = dispersion_damping
 
@@ -79,7 +71,24 @@ class SignalReconciler:
         signals: list[ChannelSignal],
         qdii_premium_pct: float = 0.0,
     ) -> ReconciliationResult:
-        """Resolve contradictory signals across channels into a single actionable decision."""
+        """Return a heuristic tilt from validated inputs; do not execute a trade."""
+        _finite(qdii_premium_pct, "qdii_premium_pct")
+        if not isinstance(signals, (list, tuple)):
+            raise ValueError("signals must be a list or tuple")
+        seen = set()
+        for signal in signals:
+            if not isinstance(signal, ChannelSignal):
+                raise ValueError("signals must contain ChannelSignal values")
+            if (not isinstance(signal.channel, str) or
+                    signal.channel not in CHANNEL_BASE_WEIGHTS or signal.channel in seen):
+                raise ValueError("channels must be recognized and unique")
+            seen.add(signal.channel)
+            _finite(signal.score, "score", -1.0, 1.0)
+            _finite(signal.confidence, "confidence", 0.0, 1.0)
+            if not isinstance(signal.veto_flag, bool):
+                raise ValueError("veto_flag must be boolean")
+            if signal.veto_flag and signal.channel != "REGULATORY_POLICY":
+                raise ValueError("veto_flag is supported only on REGULATORY_POLICY")
         if not signals:
             return ReconciliationResult(
                 asset_code=asset_code,
@@ -89,7 +98,7 @@ class SignalReconciler:
                 disagreement_index=0.0,
                 confidence_multiplier=1.0,
                 dominant_channel="NONE",
-                resolution_rationale="无多源冲突信号，维持风险平价基准配置",
+                resolution_rationale="没有输入信号；返回零倾斜，不代表市场中性或已构造基准组合",
                 channel_breakdown={},
             )
 
@@ -124,8 +133,8 @@ class SignalReconciler:
         # =====================================================================
         if (reg_sig and (reg_sig.veto_flag or reg_sig.score <= -0.8)) or qdii_premium_pct >= 2.5:
             reason = (
-                f"触发一票否决风控(QDII溢价率 {qdii_premium_pct:.2f}% 过高或监管警示)，"
-                f"无视散户看多情绪({social_score:+.2f})，强制执行防守熔断"
+                f"输入触发配置的否决规则(QDII溢价 {qdii_premium_pct:.2f}% 或政策分数/标志)，"
+                f"输出防守倾斜建议；须另行验证适用规则，未执行交易"
             )
             return ReconciliationResult(
                 asset_code=asset_code,
@@ -144,8 +153,8 @@ class SignalReconciler:
         # =====================================================================
         if qdii_premium_pct >= 1.5 and social_score > 0.3:
             reason = (
-                f"海外标的讨论偏热({social_score:+.2f})但国内场内溢价达 {qdii_premium_pct:.2f}%，"
-                f"工具结构性折溢价风险优先于底层涨幅，禁止追高并适度减配"
+                f"输入社交分数偏正向({social_score:+.2f})且基金溢价达 {qdii_premium_pct:.2f}%，"
+                f"按配置的溢价规则建议减配；须核对基金估值与适用市场，未执行交易"
             )
             return ReconciliationResult(
                 asset_code=asset_code,
@@ -163,12 +172,12 @@ class SignalReconciler:
         # ARCHETYPE 3: Smart Money Distribution vs Retail FOMO Trap (主力派发 vs 散户接盘)
         # =====================================================================
         if flow_score <= -0.35 and social_score >= 0.45:
-            # Smart money selling heavily while retail is euphoric
+            # Heuristic pattern of opposing supplied flow and social scores.
             resolved = max(-1.0, flow_score - 0.35 * social_score)
             tilt = -self.max_tilt
             reason = (
-                f"识别到【诱多派发背离】: 主力资金显著流出({flow_score:+.2f})而散户社区狂热看多({social_score:+.2f})，"
-                f"坚决跟随主力真金白银方向并反向惩罚FOMO情绪，执行防守减仓"
+                f"输入符合资金负向({flow_score:+.2f})、社交正向({social_score:+.2f})的规则分支，"
+                f"按预设偏好建议减配；未验证机构意图或未来收益"
             )
             return ReconciliationResult(
                 asset_code=asset_code,
@@ -187,12 +196,12 @@ class SignalReconciler:
         # =====================================================================
         institutional_anchor = 0.55 * flow_score + 0.45 * val_score
         if institutional_anchor >= 0.25 and social_score <= -0.45:
-            # Smart money & valuation positive, retail in deep capitulation panic
+            # Positive supplied anchor and negative social score; not a verified bottom.
             resolved = min(1.0, institutional_anchor - 0.25 * social_score)  # negative social boosts score
             tilt = +self.max_tilt
             reason = (
-                f"识别到【黄金坑底部背离】: 基本面与主力资金稳步吸筹(锚定值{institutional_anchor:+.2f})，"
-                f"而散户舆情恐慌割肉({social_score:+.2f})构成极佳逆向买点，执行右侧/定投增配"
+                f"输入符合锚定分数正向({institutional_anchor:+.2f})、社交负向({social_score:+.2f})的规则分支，"
+                f"按预设偏好建议增配；未证实市场底部或未来收益"
             )
             return ReconciliationResult(
                 asset_code=asset_code,
@@ -240,11 +249,11 @@ class SignalReconciler:
             conflict_label = "CONFLICT_HIGH_DISPERSION_DAMPED"
             reason = (
                 f"多源信号存在分歧(分歧度 {disagreement:.2f})，启动不确定性阻尼(置信折算 {conf_mult:.0%})，"
-                f"以主力与估值锚({dominant})为主导审慎微调"
+                f"按配置权重计算倾斜；标签({dominant})不证明资金意图，未执行交易"
             )
         else:
             conflict_label = "NO_CONFLICT_CONSENSUS"
-            reason = f"多源情报方向一致(分歧度低 {disagreement:.2f})，综合评分 {final_score:+.2f}"
+            reason = f"输入分散度较低({disagreement:.2f})，综合评分 {final_score:+.2f}；低分散度也可能来自输入不足"
 
         return ReconciliationResult(
             asset_code=asset_code,
@@ -262,10 +271,19 @@ class SignalReconciler:
 ReconciledSignal = ReconciliationResult
 
 
+def _finite(value, name, minimum=None, maximum=None):
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+        raise ValueError(f"{name} must be a finite real number")
+    if ((minimum is not None and value < minimum) or
+            (maximum is not None and value > maximum)):
+        raise ValueError(f"{name} is outside its allowed range")
+
+
 def compute_belief_entropy(probabilities: list[float]) -> float:
     """Compute Shannon belief entropy across multi-channel probability weights: -sum(p * log2(p)).
 
-    Higher entropy reflects severe information divergence / disagreement across channels.
+    Entropy measures concentration of these masses, not agreement of directional signs.
+    This helper is not used by reconcile_asset_signals to choose a branch.
     """
     valid = [p for p in probabilities if p > 0.0]
     if not valid:
@@ -281,14 +299,16 @@ def reconcile_views(
     qdii_premium_pct: float = 0.0,
     reconciler: SignalReconciler | None = None,
 ) -> ReconciliationResult:
-    """Resolve conflicting signals across macro, valuation, smart money, and sentiment channels.
+    """Apply the documented heuristic to supplied channel scores.
 
     Applies the 5-tier hierarchical conflict resolution rules:
-    1. Macro & Regulatory Veto (Hard circuit breaker for policy risk or extreme QDII premium)
-    2. Cross-Border Premium Disconnect (US tech hype vs domestic premium risk)
-    3. Distribution Trap (Smart Money Selling vs Retail Euphoria -> defensive tilt)
-    4. Contrarian Bottom (Institutional Accumulation + Valuation vs Retail Panic -> contrarian buy)
-    5. Hierarchical Consensus with Disagreement Uncertainty Damping
+    1. Configured policy/QDII veto threshold
+    2. Configured premium and positive social-score threshold
+    3. Negative flow and positive social-score pattern
+    4. Positive anchor and negative social-score pattern
+    5. Fixed score combination with dispersion damping
+
+    These branches do not validate source credibility or predict profitable trades.
 
     Args:
         asset_code: Security ticker (e.g. "510300", "513100").
@@ -322,9 +342,9 @@ if __name__ == "__main__":
 
     # Case 1: Distribution Trap (Smart Money Selling vs Retail Euphoria)
     case1 = [
-        ChannelSignal("SMART_MONEY_FLOW", score=-0.75, evidence="Northbound outflow -6.2B RMB"),
-        ChannelSignal("FUNDAMENTAL_VALUATION", score=-0.20, evidence="PE at 75th percentile"),
-        ChannelSignal("RETAIL_SOCIAL_CN", score=+0.85, evidence="Xueqiu retail screaming 'To the moon!'"),
+        ChannelSignal("SMART_MONEY_FLOW", score=-0.75, evidence="synthetic: Northbound outflow -6.2B RMB"),
+        ChannelSignal("FUNDAMENTAL_VALUATION", score=-0.20, evidence="synthetic: PE at 75th percentile"),
+        ChannelSignal("RETAIL_SOCIAL_CN", score=+0.85, evidence="synthetic: Xueqiu retail screaming 'To the moon!'"),
     ]
     res1 = reconciler.reconcile_asset_signals("510300", case1)
     print(f"[Case 1: 510300 Distribution Trap]")
@@ -334,9 +354,9 @@ if __name__ == "__main__":
 
     # Case 2: Contrarian Bottom (Smart Money + Valuation Buying vs Retail Capitulation Panic)
     case2 = [
-        ChannelSignal("SMART_MONEY_FLOW", score=+0.60, evidence="Northbound inflow +4.5B RMB"),
-        ChannelSignal("FUNDAMENTAL_VALUATION", score=+0.80, evidence="Dividend yield 4.8%, 10y bottom"),
-        ChannelSignal("RETAIL_SOCIAL_CN", score=-0.85, evidence="Retail capitulation panic selling"),
+        ChannelSignal("SMART_MONEY_FLOW", score=+0.60, evidence="synthetic: Northbound inflow +4.5B RMB"),
+        ChannelSignal("FUNDAMENTAL_VALUATION", score=+0.80, evidence="synthetic: Dividend yield 4.8%, 10y bottom"),
+        ChannelSignal("RETAIL_SOCIAL_CN", score=-0.85, evidence="synthetic: Retail capitulation panic selling"),
     ]
     res2 = reconciler.reconcile_asset_signals("510880", case2)
     print(f"[Case 2: 510880 Contrarian Bottom]")
@@ -346,8 +366,8 @@ if __name__ == "__main__":
 
     # Case 3: Cross-Border Disconnect (US StockTwits Bullish vs Domestic QDII High Premium)
     case3 = [
-        ChannelSignal("RETAIL_SOCIAL_US", score=+0.75, evidence="StockTwits $NVDA/$QQQ 85% Bullish"),
-        ChannelSignal("SMART_MONEY_FLOW", score=+0.20, evidence="Moderate inflow"),
+        ChannelSignal("RETAIL_SOCIAL_US", score=+0.75, evidence="synthetic: StockTwits $NVDA/$QQQ 85% Bullish"),
+        ChannelSignal("SMART_MONEY_FLOW", score=+0.20, evidence="synthetic: Moderate inflow"),
     ]
     res3 = reconciler.reconcile_asset_signals("513100", case3, qdii_premium_pct=2.80)
     print(f"[Case 3: 513100 Cross-Border QDII Veto]")

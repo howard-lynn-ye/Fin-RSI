@@ -9,6 +9,8 @@ Verifies:
 from __future__ import annotations
 
 import json
+import re
+from datetime import date
 from pathlib import Path
 import pytest
 
@@ -64,14 +66,16 @@ def test_signal_reconciler_skill_spec() -> None:
     assert fm["name"] == "signal-reconciler"
     assert "conflict" in fm["description"].lower() or "reconcil" in fm["description"].lower()
     assert fm.get("license") == "MIT"
-    assert (fm.get("metadata") or {}).get("verified_on") == "2026-09-16"
+    verified_on = (fm.get("metadata") or {}).get("verified_on")
+    assert date.fromisoformat(verified_on).isoformat() == verified_on
+    assert fin_skills.load("signal-reconciler") == text
 
-    # Verify key sections exist
-    assert "The Multi-Source Conflict Problem" in text
-    assert "Credibility-Weighted Belief Entropy Formulation" in text
-    assert "The 5 Conflict Resolution Rules" in text
-    assert "Python Usage Examples" in text
-    assert "Execution Gate Rules for Portfolios" in text
+    # Exercise the documented API and its assertions against the generated package.
+    # Section titles and verification dates may change when the skill is corrected.
+    examples = re.findall(r"^```python\n(.*?)^```", text, flags=re.MULTILINE | re.DOTALL)
+    assert examples, "The skill must include an executable Python example"
+    for index, example in enumerate(examples, start=1):
+        exec(compile(example, f"{skill_path}:example-{index}", "exec"), {})
 
 
 def test_kol_registry_python_module_api() -> None:
