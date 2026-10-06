@@ -33,6 +33,14 @@ def audit(root):
         np.testing.assert_allclose(nav, reference, atol=1e-12, rtol=0)
         np.testing.assert_allclose(detail['return_rate_pct'], scores['paths'][arm]['return_rate_pct'],
                                    atol=1e-10, rtol=0)
+        if p.get('interface') == 'v8':
+            reported = scores['paths'][arm]
+            if reported['initial_capital'] != p['initial_capital'] or reported['capital_currency'] != p['capital_currency']:
+                raise ValueError('reported initial capital/currency differs from protocol')
+            np.testing.assert_allclose(reported['ending_capital'], p['initial_capital'] * float(nav.iloc[-1]),
+                                       atol=1e-6, rtol=0)
+            np.testing.assert_allclose(reported['return_rate_pct'],
+                100 * (reported['ending_capital'] / reported['initial_capital'] - 1), atol=1e-10, rtol=0)
         out[arm] = dict(return_rate_pct=detail['return_rate_pct'], daily_valuations=len(nav),
                         max_daily_nav_difference=float((nav - reference).abs().max()))
     report = dict(passed=True, results=out,

@@ -35,6 +35,8 @@ MATRIX_MODELS = hf_models(HF_ROWS, MODELS)
 MODELS += tuple(m for m in MATRIX_MODELS if m[1] not in LEGACY_IDS)
 BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
            "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS)}
+VERSIONS = {"v6": "multisource-model-v1", "v7": "multisource-model-v2",
+            "v8": "multisource-model-v3"}
 COMMON = runtime.COMMON.replace(
     "Use only the visible market files for the task.",
     "Use only the visible market files and the dated evidence packet supplied in the user message for the task.",
@@ -49,6 +51,7 @@ def sources():
         here / "audit_manual_multisource.py", here / "audit_model_multisource.py",
         here / "personal_chat.py", here / "model_matrix.py", MANIFEST,
         here / "qualify_model_matrix.py"]
+    extra += list(here.glob("trading_*v8.py"))
     result.update({p.relative_to(previous.REPO).as_posix(): old.sha(p)
                    for p in extra if p.suffix in (".py", ".md", ".json")})
     return result
@@ -87,15 +90,15 @@ def model_spec(family, seed, batch):
 
 
 def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batch="original",
-           interface="v7"):
+           interface="v8"):
     if not allow_retrospective:
         raise ValueError("historical archive vintages unverified; explicit retrospective opt-in required")
     model = model_spec(family, seed, batch)
-    if interface not in ("v6", "v7"):
+    if interface not in VERSIONS:
         raise ValueError("unknown interface")
-    if batch == 'matrix_hf' and interface != 'v7':
+    if batch == 'matrix_hf' and interface not in ('v7', 'v8'):
         raise ValueError('new model matrix requires the repaired v7 interface')
-    if batch == 'personal' and interface != 'v7':
+    if batch == 'personal' and interface not in ('v7', 'v8'):
         raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
     root.mkdir(parents=True, exist_ok=False)
@@ -110,7 +113,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         random.Random(20261005 + seed).shuffle(arms)
     old.write(root / "inputs.json", dict(arms=arms, picks=picks, dates=list(packets)))
     protocol = dict(
-        version="multisource-model-v2" if interface == "v7" else "multisource-model-v1",
+        version=VERSIONS[interface],
         interface=interface, created_utc=datetime.now(timezone.utc).isoformat(),
         model=model, seed=seed, batch=batch, batch_families=BATCHES[batch],
         source_sha256=sources(), data_sha256=data_hashes,
@@ -130,6 +133,14 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
                 "selected surveys/futures/House actors and monetary news, not exhaustive coverage",
                 "single combined information/interface treatment; not causal attribution to one feature",
                 "not the earlier manual assistant case or an equal-budget comparison with it"])
+    if interface == 'v8':
+        from benchmarks.agent_study import trading_runtime_v8 as terminal
+        protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
+                        initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
+                        research_responses=old.MAX_TURNS - 1, final_decision_responses=1,
+                        final_actions=['submit', 'hold'],
+                        treatment='short terminal-return task; on-demand library contracts; equal 7+1 response budget')
+        protocol['limits'].append('New objective and interaction protocol; not a causal comparison against older versions.')
     if batch == 'personal':
         protocol.update(executor='conversation_authored_responses', temperature=None, top_p=None,
             personal_order='each date: raw locked, then library locked, then next date',
@@ -146,10 +157,18 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
 
 def verify(root):
     p = old.load(root / "protocol.json")
-    expected_version = "multisource-model-v2" if p.get("interface") == "v7" else "multisource-model-v1"
+    expected_version = VERSIONS.get(p.get("interface", "v6"))
     if p["version"] != expected_version or p["source_sha256"] != sources():
         raise ValueError("protocol/source changed; use the archived source matching this protocol, "
                          "or freeze a new run. Never weaken hashes to score an old run with new code.")
+    if p.get('interface') == 'v8':
+        from benchmarks.agent_study.trading_runtime_v8 import OBJECTIVE, INITIAL_CAPITAL
+        if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
+                p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
+                p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
+                p['research_responses'] != old.MAX_TURNS - 1 or p['final_decision_responses'] != 1 or
+                p['final_actions'] != ['submit', 'hold']):
+            raise ValueError('v8 objective/deadline/decision budget changed')
     batch = p.get("batch", "original")
     if tuple(p["model"]) != model_spec(p["model"][0], p["seed"], batch):
         raise ValueError("model revision changed")
@@ -196,15 +215,19 @@ def run(root):
     if not eq["passed"] or eq["packets_sha256"] != old.sha(root / "evidence-packets.json"):
         raise ValueError("future evidence confinement qualification absent or changed")
     runner = runtime
-    if p.get("interface") == "v7":
+    if p.get("interface") in ("v7", "v8"):
         from benchmarks.agent_study import trading_capabilities as runner
+        if p['interface'] == 'v8':
+            from benchmarks.agent_study import trading_runtime_v8 as runner
         runner.require_qualification(root)
     if (root / "inference-receipt.json").exists():
         raise FileExistsError("completed pair already exists")
     binding = dict(protocol_sha256=old.sha(root / "protocol.json"),
                    qualification_sha256=old.sha(root / "qualification" / "qualification.json"))
-    if p.get('interface') == 'v7':
+    if p.get('interface') in ('v7', 'v8'):
         binding['capability_qualification_sha256'] = old.sha(root / 'capability-qualification.json')
+    if p.get('interface') == 'v8':
+        binding['decision_qualification_sha256'] = old.sha(root / 'decision-qualification.json')
     started = root / "inference-started.json"
     if started.exists():
         if any(old.load(started)[k] != v for k, v in binding.items()):
@@ -241,7 +264,7 @@ def run(root):
                 with decision_workspace(root, arm, i, p.get('batch') == 'personal') as workspace:
                     md.truncate(root / "data", workspace, day)
                     c = runner.Controller(root, workspace, arm, p["seed"] * 1000 + i)
-                    if p.get("interface") == "v7":
+                    if p.get("interface") in ("v7", "v8"):
                         if p.get('batch') == 'personal' and (workspace / 'evidence.json').exists():
                             expected = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
                             if old.load(workspace / 'evidence.json') != expected:
@@ -250,7 +273,9 @@ def run(root):
                         else:
                             snapshot_sha256 = runner.write_evidence_snapshot(
                                 old.load(root / "evidence.json"), packets[day], workspace)
-                        record = runner.decide(backend, c, previous.task(day, pick, holdings) + supplied,
+                        request = (runner.task(day, holdings, p['deadline']) if p['interface'] == 'v8'
+                                   else previous.task(day, pick, holdings))
+                        record = runner.decide(backend, c, request + supplied,
                                                orientation_path=GUIDE)
                         record['evidence_snapshot_sha256'] = snapshot_sha256
                     else:
@@ -264,7 +289,7 @@ def run(root):
                 print(json.dumps(dict(family=p["model"][0], seed=p["seed"], arm=arm,
                                       decision=i+1, planned=len(picks), submitted=record["submitted"])), flush=True)
             assert record["evidence_packet_sha256"] == digest(packets[day])
-            if p.get('interface') == 'v7':
+            if p.get('interface') in ('v7', 'v8'):
                 expected_snapshot = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
                 import hashlib
                 assert record['evidence_snapshot_sha256'] == hashlib.sha256(
@@ -285,8 +310,11 @@ def run(root):
 def validate_receipt(root):
     receipt, inputs = old.load(root / "inference-receipt.json"), old.load(root / "inputs.json")
     assert receipt["protocol_sha256"] == old.sha(root / "protocol.json")
-    if old.load(root / 'protocol.json').get('interface') == 'v7':
+    protocol = old.load(root / 'protocol.json')
+    if protocol.get('interface') in ('v7', 'v8'):
         assert receipt['capability_qualification_sha256'] == old.sha(root / 'capability-qualification.json')
+    if protocol.get('interface') == 'v8':
+        assert receipt['decision_qualification_sha256'] == old.sha(root / 'decision-qualification.json')
     expected = {f"decisions/{a}/{i:02d}.json" for a in inputs["arms"] for i in range(len(inputs["picks"]))}
     assert set(receipt["decisions"]) == expected
     assert {f.relative_to(root).as_posix() for f in (root / "decisions").glob("*/*.json")} == expected
@@ -294,6 +322,9 @@ def validate_receipt(root):
     for n, sha in receipt["decisions"].items():
         assert old.sha(root / n) == sha
         record = old.load(root / n)
+        if protocol.get('interface') == 'v8':
+            from benchmarks.agent_study.trading_runtime_v8 import validate_decision
+            validate_decision(record)
         if old.load(root / 'protocol.json').get('batch') == 'personal':
             from benchmarks.agent_study.personal_chat import validate_exchange
             if not record.get('personal_response_receipts'):
@@ -320,6 +351,15 @@ def score(root):
         paths[arm] = dict(return_rate_pct=100*metrics["cumulative_return"], metrics=metrics,
                          submitted=sum(r["submitted"] for r in records), decisions=len(records),
                          **turn_counts([t for r in records for t in r["turns"]]))
+        if p.get('interface') == 'v8':
+            initial_capital = p['initial_capital']
+            ending_capital = initial_capital * float(nav.iloc[-1])
+            paths[arm].update(initial_capital=initial_capital, ending_capital=ending_capital,
+                              capital_currency=p['capital_currency'],
+                              return_rate_pct=100 * (ending_capital / initial_capital - 1))
+            paths[arm].update(explicit_holds=sum(r['decision_action'] == 'hold' for r in records),
+                              failed_decisions=sum(r['decision_action'] == 'failed' for r in records),
+                              completed_decisions=sum(r['decision_completed'] for r in records))
         old.write(root / "nav" / f"{arm}.json", dict(nav=nav.to_dict(), trades=trades))
     result = dict(family=p["model"][0], seed=p["seed"], window=p["window"], paths=paths,
                   batch=p.get('batch', 'original'), executor=p.get('executor', 'transformers'),
@@ -328,11 +368,11 @@ def score(root):
                   return_difference_pp=paths["library"]["return_rate_pct"]-paths["raw"]["return_rate_pct"],
                   limits=p["limits"], inference_receipt_sha256=old.sha(root / "inference-receipt.json"))
     old.write(root / "scores.json", result)
-    if p.get("interface") == "v7":
+    if p.get("interface") in ("v7", "v8"):
         from benchmarks.agent_study.audit_model_multisource import audit
         audit(root)
     completed = dict(scores_sha256=old.sha(root / "scores.json"))
-    if p.get("interface") == "v7":
+    if p.get("interface") in ("v7", "v8"):
         completed['independent_audit_sha256'] = old.sha(root / 'independent-model-audit.json')
     old.write(root / "completed.json", completed)
     return result
@@ -356,6 +396,9 @@ def aggregate(batch, group="original"):
                   "cash_interest", "objective", "primary_report", "window", "decisions_per_arm", "treatment")}
         common.update(evidence=p["input_hashes"]["evidence.json"],
                       packets=p["input_hashes"]["evidence-packets.json"], dates=inputs["dates"], picks=inputs["picks"])
+        if p.get('interface') == 'v8':
+            common.update({k: p[k] for k in ('deadline', 'initial_capital', 'capital_currency', 'research_responses',
+                                           'final_decision_responses', 'final_actions')})
         if reference is None:
             reference = common
         elif common != reference:
@@ -365,7 +408,7 @@ def aggregate(batch, group="original"):
             raise ValueError("model/seed does not match declared pair")
         assert set(inputs["arms"]) == {"raw", "library"}
         assert old.load(root / "completed.json")["scores_sha256"] == old.sha(root / "scores.json")
-        if p.get("interface") == "v7":
+        if p.get("interface") in ("v7", "v8"):
             done = old.load(root / 'completed.json')
             audited = old.load(root / 'independent-model-audit.json')
             if (done['independent_audit_sha256'] != old.sha(root / 'independent-model-audit.json') or
@@ -382,6 +425,11 @@ def aggregate(batch, group="original"):
         summary[family] = {arm: sum(r["paths"][arm]["return_rate_pct"] for r in family_rows) / len(family_rows)
                            for arm in ("raw", "library")}
         summary[family]["difference_pp"] = summary[family]["library"] - summary[family]["raw"]
+        if reference['version'] == VERSIONS['v8']:
+            summary[family].update(initial_capital=reference['initial_capital'],
+                capital_currency=reference['capital_currency'],
+                mean_ending_capital={arm: sum(r['paths'][arm]['ending_capital'] for r in family_rows) /
+                                    len(family_rows) for arm in ('raw', 'library')})
     result = dict(status="complete", version=reference["version"], batch=group, return_rate_pct=summary,
                   seed_results=rows, interpretation="Three seeds on one development market path with retrospective evidence assumptions.")
     path = batch / "aggregate.json"
@@ -401,7 +449,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, choices=previous.SEEDS)
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--allow-retrospective", action="store_true")
-    parser.add_argument("--interface", choices=("v6", "v7"), default="v7")
+    parser.add_argument("--interface", choices=tuple(VERSIONS), default="v8")
     args = parser.parse_args()
     if args.command == "freeze":
         freeze(args.root, args.family, args.seed, args.evidence,
@@ -421,10 +469,14 @@ if __name__ == "__main__":
                   packets_sha256=old.sha(args.root / "evidence-packets.json")))
         if not passed:
             raise SystemExit("future evidence confinement failed")
-        if old.load(args.root / "protocol.json").get("interface") == "v7":
+        if old.load(args.root / "protocol.json").get("interface") in ("v7", "v8"):
             from benchmarks.agent_study.trading_capabilities import qualify
             if not qualify(args.root)["passed"]:
                 raise SystemExit("capability qualification failed; no inference allowed")
+        if old.load(args.root / 'protocol.json').get('interface') == 'v8':
+            from benchmarks.agent_study.trading_runtime_v8 import qualify
+            if not qualify(args.root)['passed']:
+                raise SystemExit('v8 decision qualification failed; no inference allowed')
     elif args.command == "run":
         run(args.root)
     elif args.command == "score":
