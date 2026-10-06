@@ -36,11 +36,21 @@ MODELS += tuple(m for m in MATRIX_MODELS if m[1] not in LEGACY_IDS)
 BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
            "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS)}
 VERSIONS = {"v6": "multisource-model-v1", "v7": "multisource-model-v2",
-            "v8": "multisource-model-v3"}
+            "v8": "multisource-model-v3", "v9": "multisource-model-v4-rag"}
 COMMON = runtime.COMMON.replace(
     "Use only the visible market files for the task.",
     "Use only the visible market files and the dated evidence packet supplied in the user message for the task.",
 )
+
+
+def terminal_runtime(interface):
+    if interface == 'v9':
+        from benchmarks.agent_study import trading_runtime_v9
+        return trading_runtime_v9
+    if interface == 'v8':
+        from benchmarks.agent_study import trading_runtime_v8
+        return trading_runtime_v8
+    raise ValueError('not a terminal-return interface')
 
 
 def sources():
@@ -52,6 +62,7 @@ def sources():
         here / "personal_chat.py", here / "model_matrix.py", MANIFEST,
         here / "qualify_model_matrix.py"]
     extra += list(here.glob("trading_*v8.py"))
+    extra += list(here.glob("trading_*v9.py"))
     result.update({p.relative_to(previous.REPO).as_posix(): old.sha(p)
                    for p in extra if p.suffix in (".py", ".md", ".json")})
     return result
@@ -96,9 +107,9 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
     model = model_spec(family, seed, batch)
     if interface not in VERSIONS:
         raise ValueError("unknown interface")
-    if batch == 'matrix_hf' and interface not in ('v7', 'v8'):
+    if batch == 'matrix_hf' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new model matrix requires the repaired v7 interface')
-    if batch == 'personal' and interface not in ('v7', 'v8'):
+    if batch == 'personal' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
     root.mkdir(parents=True, exist_ok=False)
@@ -133,14 +144,18 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
                 "selected surveys/futures/House actors and monetary news, not exhaustive coverage",
                 "single combined information/interface treatment; not causal attribution to one feature",
                 "not the earlier manual assistant case or an equal-budget comparison with it"])
-    if interface == 'v8':
-        from benchmarks.agent_study import trading_runtime_v8 as terminal
+    if interface in ('v8', 'v9'):
+        terminal = terminal_runtime(interface)
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=old.MAX_TURNS - 1, final_decision_responses=1,
                         final_actions=['submit', 'hold'],
                         treatment='short terminal-return task; on-demand library contracts; equal 7+1 response budget')
         protocol['limits'].append('New objective and interaction protocol; not a causal comparison against older versions.')
+        if interface == 'v9':
+            protocol['treatment'] = ('direct research_context over installed knowledge and the same visible evidence; '
+                                     'current tool contracts; unchanged terminal objective and 7+1 response budget')
+            protocol['limits'].append('RAG reference skills/contracts are current installed knowledge, not historical vintages.')
     if batch == 'personal':
         protocol.update(executor='conversation_authored_responses', temperature=None, top_p=None,
             personal_order='each date: raw locked, then library locked, then next date',
@@ -161,14 +176,14 @@ def verify(root):
     if p["version"] != expected_version or p["source_sha256"] != sources():
         raise ValueError("protocol/source changed; use the archived source matching this protocol, "
                          "or freeze a new run. Never weaken hashes to score an old run with new code.")
-    if p.get('interface') == 'v8':
+    if p.get('interface') in ('v8', 'v9'):
         from benchmarks.agent_study.trading_runtime_v8 import OBJECTIVE, INITIAL_CAPITAL
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
                 p['research_responses'] != old.MAX_TURNS - 1 or p['final_decision_responses'] != 1 or
                 p['final_actions'] != ['submit', 'hold']):
-            raise ValueError('v8 objective/deadline/decision budget changed')
+            raise ValueError('terminal objective/deadline/decision budget changed')
     batch = p.get("batch", "original")
     if tuple(p["model"]) != model_spec(p["model"][0], p["seed"], batch):
         raise ValueError("model revision changed")
@@ -215,19 +230,21 @@ def run(root):
     if not eq["passed"] or eq["packets_sha256"] != old.sha(root / "evidence-packets.json"):
         raise ValueError("future evidence confinement qualification absent or changed")
     runner = runtime
-    if p.get("interface") in ("v7", "v8"):
+    if p.get("interface") in ("v7", "v8", "v9"):
         from benchmarks.agent_study import trading_capabilities as runner
-        if p['interface'] == 'v8':
-            from benchmarks.agent_study import trading_runtime_v8 as runner
+        if p['interface'] in ('v8', 'v9'):
+            runner = terminal_runtime(p['interface'])
         runner.require_qualification(root)
     if (root / "inference-receipt.json").exists():
         raise FileExistsError("completed pair already exists")
     binding = dict(protocol_sha256=old.sha(root / "protocol.json"),
                    qualification_sha256=old.sha(root / "qualification" / "qualification.json"))
-    if p.get('interface') in ('v7', 'v8'):
+    if p.get('interface') in ('v7', 'v8', 'v9'):
         binding['capability_qualification_sha256'] = old.sha(root / 'capability-qualification.json')
-    if p.get('interface') == 'v8':
+    if p.get('interface') in ('v8', 'v9'):
         binding['decision_qualification_sha256'] = old.sha(root / 'decision-qualification.json')
+    if p.get('interface') == 'v9':
+        binding['rag_qualification_sha256'] = old.sha(root / 'rag-qualification.json')
     started = root / "inference-started.json"
     if started.exists():
         if any(old.load(started)[k] != v for k, v in binding.items()):
@@ -264,7 +281,7 @@ def run(root):
                 with decision_workspace(root, arm, i, p.get('batch') == 'personal') as workspace:
                     md.truncate(root / "data", workspace, day)
                     c = runner.Controller(root, workspace, arm, p["seed"] * 1000 + i)
-                    if p.get("interface") in ("v7", "v8"):
+                    if p.get("interface") in ("v7", "v8", "v9"):
                         if p.get('batch') == 'personal' and (workspace / 'evidence.json').exists():
                             expected = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
                             if old.load(workspace / 'evidence.json') != expected:
@@ -273,7 +290,7 @@ def run(root):
                         else:
                             snapshot_sha256 = runner.write_evidence_snapshot(
                                 old.load(root / "evidence.json"), packets[day], workspace)
-                        request = (runner.task(day, holdings, p['deadline']) if p['interface'] == 'v8'
+                        request = (runner.task(day, holdings, p['deadline']) if p['interface'] in ('v8', 'v9')
                                    else previous.task(day, pick, holdings))
                         record = runner.decide(backend, c, request + supplied,
                                                orientation_path=GUIDE)
@@ -289,7 +306,7 @@ def run(root):
                 print(json.dumps(dict(family=p["model"][0], seed=p["seed"], arm=arm,
                                       decision=i+1, planned=len(picks), submitted=record["submitted"])), flush=True)
             assert record["evidence_packet_sha256"] == digest(packets[day])
-            if p.get('interface') in ('v7', 'v8'):
+            if p.get('interface') in ('v7', 'v8', 'v9'):
                 expected_snapshot = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
                 import hashlib
                 assert record['evidence_snapshot_sha256'] == hashlib.sha256(
@@ -311,10 +328,12 @@ def validate_receipt(root):
     receipt, inputs = old.load(root / "inference-receipt.json"), old.load(root / "inputs.json")
     assert receipt["protocol_sha256"] == old.sha(root / "protocol.json")
     protocol = old.load(root / 'protocol.json')
-    if protocol.get('interface') in ('v7', 'v8'):
+    if protocol.get('interface') in ('v7', 'v8', 'v9'):
         assert receipt['capability_qualification_sha256'] == old.sha(root / 'capability-qualification.json')
-    if protocol.get('interface') == 'v8':
+    if protocol.get('interface') in ('v8', 'v9'):
         assert receipt['decision_qualification_sha256'] == old.sha(root / 'decision-qualification.json')
+    if protocol.get('interface') == 'v9':
+        assert receipt['rag_qualification_sha256'] == old.sha(root / 'rag-qualification.json')
     expected = {f"decisions/{a}/{i:02d}.json" for a in inputs["arms"] for i in range(len(inputs["picks"]))}
     assert set(receipt["decisions"]) == expected
     assert {f.relative_to(root).as_posix() for f in (root / "decisions").glob("*/*.json")} == expected
@@ -322,8 +341,10 @@ def validate_receipt(root):
     for n, sha in receipt["decisions"].items():
         assert old.sha(root / n) == sha
         record = old.load(root / n)
-        if protocol.get('interface') == 'v8':
+        if protocol.get('interface') in ('v8', 'v9'):
             from benchmarks.agent_study.trading_runtime_v8 import validate_decision
+            if record.get('interface') != protocol['interface']:
+                raise ValueError('decision interface differs from frozen protocol')
             validate_decision(record)
         if old.load(root / 'protocol.json').get('batch') == 'personal':
             from benchmarks.agent_study.personal_chat import validate_exchange
@@ -351,7 +372,7 @@ def score(root):
         paths[arm] = dict(return_rate_pct=100*metrics["cumulative_return"], metrics=metrics,
                          submitted=sum(r["submitted"] for r in records), decisions=len(records),
                          **turn_counts([t for r in records for t in r["turns"]]))
-        if p.get('interface') == 'v8':
+        if p.get('interface') in ('v8', 'v9'):
             initial_capital = p['initial_capital']
             ending_capital = initial_capital * float(nav.iloc[-1])
             paths[arm].update(initial_capital=initial_capital, ending_capital=ending_capital,
@@ -368,11 +389,11 @@ def score(root):
                   return_difference_pp=paths["library"]["return_rate_pct"]-paths["raw"]["return_rate_pct"],
                   limits=p["limits"], inference_receipt_sha256=old.sha(root / "inference-receipt.json"))
     old.write(root / "scores.json", result)
-    if p.get("interface") in ("v7", "v8"):
+    if p.get("interface") in ("v7", "v8", "v9"):
         from benchmarks.agent_study.audit_model_multisource import audit
         audit(root)
     completed = dict(scores_sha256=old.sha(root / "scores.json"))
-    if p.get("interface") in ("v7", "v8"):
+    if p.get("interface") in ("v7", "v8", "v9"):
         completed['independent_audit_sha256'] = old.sha(root / 'independent-model-audit.json')
     old.write(root / "completed.json", completed)
     return result
@@ -396,7 +417,7 @@ def aggregate(batch, group="original"):
                   "cash_interest", "objective", "primary_report", "window", "decisions_per_arm", "treatment")}
         common.update(evidence=p["input_hashes"]["evidence.json"],
                       packets=p["input_hashes"]["evidence-packets.json"], dates=inputs["dates"], picks=inputs["picks"])
-        if p.get('interface') == 'v8':
+        if p.get('interface') in ('v8', 'v9'):
             common.update({k: p[k] for k in ('deadline', 'initial_capital', 'capital_currency', 'research_responses',
                                            'final_decision_responses', 'final_actions')})
         if reference is None:
@@ -408,7 +429,7 @@ def aggregate(batch, group="original"):
             raise ValueError("model/seed does not match declared pair")
         assert set(inputs["arms"]) == {"raw", "library"}
         assert old.load(root / "completed.json")["scores_sha256"] == old.sha(root / "scores.json")
-        if p.get("interface") in ("v7", "v8"):
+        if p.get("interface") in ("v7", "v8", "v9"):
             done = old.load(root / 'completed.json')
             audited = old.load(root / 'independent-model-audit.json')
             if (done['independent_audit_sha256'] != old.sha(root / 'independent-model-audit.json') or
@@ -425,7 +446,7 @@ def aggregate(batch, group="original"):
         summary[family] = {arm: sum(r["paths"][arm]["return_rate_pct"] for r in family_rows) / len(family_rows)
                            for arm in ("raw", "library")}
         summary[family]["difference_pp"] = summary[family]["library"] - summary[family]["raw"]
-        if reference['version'] == VERSIONS['v8']:
+        if reference['version'] in (VERSIONS['v8'], VERSIONS['v9']):
             summary[family].update(initial_capital=reference['initial_capital'],
                 capital_currency=reference['capital_currency'],
                 mean_ending_capital={arm: sum(r['paths'][arm]['ending_capital'] for r in family_rows) /
@@ -469,14 +490,14 @@ if __name__ == "__main__":
                   packets_sha256=old.sha(args.root / "evidence-packets.json")))
         if not passed:
             raise SystemExit("future evidence confinement failed")
-        if old.load(args.root / "protocol.json").get("interface") in ("v7", "v8"):
+        if old.load(args.root / "protocol.json").get("interface") in ("v7", "v8", "v9"):
             from benchmarks.agent_study.trading_capabilities import qualify
             if not qualify(args.root)["passed"]:
                 raise SystemExit("capability qualification failed; no inference allowed")
-        if old.load(args.root / 'protocol.json').get('interface') == 'v8':
-            from benchmarks.agent_study.trading_runtime_v8 import qualify
-            if not qualify(args.root)['passed']:
-                raise SystemExit('v8 decision qualification failed; no inference allowed')
+        if old.load(args.root / 'protocol.json').get('interface') in ('v8', 'v9'):
+            runner = terminal_runtime(old.load(args.root / 'protocol.json')['interface'])
+            if not runner.qualify(args.root)['passed']:
+                raise SystemExit('terminal decision/RAG qualification failed; no inference allowed')
     elif args.command == "run":
         run(args.root)
     elif args.command == "score":

@@ -56,11 +56,25 @@ with Store('events.sqlite3') as store:
 ```
 
 The shared tools/MCP registry exposes `collection_sources`, `collection_configure`,
-`collect_once`, `collection_events`, `collection_status`, `collection_acknowledge`,
+`collect_once`, `collection_events`, `collection_search`, `collection_status`, `collection_acknowledge`,
 `compare_holdings`, `search_data` and `fetch_market_data`. A tool call performs a bounded
 poll of watches that are due, respecting retry schedules; continuous operation is an explicit
 Python/CLI action. Configure paths on the machine
 running the MCP server. Treat downloaded content as untrusted data.
+
+`collection_search(database, query)` retrieves cited evidence alongside packaged knowledge and
+tool contracts. It opens an existing database read-only and rebuilds a bounded BM25 snapshot on
+each query, so newly saved events require no separate index refresh. It does not fetch sources
+or start polling. Run the collector separately to keep the underlying data current.
+
+For an explicit timezone-aware `as_of`, retrieval selects the latest revision available at that
+time, even if a newer revision has since arrived. Availability is the later of `observed_at` and
+`published_at`; unknown publication time stays unknown and uses observation time for eligibility.
+Neither a transaction date nor a filing's reporting period is substituted for availability.
+Current collection health is omitted for historical queries. Current installed skill knowledge
+and tool schemas are labeled separately and are not a reconstructed historical corpus.
+The default corpus cap is 10,000 events; exceeding `max_records` raises an error instead of
+silently dropping records. Narrow `watch_id` when needed. See [the RAG guide](RAG_PIPELINE.md).
 
 ## What "tracking a trade" means here
 

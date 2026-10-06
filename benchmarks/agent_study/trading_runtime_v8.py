@@ -139,13 +139,14 @@ class Controller(cap.Controller):
         return result
 
 
-def decide(backend, controller, task, **unused):
-    history = [dict(role='system', content=system_prompt(controller.arm)), dict(role='user', content=task)]
+def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **unused):
+    prompt_factory = system_prompt if prompt_factory is None else prompt_factory
+    history = [dict(role='system', content=prompt_factory(controller.arm)), dict(role='user', content=task)]
     initial_request = [dict(m) for m in history]
     target, action, turns = None, None, []
     for index in range(old.MAX_TURNS):
         final = index == old.MAX_TURNS - 1
-        history[0]['content'] = system_prompt(controller.arm, index)
+        history[0]['content'] = prompt_factory(controller.arm, index)
         fingerprint = hashlib.sha256(cap.encoded(history).encode()).hexdigest()
         try:
             response = backend(history)
@@ -194,7 +195,7 @@ def decide(backend, controller, task, **unused):
     return dict(target=target, submitted=action == 'submit', decision_action=action or 'failed',
                 decision_completed=action is not None, turns=turns, tool_calls=controller.calls,
                 menu_seed=controller.menu_seed, initial_request=initial_request,
-                library_orientation=None, backend_responses=len(turns), interface='v8')
+                library_orientation=None, backend_responses=len(turns), interface=interface)
 
 
 def validate_decision(record):
@@ -218,12 +219,14 @@ def validate_decision(record):
             raise ValueError('hold must come from an explicit accepted model response')
 
 
-def qualify(root):
+def qualify(root, *, controller_type=None, decide_fn=None):
     """Exercise the new worker/contract route, independently of model returns."""
     cap.require_qualification(root)
+    controller_type = Controller if controller_type is None else controller_type
+    decide_fn = decide if decide_fn is None else decide_fn
     checks = {}
     for arm in ('raw', 'library'):
-        c = Controller(root, root / 'capability-visible', arm)
+        c = controller_type(root, root / 'capability-visible', arm)
         reply = c.call('help_tool', {'name': 'run_python'})
         output = c.call('run_python', {'code': reply['python_example']})
         checks[arm + '/evidence_example'] = bool(output.get('ok'))
@@ -236,7 +239,7 @@ def qualify(root):
             text = ('{"tool":"hold","arguments":{}}' if calls == 8 else
                     '{"tool":"help_tool","arguments":{"name":"read_market"}}')
             return {'choices': [{'message': {'content': text}, 'finish_reason': 'stop'}]}
-        record = decide(backend, c, 'Synthetic protocol check, no investment outcome.')
+        record = decide_fn(backend, c, 'Synthetic protocol check, no investment outcome.')
         validate_decision(record)
         checks[arm + '/reserved_final_hold'] = record['decision_action'] == 'hold' and calls == 8
     report = dict(passed=all(checks.values()), checks=checks,

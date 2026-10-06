@@ -42,6 +42,24 @@ def collection_status(database):
         return {'watches': store.status()}
 
 
+def collection_search(database, query, as_of=None, watch_id=None, top_k=3,
+                      max_context_chars=4000, max_records=10000):
+    """Read the current database snapshot on every query; no stale side index or fetch."""
+    from fin_skills.collect import Store
+    from fin_skills.collect.model import utcnow
+    from fin_skills.rag.research import documents_from_events, research_context
+    cutoff = utcnow() if as_of is None else as_of
+    with Store(database, read_only=True) as store:
+        rows = store.retrieval_events(as_of=cutoff, watch_id=watch_id, max_records=max_records)
+        # Operational health is current state, not an archived historical observation.
+        health = store.status() if as_of is None else None
+    result = research_context(query, documents=[d.to_dict() for d in documents_from_events(rows)],
+                              as_of=cutoff, top_k=top_k, max_context_chars=max_context_chars)
+    result.update(collection_records=len(rows), collection_health=health,
+                  index_mode='fresh snapshot per query; no network call or background service')
+    return result
+
+
 def collection_acknowledge(database, sequences):
     from fin_skills.collect import Store
     with Store(database) as store:
@@ -100,7 +118,7 @@ def summarize_news(events, as_of, keywords=(), max_age_hours=72, risk_terms=None
                        risk_terms=risk_terms)
 
 
-FUNCTIONS = {f.__name__: f for f in (collection_sources, collection_configure, collect_once,
+FUNCTIONS = {f.__name__: f for f in (collection_sources, collection_configure, collect_once, collection_search,
              collection_events, collection_status, collection_acknowledge, compare_holdings,
              search_data, fetch_market_data, search_news, summarize_news)}
 
@@ -141,6 +159,14 @@ def definitions():
           'latest': {'type': 'boolean'}, 'pending': {'type': 'boolean'}}, ['database']),
         ('collection_status', 'Read last collection successes, failures and scheduled next attempts.',
          {'database': database}, ['database']),
+        ('collection_search', 'Search collected news/disclosures together with library knowledge and tool contracts. '
+         'Reads an existing SQLite database without fetching or writing. Every query sees newly saved records; '
+         'as_of selects the latest revision actually observed and published by that cutoff. '
+         'Unknown publication dates retain observation-time availability, never a guessed publication date.',
+         {'database': database, 'query': string, 'as_of': string, 'watch_id': string,
+          'top_k': {'type': 'integer', 'minimum': 1, 'maximum': 10},
+          'max_context_chars': {'type': 'integer', 'minimum': 800, 'maximum': 12000},
+          'max_records': {'type': 'integer', 'minimum': 1, 'maximum': 10000}}, ['database', 'query']),
         ('collection_acknowledge', 'Mark specified local alerts delivered after the caller has handled them.',
          {'database': database, 'sequences': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}}},
          ['database', 'sequences']),
