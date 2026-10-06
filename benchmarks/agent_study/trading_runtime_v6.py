@@ -103,6 +103,12 @@ def extract_call(text):
         text = text[markers[-1].end():]
     # A bare Python fence is code, even when its body contains a JSON tool example.
     stripped = text.strip()
+    # The legacy parser takes the first JSON call. That contradicts this interface's
+    # one-action contract and silently discards later actions from a model's plan.
+    # Frozen runs retain their archived parser; this changes the next source receipt.
+    all_fences = list(re.finditer(r'```[^\n]*\n.*?```', stripped, re.DOTALL))
+    if len(all_fences) > 1:
+        return None, 'multiple-actions'
     fences = list(v3.FENCE.finditer(stripped))
     match = v3.FENCE.fullmatch(stripped) if len(fences) == 1 else None
     if match:
@@ -112,6 +118,19 @@ def extract_call(text):
         outside = stripped[:fence.start()] + stripped[fence.end():]
         if not v3.TOOL.search(outside):
             return {'tool': 'run_python', 'arguments': {'code': fence.group(1)}}, 'python-fence'
+    decoder, actions, position = json.JSONDecoder(), 0, 0
+    while (start := stripped.find('{', position)) != -1:
+        try:
+            value, end = decoder.raw_decode(stripped, start)
+        except ValueError:
+            position = start + 1
+            continue
+        # Skip the entire decoded object, including nested objects and code strings.
+        position = end
+        if isinstance(value, dict) and 'tool' in value:
+            actions += 1
+            if actions > 1:
+                return None, 'multiple-actions'
     return v3.extract_call(text)
 
 

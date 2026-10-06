@@ -67,6 +67,35 @@ the interfaces. Improving discoverability and executable examples is justified.
 The recorded data do not justify claiming that all return declines are a library
 bug, or that the existing library is bug-free.
 
+### Confirmed execution-parser defect
+
+A subsequent trace inspection (Slurm **1908434**) found a SmolLM3 response with
+three JSON code blocks: list, describe, then run an algorithm. The v7 runtime
+delegated to a legacy parser that accepted the first JSON object and silently
+ignored the remaining actions, contradicting the stated one-action-per-turn rule.
+This is a confirmed **experiment runner defect**, not evidence of incorrect
+portfolio arithmetic. Its contribution to return differences is not quantified.
+
+The current runtime now rejects multiple fenced actions or multiple JSON tool
+objects before the legacy fallback. One Python action may still contain a JSON
+literal, and examples inside balanced reasoning are excluded from action counting.
+Regression tests cover both the observed failure and those valid cases. The
+archived source and every score in this report retain the original parser;
+the correction changes source hashes and requires a newly frozen experiment.
+
+Slurm **1908435** passed 56 focused tests and reproduced the old acceptance/new
+rejection on the same response. It also regenerated/validated the package and
+confirmed that this published snapshot was unchanged. Static inspection in Slurm
+**1908440** found 276 accepted multi-action turns in the SmolLM3 library arm. Later
+JSON objects in those responses include 150 `submit` candidates, of which 135
+pass the existing weight validator. These are **objects across turns**, not 135
+distinct trading dates or hypothetical profitable trades. Their intended
+execution order and eventual returns were not replayed. Qwen3's 16 multi-action
+library turns contain no later JSON `submit` candidates; this parser issue alone
+does not explain its all-cash result. See [multiple_actions.json](multiple_actions.json)
+and [audit_multiple_actions.py](audit_multiple_actions.py). Python submission
+text is not executed or exhaustively counted by this static audit.
+
 ## Provenance and executable analysis
 
 - Verification: Slurm **1908418**, completed with exit 0; 24 pairs, no validation
@@ -108,6 +137,14 @@ The requested additional Opus 5.5 review was attempted on October 6 but returned
 an account-limit error before a verified model response. It is **not** counted as
 a completed independent review of this publication. Prior completed reviews of
 the library/runtime repairs are documented with PRs 19 and 20.
+
+The separate Gemini review completed with verified `gemini-3.8-flash-high` identity
+and requested effort `high`. It found no blocker to publishing the snapshot and
+agreed that error frequencies are not causal return estimates. Its proposed
+single-date prompt probe would only be a pilot, not proof of a general causal
+explanation. Its concerns about wrapped-exception labels and alternate directory
+layouts are not established defects in this dated export: categories describe
+the outer exception, and the three run layouts are fixed by the verifier.
 
 ## Remaining work and limits
 

@@ -64,6 +64,39 @@ def test_unqualified_reasoning_delimiters_stop_before_inference():
         validate_reasoning_tokens(SimpleNamespace(all_special_tokens=['[THINK]', '[/THINK]']))
 
 
+@pytest.mark.parametrize('fenced', [False, True])
+def test_multiple_json_actions_cannot_silently_execute_only_the_first(fenced):
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    calls = ['{"tool":"list_algorithms","arguments":{}}',
+             '{"tool":"submit","arguments":{"SPY":1}}']
+    if fenced:
+        calls = ['```json\n' + call + '\n```' for call in calls]
+    assert extract_call('\n'.join(calls)) == (None, 'multiple-actions')
+
+
+def test_two_python_blocks_are_rejected_before_lenient_fallback():
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    response = '"tool":"run_python"\n```python\nprint(1)\n```\n```python\nsubmit({"SPY":1})\n```'
+    assert extract_call(response) == (None, 'multiple-actions')
+
+
+def test_json_literal_inside_one_python_action_is_not_an_extra_action():
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    code = 'example = {"tool":"read_market","arguments":{}}\nprint(example)'
+    call, status = extract_call('```python\n' + code + '\n```')
+    assert call == {'tool': 'run_python', 'arguments': {'code': code}}
+    assert status == 'python-fence'
+
+
+def test_nested_json_code_and_reasoning_examples_do_not_count_as_extra_actions():
+    import json
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    action = dict(tool='run_python', arguments=dict(
+        code='print({"tool": "example", "arguments": {}})'))
+    text = '<think>{"tool":"read_market"}</think>' + json.dumps(action)
+    assert extract_call(text) == (action, 'json')
+
+
 def test_decoding_stops_before_a_fabricated_next_turn():
     class Tokenizer:
         all_special_tokens = ['<eos>']
