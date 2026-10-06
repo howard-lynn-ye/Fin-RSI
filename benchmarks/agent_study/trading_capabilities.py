@@ -22,12 +22,12 @@ OFFLINE = frozenset((
     'list_algorithms', 'recommend_algorithms', 'run_algorithm', 'auto_algorithm',
     'compare_forecast_algorithms', 'profile_algorithm_data', 'research_algorithms',
     'recommend_trading_strategy', 'list_models', 'run_model', 'search_quant_methods',
-    'get_quant_method', 'quant_method_coverage', 'retrieve_context',
+    'get_quant_method', 'quant_method_coverage', 'retrieve_context', 'research_context',
 ))
 EXTERNAL = frozenset((
     'collection_configure', 'collect_once', 'collection_events', 'collection_status',
     'collection_acknowledge', 'compare_holdings', 'search_data', 'fetch_market_data',
-    'search_news',
+    'search_news', 'collection_search',
 ))
 REVIEWED_GUARDS = frozenset('''adjustment_check ashare_rules assert_causal board_lot_feasibility
 brinson_attribution cash_drag contamination_probe continuous_contract cost_curve cost_plausibility

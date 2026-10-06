@@ -23,8 +23,8 @@ def prompts(root):
     inputs = study.old.load(root / 'inputs.json')
     holdings = dict.fromkeys(study.md.TICKERS, 1 / len(study.md.TICKERS))
     for arm in ('raw', 'library'):
-        if protocol.get('interface') == 'v8':
-            from benchmarks.agent_study import trading_runtime_v8 as terminal
+        if protocol.get('interface') in ('v8', 'v9'):
+            terminal = study.terminal_runtime(protocol['interface'])
             for day in inputs['dates']:
                 yield arm, [dict(role='system', content=terminal.system_prompt(arm)),
                             dict(role='user', content=terminal.task(day, holdings, protocol['deadline']) +

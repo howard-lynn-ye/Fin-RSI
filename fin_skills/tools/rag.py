@@ -1,5 +1,6 @@
 """Stateless, offline RAG context retrieval for JSON/MCP agents."""
 from fin_skills.rag import RAGIndex, RAGPipeline, documents_from_skills
+from fin_skills.rag.research import research_context
 
 
 def retrieve_context(query, documents=None, skills=None, include_references=True,
@@ -18,7 +19,7 @@ def retrieve_context(query, documents=None, skills=None, include_references=True
                                       as_of=as_of)
 
 
-FUNCTIONS = {"retrieve_context": retrieve_context}
+FUNCTIONS = {"retrieve_context": retrieve_context, "research_context": research_context}
 
 
 def definitions():
@@ -27,7 +28,21 @@ def definitions():
         "source": {"type": "string"}, "metadata": {"type": "object"},
         "available_at": {"type": ["string", "null"]}},
         "required": ["id", "text"], "additionalProperties": False}
-    return [{"name": "retrieve_context", "description":
+    research = {"name": "research_context", "description":
+        "Start here for one-query financial knowledge retrieval: relevant packaged skills/references, "
+        "exact JSON tool schemas and call templates, plus optional dated evidence. Offline BM25, "
+        "no tool execution or investment decision. as_of filters evidence only; library knowledge "
+        "is the current installed version, not reconstructed historical information.",
+        "input_schema": {"type": "object", "properties": {
+            "query": {"type": "string", "minLength": 1},
+            "documents": {"type": "array", "items": document},
+            "skills": {"type": "array", "items": {"type": "string"}},
+            "as_of": {"type": "string"},
+            "top_k": {"type": "integer", "minimum": 1, "maximum": 10},
+            "tool_k": {"type": "integer", "minimum": 1, "maximum": 5},
+            "max_context_chars": {"type": "integer", "minimum": 800, "maximum": 12000}},
+            "required": ["query"], "additionalProperties": False}}
+    return [research, {"name": "retrieve_context", "description":
              "Build cited RAG context from explicit document text and/or packaged skills using "
              "offline BM25. With neither source supplied, use all packaged skills. No file reads "
              "outside the packaged corpus, network or text generation. as_of excludes undated and "

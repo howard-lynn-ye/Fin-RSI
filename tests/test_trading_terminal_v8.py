@@ -151,7 +151,8 @@ def test_v8_real_worker_contract_submission_and_raw_isolation(workspace):
         assert not c.call('run_python', {'code': 'open("quotes.csv","w").write("bad")'})['ok']
 
 
-def test_v8_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(tmp_path, monkeypatch):
+@pytest.mark.parametrize('interface', ['v8', 'v9'])
+def test_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(tmp_path, monkeypatch, interface):
     pytest.importorskip('bs4')
     from benchmarks.agent_study import multisource_model_study as study
     from benchmarks.agent_study.qualify_model_matrix import prompts
@@ -170,12 +171,12 @@ def test_v8_freeze_uses_terminal_deadline_and_qualification_uses_identical_promp
     evidence = tmp_path / 'evidence.json'
     evidence.write_text(json.dumps(records))
     root = tmp_path / 'new-run'
-    study.freeze(root, '7b', 11, evidence, allow_retrospective=True)
+    study.freeze(root, '7b', 11, evidence, allow_retrospective=True, interface=interface)
     protocol = study.verify(root)
-    assert protocol['version'] == 'multisource-model-v3' and protocol['interface'] == 'v8'
+    assert protocol['version'] == study.VERSIONS[interface] and protocol['interface'] == interface
     assert protocol['objective'] == v8.OBJECTIVE and protocol['deadline'] == '2025-01-06'
     for arm, messages in prompts(root):
-        assert messages[0]['content'] == v8.system_prompt(arm)
+        assert messages[0]['content'] == study.terminal_runtime(interface).system_prompt(arm)
         assert '2025-01-06' in messages[1]['content'] and 'risk-adjusted' not in messages[1]['content']
     protocol['deadline'] = '2099-01-01'
     (root / 'protocol.json').write_text(json.dumps(protocol))
@@ -183,7 +184,8 @@ def test_v8_freeze_uses_terminal_deadline_and_qualification_uses_identical_promp
         study.verify(root)
 
 
-def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(tmp_path, monkeypatch):
+@pytest.mark.parametrize('interface', ['v8', 'v9'])
+def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(tmp_path, monkeypatch, interface):
     pytest.importorskip('bs4')
     from benchmarks.agent_study import multisource_model_study as study
     from benchmarks.agent_study.audit_model_multisource import audit
@@ -193,7 +195,7 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
     root = tmp_path / 'case'
     (root / 'data').mkdir(parents=True)
     prices.to_csv(root / 'data' / study.md.HIDDEN)
-    protocol = dict(interface='v8', model=['fixture', 'fixture', 'fixture'], seed=11,
+    protocol = dict(interface=interface, model=['fixture', 'fixture', 'fixture'], seed=11,
                     initial_capital=v8.INITIAL_CAPITAL, capital_currency='USD', cost_bps=5,
                     universe=list(study.md.TICKERS), window=[dates[1], dates[-1]], limits=[])
     inputs = dict(arms=['raw', 'library'], picks=[0, 2])
@@ -204,9 +206,13 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
     receipt = dict(protocol_sha256=study.old.sha(root / 'protocol.json'), decisions={},
         capability_qualification_sha256=study.old.sha(root / 'capability-qualification.json'),
         decision_qualification_sha256=study.old.sha(root / 'decision-qualification.json'))
+    if interface == 'v9':
+        study.old.write(root / 'rag-qualification.json', {'fixture': True})
+        receipt['rag_qualification_sha256'] = study.old.sha(root / 'rag-qualification.json')
     for arm in inputs['arms']:
         for index, pick in enumerate(inputs['picks']):
-            record = v8.decide(lambda _: response('hold') if index else response('submit', {'weights': {'SPY': 1}}),
+            record = study.terminal_runtime(interface).decide(
+                               lambda _: response('hold') if index else response('submit', {'weights': {'SPY': 1}}),
                                Controller(arm), 'synthetic test')
             record.update(date=dates[pick], index=pick)
             name = f'decisions/{arm}/{index:02d}.json'

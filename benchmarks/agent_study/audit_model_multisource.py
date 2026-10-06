@@ -33,7 +33,7 @@ def audit(root):
         np.testing.assert_allclose(nav, reference, atol=1e-12, rtol=0)
         np.testing.assert_allclose(detail['return_rate_pct'], scores['paths'][arm]['return_rate_pct'],
                                    atol=1e-10, rtol=0)
-        if p.get('interface') == 'v8':
+        if p.get('interface') in ('v8', 'v9'):
             reported = scores['paths'][arm]
             if reported['initial_capital'] != p['initial_capital'] or reported['capital_currency'] != p['capital_currency']:
                 raise ValueError('reported initial capital/currency differs from protocol')
