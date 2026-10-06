@@ -18,10 +18,18 @@ from benchmarks.agent_study.model_matrix import matrix
 
 
 def prompts(root):
+    protocol = study.old.load(root / 'protocol.json')
     packets = study.old.load(root / 'evidence-packets.json')
     inputs = study.old.load(root / 'inputs.json')
     holdings = dict.fromkeys(study.md.TICKERS, 1 / len(study.md.TICKERS))
     for arm in ('raw', 'library'):
+        if protocol.get('interface') == 'v8':
+            from benchmarks.agent_study import trading_runtime_v8 as terminal
+            for day in inputs['dates']:
+                yield arm, [dict(role='system', content=terminal.system_prompt(arm)),
+                            dict(role='user', content=terminal.task(day, holdings, protocol['deadline']) +
+                                 study.evidence_text(packets[day]))]
+            continue
         guide, _ = study.runtime.orientation(arm, study.GUIDE)
         system = cap.COMMON + (cap.LIBRARY + '\n' + guide if arm == 'library' else '')
         system += '\nCurrent call 1 of 8; 8 calls remain including this one. Finish with submit(weights).'
