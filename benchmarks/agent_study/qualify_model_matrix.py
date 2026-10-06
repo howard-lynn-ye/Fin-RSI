@@ -11,22 +11,10 @@ from pathlib import Path
 
 from benchmarks.agent_study import multisource_model_study as study
 from benchmarks.agent_study import trading_capabilities as cap
-from benchmarks.agent_study.transformers_chat import context_limit, tokenize_chat
-
-
-def matrix(path):
-    rows = study.old.load(path)['models']
-    for field in ('id', 'model'):
-        if len({r[field] for r in rows}) != len(rows):
-            raise ValueError(f'duplicate {field}; aliases must not increase the model count')
-    if len(rows) < 20:
-        raise ValueError('at least 20 distinct planned models required')
-    for row in rows:
-        if row['transport'] == 'hf':
-            revision = row.get('revision', '')
-            if len(revision) != 40 or any(c not in '0123456789abcdef' for c in revision):
-                raise ValueError('open-weight revisions must be full commit hashes')
-    return rows
+from benchmarks.agent_study.transformers_chat import (
+    context_limit, load_tokenizer, tokenize_chat, validate_reasoning_tokens,
+)
+from benchmarks.agent_study.model_matrix import matrix
 
 
 def prompts(root):
@@ -58,7 +46,8 @@ def qualify(root, manifest, output, cache):
                 config = AutoConfig.from_pretrained(row['model'], **kwargs)
                 if type(config) not in AutoModelForCausalLM._model_mapping:
                     raise ValueError('installed transformers has no local causal-LM implementation')
-                tokenizer = AutoTokenizer.from_pretrained(row['model'], **kwargs)
+                tokenizer = load_tokenizer(row['model'], **kwargs)
+                validate_reasoning_tokens(tokenizer)
                 limit = context_limit(config, tokenizer)
                 counts = dict(raw=[], library=[])
                 default_tokenizer_duplicates = False

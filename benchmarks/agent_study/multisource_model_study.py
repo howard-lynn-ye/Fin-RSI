@@ -22,13 +22,19 @@ from benchmarks.agent_study import trading_study_v5 as previous
 from benchmarks.agent_study import trading_runtime_v6 as runtime
 from benchmarks.agent_study.manual_multisource import AGE_LIMITS, asof_records, digest
 from benchmarks.agent_study.trading_tools_v5 import turn_counts
+from benchmarks.agent_study.model_matrix import MANIFEST, hf_models, matrix
 
 GUIDE = Path(__file__).with_name("trading_library_guide_multisource.md")
 MODELS = old.MODELS + (("mistral12b", "mistralai/Mistral-Nemo-Instruct-2407",
                         "04d8a90549d23fc6bd7f642064003592df51e9b3"),
                       ("assistant", "assistant_in_current_conversation", "not_independently_attested"))
+HF_ROWS = tuple(r for r in matrix() if r['transport'] == 'hf')
+# Preserve identifiers used by existing archived runs; aliases never add a model.
+LEGACY_IDS = {name: family for family, name, revision in MODELS}
+MATRIX_MODELS = hf_models(HF_ROWS, MODELS)
+MODELS += tuple(m for m in MATRIX_MODELS if m[1] not in LEGACY_IDS)
 BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
-           "personal": ("assistant",)}
+           "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS)}
 COMMON = runtime.COMMON.replace(
     "Use only the visible market files for the task.",
     "Use only the visible market files and the dated evidence packet supplied in the user message for the task.",
@@ -41,9 +47,10 @@ def sources():
     extra = list(here.glob("trading_*v6.*")) + [Path(__file__), here / "manual_multisource.py", GUIDE,
         here / "trading_capabilities.py", here / "trading_worker_v7.py",
         here / "audit_manual_multisource.py", here / "audit_model_multisource.py",
-        here / "personal_chat.py"]
+        here / "personal_chat.py", here / "model_matrix.py", MANIFEST,
+        here / "qualify_model_matrix.py"]
     result.update({p.relative_to(previous.REPO).as_posix(): old.sha(p)
-                   for p in extra if p.suffix in (".py", ".md")})
+                   for p in extra if p.suffix in (".py", ".md", ".json")})
     return result
 
 
@@ -86,6 +93,8 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
     model = model_spec(family, seed, batch)
     if interface not in ("v6", "v7"):
         raise ValueError("unknown interface")
+    if batch == 'matrix_hf' and interface != 'v7':
+        raise ValueError('new model matrix requires the repaired v7 interface')
     if batch == 'personal' and interface != 'v7':
         raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
@@ -351,7 +360,7 @@ def aggregate(batch, group="original"):
             reference = common
         elif common != reference:
             raise ValueError("mixed evidence, market data, sources or protocols in batch")
-        family, seed = root.name.split("-")
+        family, seed = root.name.rsplit("-", 1)
         if tuple(p["model"]) != model_spec(family, int(seed), group) or p["seed"] != int(seed):
             raise ValueError("model/seed does not match declared pair")
         assert set(inputs["arms"]) == {"raw", "library"}

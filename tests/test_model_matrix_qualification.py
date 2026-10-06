@@ -2,7 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchmarks.agent_study.transformers_chat import context_limit, tokenize_chat
+from benchmarks.agent_study.transformers_chat import (
+    context_limit, decode_response, tokenize_chat, validate_reasoning_tokens,
+)
 
 
 def test_chat_tokens_preserve_single_bos_and_eos():
@@ -25,10 +27,56 @@ def test_context_uses_actual_smallest_supported_limit(model, tokenizer, wanted):
                          SimpleNamespace(model_max_length=tokenizer)) == wanted
 
 
+@pytest.mark.parametrize('implicit', [False, True])
+def test_reasoning_special_tokens_survive_until_final_action_parsing(implicit):
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    draft = '{"tool":"submit","arguments":{"SPY":1}}'
+    final = '{"tool":"submit","arguments":{"IEF":1}}'
+
+    class Tokenizer:
+        all_special_tokens = ['<think>', '</think>', '<eos>']
+
+        def decode(self, tokens, *, skip_special_tokens):
+            assert skip_special_tokens is False
+            return ('' if implicit else '<think>') + draft + '</think>' + final + '<eos>'
+
+    prompt = 'assistant\n<think>\n' if implicit else 'assistant\n'
+    text = decode_response(Tokenizer(), [], prompt)
+    call, status = extract_call(text)
+    assert call['arguments'] == {'IEF': 1}
+    assert '<eos>' not in text and '<think>' in text
+
+
+@pytest.mark.parametrize('text,status', [
+    ('<think>{"tool":"submit","arguments":{"SPY":1}}', 'reasoning-incomplete'),
+    ('</think>{"tool":"submit","arguments":{"SPY":1}}', 'reasoning-malformed'),
+    ('<think><think>nested</think></think>{"tool":"submit","arguments":{"SPY":1}}',
+     'reasoning-malformed'),
+])
+def test_incomplete_or_malformed_reasoning_cannot_execute_a_trade(text, status):
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    assert extract_call(text) == (None, status)
+
+
+def test_unqualified_reasoning_delimiters_stop_before_inference():
+    validate_reasoning_tokens(SimpleNamespace(all_special_tokens=['<think>', '</think>', '<eos>']))
+    with pytest.raises(ValueError, match='unqualified reasoning'):
+        validate_reasoning_tokens(SimpleNamespace(all_special_tokens=['[THINK]', '[/THINK]']))
+
+
+def test_decoding_stops_before_a_fabricated_next_turn():
+    class Tokenizer:
+        all_special_tokens = ['<eos>']
+
+        def decode(self, tokens, **kwargs):
+            assert tokens == [1, 2]
+            return 'final answer'
+    assert decode_response(Tokenizer(), [1, 2, 99, 3, 4], 'assistant', (99,)) == 'final answer'
+
+
 def test_model_matrix_rejects_alias_counting_and_unpinned_revisions(tmp_path):
-    pytest.importorskip('bs4')
     import json
-    from benchmarks.agent_study.qualify_model_matrix import matrix
+    from benchmarks.agent_study.model_matrix import matrix
     rows = [dict(id=str(i), model=f'model/{i}', transport='hf', revision='a'*40)
             for i in range(20)]
     path = tmp_path / 'models.json'
@@ -43,3 +91,14 @@ def test_model_matrix_rejects_alias_counting_and_unpinned_revisions(tmp_path):
     path.write_text(json.dumps({'models': rows}))
     with pytest.raises(ValueError, match='full commit hashes'):
         matrix(path)
+
+
+def test_matrix_cannot_silently_replace_a_declared_revision_or_model():
+    from benchmarks.agent_study.model_matrix import hf_models
+    legacy = [('7b', 'Org/Old', 'a' * 40)]
+    row = dict(id='alias', model='Org/Old', transport='hf', revision='b' * 40)
+    with pytest.raises(ValueError, match='revision differs'):
+        hf_models([row], legacy)
+    row.update(id='7b', model='Other/New', revision='a' * 40)
+    with pytest.raises(ValueError, match='collides'):
+        hf_models([row], legacy)
