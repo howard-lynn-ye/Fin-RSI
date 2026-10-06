@@ -123,6 +123,14 @@ def extract_call(text):
         try:
             value, end = decoder.raw_decode(stripped, start)
         except ValueError:
+            # A malformed later action is still an extra action. For example,
+            # Granite emitted a valid read followed by submit(weights=weights)
+            # encoded as JSON with an unquoted Python variable. Counting only
+            # decoded objects silently executed the read and hid the bad submit.
+            if re.match(r'\{\s*"tool"\s*:', stripped[start:]):
+                actions += 1
+                if actions > 1:
+                    return None, 'multiple-actions'
             position = start + 1
             continue
         # Skip the entire decoded object, including nested objects and code strings.
