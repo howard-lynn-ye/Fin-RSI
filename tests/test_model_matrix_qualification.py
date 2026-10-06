@@ -97,6 +97,24 @@ def test_nested_json_code_and_reasoning_examples_do_not_count_as_extra_actions()
     assert extract_call(text) == (action, 'json')
 
 
+@pytest.mark.parametrize('malformed', [
+    '{"tool":"submit","arguments":{"weights":weights}}',
+    '{"tool":"submit","arguments":{"weights":',
+])
+@pytest.mark.parametrize('malformed_first', [False, True])
+def test_malformed_extra_action_cannot_be_hidden_by_a_valid_read(malformed, malformed_first):
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    valid = '{"tool":"read_evidence","arguments":{}}'
+    parts = [malformed, valid] if malformed_first else [valid, malformed]
+    assert extract_call('\n'.join(parts)) == (None, 'multiple-actions')
+
+
+def test_single_legacy_python_envelope_and_quoted_json_keep_their_existing_meaning():
+    from benchmarks.agent_study.trading_runtime_v6 import extract_call
+    text = '{"tool":"run_python","arguments":{"code":"""print(1)"""}}'
+    assert extract_call(text) == ({'tool': 'run_python', 'arguments': {'code': 'print(1)'}}, 'lenient')
+
+
 def test_decoding_stops_before_a_fabricated_next_turn():
     class Tokenizer:
         all_special_tokens = ['<eos>']
