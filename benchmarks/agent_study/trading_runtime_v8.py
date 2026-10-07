@@ -37,6 +37,17 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
+INTERACTION_REVISION = '20261007-final-contract'
+FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
+Use the supplied information and prior tool results. No additional research is available.
+Return exactly ONE complete JSON object, with no prose or Python code:
+- To rebalance: {"tool":"submit","arguments":{"weights":{...}}}. Replace ... with your
+chosen allowed ticker-to-number entries. Weights must be finite, nonnegative and total <=1.
+Omitted instruments have target weight zero; unallocated capital is cash earning zero.
+- To keep existing units and cash: {"tool":"hold","arguments":{}}.
+Holding an all-cash account leaves it entirely in cash; it does not buy any assets.
+These are format instructions, not investment recommendations. Decide using the stated goal.
+Response 8 of 8; there is no further response. No research calls.'''
 
 
 def task(day, holdings, deadline):
@@ -52,9 +63,9 @@ def task(day, holdings, deadline):
 def system_prompt(arm, turn_index=0):
     if arm not in ('raw', 'library'):
         raise ValueError('unknown arm')
-    text = COMMON + (LIBRARY if arm == 'library' else '')
     if turn_index == old.MAX_TURNS - 1:
-        return text + '\nFINAL DECISION: return exactly one submit or hold JSON now. No research calls.'
+        return FINAL_DECISION
+    text = COMMON + (LIBRARY if arm == 'library' else '')
     return text + f'\nResearch response {turn_index + 1}/7; final decision is response 8.'
 
 
@@ -76,10 +87,12 @@ class Tools(cap.Tools):
             result['transport'] = 'Python only'
         if name == 'hold':
             result.update(transport='JSON only', example={'tool': 'hold', 'arguments': {}},
-                          effect='Keep current asset units and cash; no rebalance or trading fee.')
+                          effect='Keep current asset units and cash; no rebalance or trading fee. '
+                                 'An all-cash account stays entirely in cash.')
         elif name == 'submit':
             result['example'] = {'tool': 'submit', 'arguments': {'weights': {'SPY': 0.5}}}
-            result['note'] = 'Shape example only. Choose your own assets/weights. Missing weights are zero.'
+            result['note'] = ('Shape example only. Choose your own assets/weights. Missing weights are zero. '
+                              'Optional rationale is a string recorded with the response, not an order parameter.')
         elif name == 'run_python':
             result['python_example'] = ('import json\nevidence=json.load(open("evidence.json"))\n'
                                         'print([(r["id"],r["category"]) for r in evidence["records"]])')
@@ -169,8 +182,15 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
                 action = 'hold'
                 result = dict(ok=True, decision_action='hold', submission=None)
         elif tool == 'submit':
-            weights = args.get('weights') if isinstance(args, dict) and set(args) == {'weights'} else None
-            target, problem = validate_weights(weights)
+            # Explanatory metadata must not discard otherwise explicit valid weights.
+            # Unknown order parameters still fail instead of being silently ignored.
+            if (not isinstance(args, dict) or 'weights' not in args or
+                    set(args) - {'weights', 'rationale'} or
+                    ('rationale' in args and not isinstance(args['rationale'], str))):
+                target, problem = None, ('submit arguments require weights (ticker-to-number dictionary) '
+                                         'and accept only an optional string rationale. No other keys.')
+            else:
+                target, problem = validate_weights(args['weights'])
             result = dict(ok=target is not None, submission=target, error=problem)
             if target is not None:
                 action = 'submit'
@@ -191,6 +211,10 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
         turns.append(row)
         if action is not None:
             break
+        if index == old.MAX_TURNS - 2:
+            # The imminent stage is also the most recent user message. Keep this
+            # exact delivered text in the record, including any preceding error.
+            row['model_feedback'] += '\n\n' + FINAL_DECISION
         history += [dict(role='assistant', content=text), dict(role='user', content=row['model_feedback'])]
     return dict(target=target, submitted=action == 'submit', decision_action=action or 'failed',
                 decision_completed=action is not None, turns=turns, tool_calls=controller.calls,

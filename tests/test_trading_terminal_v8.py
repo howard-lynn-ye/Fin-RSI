@@ -31,6 +31,8 @@ def test_seven_reads_cannot_consume_the_reserved_eighth_decision(arm):
         requests.append([dict(m) for m in messages])
         if len(requests) == 8:
             assert 'FINAL DECISION' in messages[0]['content']
+            assert messages[-1]['content'].endswith(v8.FINAL_DECISION)
+            assert 'list_algorithms' not in messages[0]['content']
             return response('submit', {'weights': {'SPY': .75, 'IEF': .25}})
         return response('read_market')
     record = v8.decide(backend, c, v8.task('2025-01-03', {}, '2026-09-25'))
@@ -41,6 +43,25 @@ def test_seven_reads_cannot_consume_the_reserved_eighth_decision(arm):
     assert 'risk-adjusted' not in requests[0][0]['content'] + requests[0][1]['content']
     assert '2026-09-25' in requests[0][1]['content']
     assert ('fin-skills' in requests[0][0]['content']) == (arm == 'library')
+    assert record['turns'][-2]['model_feedback'] == requests[-1][-1]['content']
+
+
+@pytest.mark.parametrize('arm', ['raw', 'library'])
+def test_submit_can_carry_explanation_without_changing_weights(arm):
+    record = v8.decide(lambda _: response('submit', {
+        'weights': {'SPY': .6}, 'rationale': 'Model-authored explanation, not an order.'}),
+        Controller(arm), 'fixture')
+    v8.validate_decision(record)
+    assert record['decision_action'] == 'submit' and record['target']['SPY'] == .6
+    assert sum(record['target'].values()) == .6 and len(record['turns']) == 1
+
+
+@pytest.mark.parametrize('extra', [{'leverage': 2}, {'rationale': {'SPY': 1}}])
+def test_submit_does_not_ignore_unrecognized_or_invalid_metadata(extra):
+    record = v8.decide(lambda _: response('submit', {'weights': {'SPY': .6}, **extra}),
+                       Controller('raw'), 'fixture')
+    assert record['decision_action'] == 'failed' and record['target'] is None
+    assert all('No other keys' in t['result']['error'] for t in record['turns'])
 
 
 @pytest.mark.parametrize('last', [response('read_market'), response('run_python', {'code': 'submit({"SPY":1})'}),

@@ -146,7 +146,9 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
                 "not the earlier manual assistant case or an equal-budget comparison with it"])
     if interface in ('v8', 'v9'):
         terminal = terminal_runtime(interface)
+        from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
+                        interaction_revision=INTERACTION_REVISION,
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=old.MAX_TURNS - 1, final_decision_responses=1,
                         final_actions=['submit', 'hold'],
@@ -177,8 +179,9 @@ def verify(root):
         raise ValueError("protocol/source changed; use the archived source matching this protocol, "
                          "or freeze a new run. Never weaken hashes to score an old run with new code.")
     if p.get('interface') in ('v8', 'v9'):
-        from benchmarks.agent_study.trading_runtime_v8 import OBJECTIVE, INITIAL_CAPITAL
+        from benchmarks.agent_study.trading_runtime_v8 import OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
+                p.get('interaction_revision') != INTERACTION_REVISION or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
                 p['research_responses'] != old.MAX_TURNS - 1 or p['final_decision_responses'] != 1 or
