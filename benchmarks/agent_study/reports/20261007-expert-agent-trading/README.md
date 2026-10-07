@@ -4,6 +4,9 @@ This report records a complete 44-decision paired trading experiment evaluating 
 operating with and without the `fin_skills` library on real US market data from January 2, 2025
 through September 22, 2026.
 
+See [RESEARCH_DISCUSSION_20261007.md](RESEARCH_DISCUSSION_20261007.md) for the complete transcript,
+problem diagnosis across model sizes, attribution analysis, and the `fin_skills` redesign blueprint.
+
 ## 1. Study Design and Accounting Protocol
 
 The experiment strictly follows the v8 terminal net-return protocol:
