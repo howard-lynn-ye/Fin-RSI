@@ -95,7 +95,7 @@ def worker(source, root, output):
                if p.get('batch') == 'personal' else
                'One complete v7 seed pair; the other declared seeds are incomplete. Not v8/v9 repair results.'),
         omissions='Original prompts, raw evidence and per-turn response text are excluded from the public ledger.')
-    with output.open('x') as stream:
+    with output.open('x', encoding='utf-8', newline='\n') as stream:
         json.dump(public, stream, indent=2, allow_nan=False)
     fields = ['arm', 'decision_number', 'date', 'execution_date', 'submitted', 'turn_count', 'failed_turns',
               'turnover', 'fee_fraction', 'decision_close_nav', 'execution_close_nav',

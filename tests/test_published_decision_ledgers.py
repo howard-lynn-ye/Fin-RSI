@@ -9,8 +9,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1] / 'benchmarks/agent_study/reports/20261007-additional-records'
 HASHES = {
-    'personal-v7-ledger': '1e34c9ffa9b422e3c311e9273a18943b72412c0a7facf345d46d1c1e1ca4d19e',
-    'mistral-small-24b-seed11': '359350f983840100b88af2363286d1bc21f1f8774b4b6b9394a6f5e2e01e5488',
+    'personal-v7-ledger': 'dc3b2b7016c0796ffa75200e62b82c6bdc36bb31334ccfe99720a2f1763ca11e',
+    'mistral-small-24b-seed11': '010b2fc6d76beeaad5ed5116b59f64f8ca7c497e924ad9ed156adfd4a41b8d45',
 }
 
 
