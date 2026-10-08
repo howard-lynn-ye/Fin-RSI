@@ -16,6 +16,8 @@ def test_rag_is_directly_discoverable_but_raw_prompt_is_unchanged():
     assert v9.system_prompt('library', 7).endswith('No research calls.')
     assert 'research_context' not in v9.system_prompt('library', 7)
     assert v9.system_prompt('library', 7) == v9.system_prompt('raw', 7)
+    assert 'research_context' not in v9.system_prompt('library', 6)
+    assert v9.system_prompt('library', 6) == v9.system_prompt('raw', 6)
 
 
 def test_direct_query_delivers_evidence_contracts_and_bound_python(workspace):

@@ -12,6 +12,7 @@ from benchmarks.agent_study import trading_study as old
 from benchmarks.agent_study.trading_capabilities import encoded, evidence_snapshot, write_evidence_snapshot
 from benchmarks.agent_study.market_data import TICKERS
 from benchmarks.agent_study.trading_tools_v6 import execution_status, validate_weights
+from benchmarks.agent_study.trading_submission_v8 import extract_decision, submission
 
 
 COMMON = '''Choose your own investments to maximize cumulative Return Rate after trading costs by the deadline.
@@ -24,11 +25,14 @@ quotes.csv is unadjusted, corporate_actions.csv contains visible actions, eviden
 contains current eligible records. Source dates/coverage limitations remain in the evidence packet.
 Return ONE JSON call {"tool":"name","arguments":{...}} or ONE complete Python fence.
 Check reply["ok"]. Readers page results; follow next_offset when needed. Print compact output.
-Finish with a submit JSON call containing arguments.weights, a dictionary of your chosen
-ticker weights (finite, nonnegative, total <=1), or {"tool":"hold","arguments":{}}
-to keep existing units without trading. Python submit(weights) also ends a research turn.
-Eight responses maximum, 1024 output tokens each. Response 8 is reserved for submit/hold JSON
-only. Invalid responses consume a turn; an unresolved failure keeps units and is recorded as failure.
+Finish with {"allocation":{"SPY":2,"CASH":1}} (shape example only; choose your own assets/parts),
+or HOLD to keep existing units without trading. Allocation parts need not sum to 1 or 100:
+the executor divides each asset and CASH part by their total. CASH must be explicit, even zero.
+This sets a whole portfolio: omitted assets are sold to zero; cash sets your chosen exposure.
+Absolute {"weights":{...}} or submit(arguments.weights) remains supported but must total <=1.
+Python submit(weights) also ends a research turn. Eight responses maximum, 1024 tokens each:
+responses 1-6 for research, 7-8 reserved for a decision and correction if needed. No extra call.
+Invalid responses consume a turn; an unresolved failure keeps units and is recorded as failure.
 '''
 LIBRARY = '''fin-skills is available for financial knowledge, data preparation, algorithms and audits.
 Discover it with list_skills(query=""), list_algorithms(task=None), list_library_tools(query="").
@@ -37,17 +41,20 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261007-final-contract'
+INTERACTION_REVISION = '20261008-explicit-allocation'
+RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
-Return exactly ONE complete JSON object, with no prose or Python code:
-- To rebalance: {"tool":"submit","arguments":{"weights":{...}}}. Replace ... with your
-chosen allowed ticker-to-number entries. Weights must be finite, nonnegative and total <=1.
-Omitted instruments have target weight zero; unallocated capital is cash earning zero.
-- To keep existing units and cash: {"tool":"hold","arguments":{}}.
+Return HOLD, or ONE JSON object describing your whole portfolio, with no prose or Python:
+- Relative parts: {"allocation":{"SPY":2,"CASH":1}} is a shape example, not advice.
+Choose your own allowed assets and nonnegative parts; include CASH explicitly, even if zero.
+The executor divides each part by the total. Parts need not sum to 1 or 100.
+Omitted assets are sold to zero; your CASH part controls the remaining exposure.
+- Absolute fractions: {"weights":{...}} must be nonnegative and total <=1; never silently scaled.
+- HOLD or {"action":"hold"} keeps existing units and cash. Legacy submit/hold tool JSON also works.
 Holding an all-cash account leaves it entirely in cash; it does not buy any assets.
 These are format instructions, not investment recommendations. Decide using the stated goal.
-Response 8 of 8; there is no further response. No research calls.'''
+No research calls.'''
 
 
 def task(day, holdings, deadline):
@@ -57,16 +64,18 @@ def task(day, holdings, deadline):
             f'Allowed instruments: {", ".join(TICKERS)}. Current drifted weights: '
             f'{json.dumps(holdings)}. Cost: {old.COST_BPS:g} bps per traded side. '
             f'Targets execute next-session close; decisions every {old.STEP} sessions '
-            'through the deadline. Submit target weights or hold existing units.')
+            'through the deadline. Choose asset/CASH allocation parts, target weights, or HOLD.')
 
 
 def system_prompt(arm, turn_index=0):
     if arm not in ('raw', 'library'):
         raise ValueError('unknown arm')
-    if turn_index == old.MAX_TURNS - 1:
-        return FINAL_DECISION
+    if turn_index >= RESEARCH_RESPONSES:
+        remaining = old.MAX_TURNS - turn_index - 1
+        return (FINAL_DECISION + f'\nDecision response {turn_index + 1}/{old.MAX_TURNS}; '
+                f'{remaining} correction responses remain after this one. No research calls.')
     text = COMMON + (LIBRARY if arm == 'library' else '')
-    return text + f'\nResearch response {turn_index + 1}/7; final decision is response 8.'
+    return text + f'\nResearch response {turn_index + 1}/{RESEARCH_RESPONSES}; decisions use responses 7-8.'
 
 
 class Tools(cap.Tools):
@@ -78,7 +87,7 @@ class Tools(cap.Tools):
             available |= set(self.LIBRARY) | {'load_history', 'execute_library_tool'}
         if name not in available:
             raise ValueError('Unknown/unavailable tool; available names: ' + ', '.join(sorted(available)))
-        special = {'run_python': '(code)', 'submit': '(weights)', 'hold': '()'}
+        special = {'run_python': '(code)', 'submit': '(weights=None, allocation=None)', 'hold': '()'}
         signature = special[name] if name in special else str(inspect.signature(getattr(self, name)))
         result = dict(ok=True, name=name, signature=name + signature,
                       transport='JSON and bound Python; do not import study tools',
@@ -90,9 +99,11 @@ class Tools(cap.Tools):
                           effect='Keep current asset units and cash; no rebalance or trading fee. '
                                  'An all-cash account stays entirely in cash.')
         elif name == 'submit':
-            result['example'] = {'tool': 'submit', 'arguments': {'weights': {'SPY': 0.5}}}
-            result['note'] = ('Shape example only. Choose your own assets/weights. Missing weights are zero. '
-                              'Optional rationale is a string recorded with the response, not an order parameter.')
+            result['example'] = {'allocation': {'SPY': 2, 'CASH': 1}}
+            result['transport'] = 'JSON: weights or allocation; Python submit(weights) accepts absolute weights only'
+            result['note'] = ('Shape example only. Choose assets AND CASH parts; parts are divided by their total. '
+                              'CASH is required, even zero. Omitted assets are sold to zero. Absolute weights '
+                              'are also accepted but never silently scaled. Optional rationale is a string.')
         elif name == 'run_python':
             result['python_example'] = ('import json\nevidence=json.load(open("evidence.json"))\n'
                                         'print([(r["id"],r["category"]) for r in evidence["records"]])')
@@ -158,7 +169,7 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
     initial_request = [dict(m) for m in history]
     target, action, turns = None, None, []
     for index in range(old.MAX_TURNS):
-        final = index == old.MAX_TURNS - 1
+        final = index >= RESEARCH_RESPONSES
         history[0]['content'] = prompt_factory(controller.arm, index)
         fingerprint = hashlib.sha256(cap.encoded(history).encode()).hexdigest()
         try:
@@ -168,11 +179,13 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
         choice = response['choices'][0]
         text = choice['message']['content']
         call, status = ((None, 'generation-truncated') if choice['finish_reason'] == 'length'
-                        else prior.extract_call(text))
+                        else extract_decision(text))
         tool = call.get('tool') if call else None
         args = call.get('arguments') if call else None
         if call is None:
-            result = dict(ok=False, error='Response not executed: ' + status + '. Return one complete JSON call.')
+            result = dict(ok=False, error='Response not executed: ' + status +
+                          '. Return HOLD or one complete allocation/weights JSON decision; '
+                          'research uses one tool JSON call.')
         elif final and (tool not in ('submit', 'hold') or status != 'json'):
             result = dict(ok=False, error='Final stage accepts only one submit or hold JSON; research was not executed.')
         elif tool == 'hold':
@@ -182,16 +195,8 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
                 action = 'hold'
                 result = dict(ok=True, decision_action='hold', submission=None)
         elif tool == 'submit':
-            # Explanatory metadata must not discard otherwise explicit valid weights.
-            # Unknown order parameters still fail instead of being silently ignored.
-            if (not isinstance(args, dict) or 'weights' not in args or
-                    set(args) - {'weights', 'rationale'} or
-                    ('rationale' in args and not isinstance(args['rationale'], str))):
-                target, problem = None, ('submit arguments require weights (ticker-to-number dictionary) '
-                                         'and accept only an optional string rationale. No other keys.')
-            else:
-                target, problem = validate_weights(args['weights'])
-            result = dict(ok=target is not None, submission=target, error=problem)
+            result = submission(args)
+            target = result['submission']
             if target is not None:
                 action = 'submit'
         else:
@@ -211,10 +216,10 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
         turns.append(row)
         if action is not None:
             break
-        if index == old.MAX_TURNS - 2:
+        if RESEARCH_RESPONSES - 1 <= index < old.MAX_TURNS - 1:
             # The imminent stage is also the most recent user message. Keep this
             # exact delivered text in the record, including any preceding error.
-            row['model_feedback'] += '\n\n' + FINAL_DECISION
+            row['model_feedback'] += '\n\n' + prompt_factory(controller.arm, index + 1)
         history += [dict(role='assistant', content=text), dict(role='user', content=row['model_feedback'])]
     return dict(target=target, submitted=action == 'submit', decision_action=action or 'failed',
                 decision_completed=action is not None, turns=turns, tool_calls=controller.calls,
@@ -238,9 +243,19 @@ def validate_decision(record):
         raise ValueError('submission must match the accepted final execution')
     if action == 'hold':
         turn = record['turns'][-1]
-        call, _ = prior.extract_call(turn['response'])
+        call, _ = extract_decision(turn['response'])
         if call != {'tool': 'hold', 'arguments': {}} or not turn['result']['ok']:
             raise ValueError('hold must come from an explicit accepted model response')
+    if action == 'submit':
+        turn = record['turns'][-1]
+        call, _ = extract_decision(turn['response'])
+        if call and call.get('tool') == 'submit':
+            expected = submission(call.get('arguments'))
+            if not expected['ok'] or expected['submission'] != record['target']:
+                raise ValueError('target must match the explicit model allocation or weights')
+            for key in ('allocation_input', 'cash_weight', 'conversion'):
+                if expected.get(key) != turn['result'].get(key):
+                    raise ValueError('allocation conversion receipt changed')
 
 
 def qualify(root, *, controller_type=None, decide_fn=None):
@@ -266,6 +281,12 @@ def qualify(root, *, controller_type=None, decide_fn=None):
         record = decide_fn(backend, c, 'Synthetic protocol check, no investment outcome.')
         validate_decision(record)
         checks[arm + '/reserved_final_hold'] = record['decision_action'] == 'hold' and calls == 8
+        allocation = {'SPY': 2, 'CASH': 1}
+        record = decide_fn(lambda _: {'choices': [{'message': {'content': json.dumps(
+            {'allocation': allocation})}, 'finish_reason': 'stop'}]}, c, 'Synthetic allocation check.')
+        validate_decision(record)
+        checks[arm + '/explicit_allocation'] = (record['target']['SPY'] == 2 / 3 and
+            record['turns'][-1]['result']['cash_weight'] == 1 / 3)
     report = dict(passed=all(checks.values()), checks=checks,
                   protocol_sha256=old.sha(root / 'protocol.json'),
                   capability_sha256=old.sha(root / 'capability-qualification.json'))
