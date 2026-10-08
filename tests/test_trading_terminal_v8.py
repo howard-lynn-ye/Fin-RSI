@@ -25,20 +25,20 @@ class Controller:
 
 
 @pytest.mark.parametrize('arm', ['raw', 'library'])
-def test_seven_reads_cannot_consume_the_reserved_eighth_decision(arm):
+def test_six_reads_leave_a_decision_and_one_correction_response(arm):
     c, requests = Controller(arm), []
     def backend(messages):
         requests.append([dict(m) for m in messages])
         if len(requests) == 8:
             assert 'FINAL DECISION' in messages[0]['content']
-            assert messages[-1]['content'].endswith(v8.FINAL_DECISION)
+            assert messages[-1]['content'].endswith(v8.system_prompt(arm, 7))
             assert 'list_algorithms' not in messages[0]['content']
             return response('submit', {'weights': {'SPY': .75, 'IEF': .25}})
         return response('read_market')
     record = v8.decide(backend, c, v8.task('2025-01-03', {}, '2026-09-25'))
     v8.validate_decision(record)
     assert record['submitted'] and record['target']['SPY'] == .75
-    assert len(c.calls) == 7 and len(record['turns']) == 8
+    assert len(c.calls) == 6 and len(record['turns']) == 8
     assert record['turns'][-1]['phase'] == 'final'
     assert 'risk-adjusted' not in requests[0][0]['content'] + requests[0][1]['content']
     assert '2026-09-25' in requests[0][1]['content']
@@ -74,7 +74,7 @@ def test_invalid_final_action_is_failure_without_ninth_call_or_fallback(last):
         return last if len(calls) == 8 else response('read_market')
     record = v8.decide(backend, c, 'fixture')
     v8.validate_decision(record)
-    assert len(calls) == 8 and len(c.calls) == 7
+    assert len(calls) == 8 and len(c.calls) == 6
     assert record['target'] is None and record['decision_action'] == 'failed'
     assert not record['decision_completed'] and not record['submitted']
 
@@ -196,6 +196,8 @@ def test_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(t
     protocol = study.verify(root)
     assert protocol['version'] == study.VERSIONS[interface] and protocol['interface'] == interface
     assert protocol['objective'] == v8.OBJECTIVE and protocol['deadline'] == '2025-01-06'
+    assert protocol['research_responses'] == 6 and protocol['final_decision_responses'] == 2
+    assert protocol['interaction_revision'] == '20261008-explicit-allocation'
     for arm, messages in prompts(root):
         assert messages[0]['content'] == study.terminal_runtime(interface).system_prompt(arm)
         assert '2025-01-06' in messages[1]['content'] and 'risk-adjusted' not in messages[1]['content']
@@ -233,7 +235,8 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
     for arm in inputs['arms']:
         for index, pick in enumerate(inputs['picks']):
             record = study.terminal_runtime(interface).decide(
-                               lambda _: response('hold') if index else response('submit', {'weights': {'SPY': 1}}),
+                               lambda _: response('hold') if index else response('submit', {
+                                   'allocation': {'SPY': 7, 'CASH': 0}}),
                                Controller(arm), 'synthetic test')
             record.update(date=dates[pick], index=pick)
             name = f'decisions/{arm}/{index:02d}.json'

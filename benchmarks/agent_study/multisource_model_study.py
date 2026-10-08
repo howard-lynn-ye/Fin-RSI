@@ -146,17 +146,18 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
                 "not the earlier manual assistant case or an equal-budget comparison with it"])
     if interface in ('v8', 'v9'):
         terminal = terminal_runtime(interface)
-        from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION
+        from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION, RESEARCH_RESPONSES
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         interaction_revision=INTERACTION_REVISION,
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
-                        research_responses=old.MAX_TURNS - 1, final_decision_responses=1,
+                        research_responses=RESEARCH_RESPONSES, final_decision_responses=2,
+                        allocation_contract='explicit asset/CASH relative parts; absolute weights remain strict',
                         final_actions=['submit', 'hold'],
-                        treatment='short terminal-return task; on-demand library contracts; equal 7+1 response budget')
+                        treatment='terminal-return task; on-demand library contracts; equal 6+2 response budget')
         protocol['limits'].append('New objective and interaction protocol; not a causal comparison against older versions.')
         if interface == 'v9':
             protocol['treatment'] = ('direct research_context over installed knowledge and the same visible evidence; '
-                                     'current tool contracts; unchanged terminal objective and 7+1 response budget')
+                                     'explicit asset/CASH parts; unchanged terminal objective and equal 6+2 budget')
             protocol['limits'].append('RAG reference skills/contracts are current installed knowledge, not historical vintages.')
     if batch == 'personal':
         protocol.update(executor='conversation_authored_responses', temperature=None, top_p=None,
@@ -179,12 +180,14 @@ def verify(root):
         raise ValueError("protocol/source changed; use the archived source matching this protocol, "
                          "or freeze a new run. Never weaken hashes to score an old run with new code.")
     if p.get('interface') in ('v8', 'v9'):
-        from benchmarks.agent_study.trading_runtime_v8 import OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION
+        from benchmarks.agent_study.trading_runtime_v8 import (
+            OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION, RESEARCH_RESPONSES)
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p.get('interaction_revision') != INTERACTION_REVISION or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
-                p['research_responses'] != old.MAX_TURNS - 1 or p['final_decision_responses'] != 1 or
+                p['research_responses'] != RESEARCH_RESPONSES or p['final_decision_responses'] != 2 or
+                p.get('allocation_contract') != 'explicit asset/CASH relative parts; absolute weights remain strict' or
                 p['final_actions'] != ['submit', 'hold']):
             raise ValueError('terminal objective/deadline/decision budget changed')
     batch = p.get("batch", "original")
