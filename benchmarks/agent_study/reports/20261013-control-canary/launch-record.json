@@ -1,0 +1,68 @@
+{
+  "observed_utc": "2026-10-13T19:09:32.4901946Z",
+  "fix_merge": "8b477ff560e4081a8da909a0d9495d38c48c208d",
+  "fix_pr": "https://github.com/howard-lynn-ye/Fin-RSI/pull/45",
+  "fix_ci": {
+    "id": 38448633114,
+    "passed": 21,
+    "total": 21
+  },
+  "source": "/beacon-projects/radfm/wy891/fin-multisource-models-20261005/control-filter-20261013-candidate21/source",
+  "interaction_revision": "20261013-control-filter-v6",
+  "qualification": {
+    "file": "qualification.json",
+    "job": 2127462,
+    "models": {
+      "mistral12b": {
+        "autonomous_library_dates": "2/3",
+        "decisions": "6/6",
+        "access": "passed",
+        "remaining_errors": "Two model-written Python indexing failures in each arm, preserved; all final submissions valid"
+      },
+      "falcon3-10b": {
+        "autonomous_library_dates": "3/3",
+        "decisions": "6/6",
+        "access": "passed",
+        "remaining_errors": "No research/format errors observed in this small check"
+      }
+    },
+    "sha256": "3997c7e3ec6448ec968a45f6339f73e8b1109e4ef4e20ab7edf5f595d02e10bd",
+    "scope": "Three independent all-cash calendar scenarios per arm. Access probe explicitly requests a tool; investment cases remain autonomous. Not a full-cycle Return Rate result and not proof of general library profitability."
+  },
+  "followup_canary": {
+    "replaces": {
+      "job": 2125223,
+      "cancellation": "scancel --state=PENDING on this exact owned job only",
+      "confirmed": "PENDING, RunTime0, no started.json, no outputs"
+    },
+    "job": 2128254,
+    "models": [
+      "qwen-general-7b",
+      "32b"
+    ],
+    "root": "control-canary-20261013-r22",
+    "scope": "Interface only; same H100/8CPU/64G/4h resources as prior pending canary",
+    "state": "Submitted; waiting for job capacity as of last observation"
+  },
+  "full_cycle": {
+    "seeds": [
+      11,
+      23,
+      37
+    ],
+    "wall_limit_hours": 24,
+    "state": "Submitted; no complete repaired-period Return Rate yet",
+    "models": [
+      "mistral12b",
+      "falcon3-10b"
+    ],
+    "gate": "Both source21 canaries independently required again before submission and at driver startup. Each seed retains normal frozen protocol and actual preflight. Stop a model on failure; preserve records; no silent retry.",
+    "root": "v9-access-matrix-20261013-r23",
+    "metric": "100*(ending_capital/initial_capital-1), after declared costs",
+    "job": 2128774,
+    "gpu": "one RTX6000 Ada48GB; whole model on one GPU"
+  },
+  "cost_policy": "Local HF only; no paid/native/Claude calls and no heartbeat",
+  "publication": "Original completed-cycle positive/negative returns and full numerical ledgers already merged in PR45. This follow-up publishes canary evidence and launch configuration only.",
+  "operation_note": "Foreground srun in a remote bash script sent through stdin must use </dev/null, or it can consume following shell commands. The submitted Slurm drivers use script files and are unaffected."
+}
