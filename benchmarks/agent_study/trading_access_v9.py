@@ -71,6 +71,7 @@ def run(root, backend):
             # Actual decisions independently reset seed/calls and receive none
             # of these messages, responses, or results.
             backend.seed, backend.calls = p['seed'] * 1000, 0
+            backend.request_scope = f'access/{arm}'
             with study.decision_workspace(root, arm, 0, personal=False) as workspace:
                 study.md.truncate(root / 'data', workspace, day)
                 snapshot = v9.write_evidence_snapshot(study.old.load(root / 'evidence.json'),
@@ -117,6 +118,9 @@ def require(root):
         record = study.old.load(path)
         v8.validate_decision(record, expected_final_output=p['final_output'])
         v8.schema.check_backend(record, p)
+        if p.get('batch') == 'matrix_native':
+            from benchmarks.agent_study.native_chat import validate_record
+            validate_record(root, record, p, f'access/{arm}')
         if ((record.get('date'), record.get('arm'), record.get('protocol_sha256')) !=
                 (day, arm, report['protocol_sha256']) or
                 record.get('evidence_snapshot_sha256') != snapshot_sha or

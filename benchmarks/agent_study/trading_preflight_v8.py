@@ -96,6 +96,7 @@ def run(root, backend):
         day = str(dates[inputs['picks'][i]])
         if not path.exists():
             backend.seed, backend.calls = protocol['seed'] * 1000 + i, 0
+            backend.request_scope = f'preflight/{arm}/{i}'
             with study.decision_workspace(root, arm, i, personal=False) as workspace:
                 md.truncate(root / 'data', workspace, day)
                 snapshot = runtime.write_evidence_snapshot(old.load(root / 'evidence.json'), packets[day], workspace)
@@ -115,6 +116,9 @@ def run(root, backend):
         record = old.load(path)
         runtime.validate_decision(record, expected_final_output=protocol['final_output'])
         check_backend(record, protocol)
+        if protocol.get('batch') == 'matrix_native':
+            from benchmarks.agent_study.native_chat import validate_record
+            validate_record(root, record, protocol, f'preflight/{arm}/{i}')
         if (record.get('protocol_sha256') != old.sha(root / 'protocol.json') or
                 (record.get('date'), record.get('arm'), record.get('decision_index')) != (day, arm, i)):
             raise ValueError('preflight record belongs to a different protocol or case')
@@ -156,6 +160,9 @@ def require(root):
         record = old.load(path)
         runtime.validate_decision(record, expected_final_output=protocol['final_output'])
         check_backend(record, protocol)
+        if protocol.get('batch') == 'matrix_native':
+            from benchmarks.agent_study.native_chat import validate_record
+            validate_record(root, record, protocol, f"preflight/{row['arm']}/{row['decision_index']}")
         if (record.get('protocol_sha256') != report['protocol_sha256'] or
                 (record.get('date'), record.get('arm'), record.get('decision_index')) !=
                 (row['date'], row['arm'], row['decision_index'])):

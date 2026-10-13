@@ -34,8 +34,12 @@ HF_ROWS = tuple(r for r in matrix() if r['transport'] == 'hf')
 LEGACY_IDS = {name: family for family, name, revision in MODELS}
 MATRIX_MODELS = hf_models(HF_ROWS, MODELS)
 MODELS += tuple(m for m in MATRIX_MODELS if m[1] not in LEGACY_IDS)
+from benchmarks.agent_study.native_chat import REVISION as NATIVE_REVISION, policy as native_policy
+NATIVE_ROWS = tuple(r for r in matrix() if r['transport'] != 'hf')
+MODELS += tuple((r['id'], r['model'], NATIVE_REVISION) for r in NATIVE_ROWS)
 BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
            "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS)}
+BATCHES["matrix_native"] = tuple(r["id"] for r in NATIVE_ROWS)
 VERSIONS = {"v6": "multisource-model-v1", "v7": "multisource-model-v2",
             "v8": "multisource-model-v3", "v9": "multisource-model-v4-rag"}
 COMMON = runtime.COMMON.replace(
@@ -60,7 +64,7 @@ def sources():
     extra = list(here.glob("trading_*v6.*")) + [Path(__file__), here / "manual_multisource.py", GUIDE,
         here / "trading_capabilities.py", here / "trading_worker_v7.py",
         here / "audit_manual_multisource.py", here / "audit_model_multisource.py",
-        here / "personal_chat.py", here / "model_matrix.py", MANIFEST,
+        here / "personal_chat.py", here / "native_chat.py", here / "native_relay.py", here / "model_matrix.py", MANIFEST,
         here / "qualify_model_matrix.py"]
     extra += list(here.glob("trading_*v8.py"))
     extra += list(here.glob("trading_*v9.py"))
@@ -110,6 +114,8 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         raise ValueError("unknown interface")
     if batch == 'matrix_hf' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new model matrix requires the repaired v7 interface')
+    if batch == 'matrix_native' and interface != 'v9':
+        raise ValueError('native model track requires the current v9 replay interface')
     if batch == 'personal' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
@@ -152,7 +158,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION, RESEARCH_RESPONSES
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         interaction_revision=INTERACTION_REVISION,
-                        final_output=output_contract(batch != 'personal'),
+                        final_output=output_contract(batch not in ('personal', 'matrix_native')),
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=RESEARCH_RESPONSES, final_decision_responses=2,
                         allocation_contract='explicit asset/CASH relative parts; absolute weights remain strict',
@@ -178,6 +184,12 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
             'library knowledge from earlier dates cannot be erased from the conversation',
             'one personally authored pair; menu seed is not an inference sampling seed',
             'same external interface, information and accounting; no equal internal reasoning claim']
+    if batch == 'matrix_native':
+        protocol.update(executor='native_subscription_cli', native_policy=native_policy(model[1]),
+                        temperature=None, top_p=None, sampling_seed_controlled=False)
+        protocol['limits'] += ['Native CLI hidden instructions/reasoning differ from HF; report this track separately.',
+                               'Provider model weights are unpinned; GPT response events do not independently attest server model.',
+                               'Output budget uses a declared reference tokenizer; native tool use invalidates a response.']
     old.write(root / "protocol.json", protocol)
 
 
@@ -195,7 +207,7 @@ def verify(root):
             OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION, RESEARCH_RESPONSES)
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p.get('interaction_revision') != INTERACTION_REVISION or
-                p.get('final_output') != output_contract(p.get('batch') != 'personal') or
+                p.get('final_output') != output_contract(p.get('batch') not in ('personal', 'matrix_native')) or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
                 p['research_responses'] != RESEARCH_RESPONSES or p['final_decision_responses'] != 2 or
@@ -206,6 +218,11 @@ def verify(root):
         from benchmarks.agent_study.trading_access_v9 import contract
         if p.get('model_access_probe') != contract():
             raise ValueError('model access qualification policy changed')
+    if p.get('batch') == 'matrix_native' and (
+            p.get('native_policy') != native_policy(p['model'][1]) or
+            p.get('executor') != 'native_subscription_cli' or p.get('temperature') is not None or
+            p.get('top_p') is not None or p.get('sampling_seed_controlled') is not False):
+        raise ValueError('native transport or budget policy changed')
     batch = p.get("batch", "original")
     if tuple(p["model"]) != model_spec(p["model"][0], p["seed"], batch):
         raise ValueError("model revision changed")
@@ -279,6 +296,9 @@ def run(root):
         name, revision = p['reference_tokenizer']
         tokenizer = AutoTokenizer.from_pretrained(name, revision=revision, local_files_only=True)
         backend = PersonalChat(root, tokenizer, max_tokens=p['max_tokens'], max_turns=p['max_turns'])
+    elif p.get('batch') == 'matrix_native':
+        from benchmarks.agent_study.native_chat import create_backend
+        backend = create_backend(root, p)
     else:
         from benchmarks.agent_study.transformers_chat import TransformersChat
         backend = TransformersChat(p["model"][1], p["model"][2], max_tokens=p["max_tokens"])
@@ -303,6 +323,7 @@ def run(root):
                 assert max(abs(record["holdings_before"][t] - holdings[t]) for t in md.TICKERS) < 1e-12
             else:
                 backend.seed, backend.calls = p["seed"] * 1000 + i, 0
+                backend.request_scope = f'cycle/{arm}/{i}'
                 if p.get('batch') == 'personal':
                     backend.arm, backend.decision_index, backend.receipts = arm, i, []
                 with decision_workspace(root, arm, i, p.get('batch') == 'personal') as workspace:
@@ -341,6 +362,9 @@ def run(root):
                                       decision_completed=record.get('decision_completed'))), flush=True)
             if p.get('interface') in ('v8', 'v9'):
                 check_backend(record, p)
+            if p.get('batch') == 'matrix_native':
+                from benchmarks.agent_study.native_chat import validate_record
+                validate_record(root, record, p, f'cycle/{arm}/{i}')
             assert record["evidence_packet_sha256"] == digest(packets[day])
             if p.get('interface') in ('v7', 'v8', 'v9'):
                 expected_snapshot = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
@@ -383,6 +407,9 @@ def validate_receipt(root):
                 raise ValueError('decision interface differs from frozen protocol')
             validate_decision(record, expected_final_output=protocol['final_output'])
             check_backend(record, protocol)
+        if protocol.get('batch') == 'matrix_native':
+            from benchmarks.agent_study.native_chat import validate_record
+            validate_record(root, record, protocol, f'cycle/{Path(n).parent.name}/{int(Path(n).stem)}')
         if old.load(root / 'protocol.json').get('batch') == 'personal':
             from benchmarks.agent_study.personal_chat import validate_exchange
             if not record.get('personal_response_receipts'):
