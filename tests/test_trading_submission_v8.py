@@ -186,7 +186,7 @@ def test_research_parse_feedback_preserves_research_and_early_decision_choices()
     record = v8.decide(lambda _: text_response('incomplete'), Controller('raw'), 'fixture')
     for turn in record['turns'][:5]:
         assert all(choice in turn['model_feedback'] for choice in (
-            'tool JSON call', 'Python fence', 'allocation JSON', 'action hold JSON'))
+            'tool JSON call', 'Python fence', 'submit or hold'))
         assert not any(ticker in turn['model_feedback'] for ticker in v8.TICKERS)
 
 

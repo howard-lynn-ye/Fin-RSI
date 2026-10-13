@@ -44,7 +44,7 @@ def test_format_recovery_mentions_all_supported_choices_and_does_not_execute_dia
     record = v8.decide(backend, c, 'fixture')
     v8.validate_decision(record)
     assert record['decision_action'] == 'hold' and len(record['turns']) == 2 and not c.calls
-    assert 'allocation JSON, or action hold JSON' in record['turns'][0]['model_feedback']
+    assert 'including submit or hold' in record['turns'][0]['model_feedback']
 
 
 @pytest.mark.parametrize('arm', ['raw', 'library'])
@@ -102,3 +102,25 @@ def test_rag_returns_same_day_evidence_and_routes_its_templates(workspace):
         assert contract['call_template']['tool'] == 'call_library_tool'
         assert contract['call_template']['arguments']['name'] == contract['name']
         assert contract['template_requires_values'] is True
+
+
+def test_decision_instructions_use_real_tool_names_in_both_phases():
+    for arm in ('raw', 'library'):
+        for index in (0, 6, 7):
+            prompt = v8.system_prompt(arm, index)
+            assert '"tool":"submit"' in prompt and '"tool":"hold"' in prompt
+            assert 'REBALANCE' not in prompt
+            assert 'arguments.rationale' in prompt
+            assert 'No text, explanation, headings or second call outside it' in prompt
+
+
+def test_unavailable_final_tool_gets_the_actual_decision_route():
+    counter = []
+    def backend(messages):
+        counter.append(1)
+        return response('read_market') if len(counter) < 7 else response('rebalance', {
+            'allocation': {'SPY': 2, 'CASH': 1}})
+    c = Controller('raw')
+    record = v8.decide(backend, c, 'fixture')
+    assert record['decision_action'] == 'failed' and len(c.calls) == 6
+    assert 'tool="submit" with arguments.allocation' in record['turns'][-1]['result']['error']
