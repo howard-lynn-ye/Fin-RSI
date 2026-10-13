@@ -12,6 +12,7 @@ from benchmarks.agent_study.trading_submission_v8 import unique_keys
 DECODER_VERSION = '0.11.3'
 TRANSPORT = 'lm-format-enforcer'
 MAX_RATIONALE = 256
+STRING_TOKEN_FILTER = 'exclude-raw-controls-v1'
 PARSER_OPTIONS = dict(max_consecutive_whitespaces=12, force_json_field_order=False)
 
 
@@ -52,7 +53,7 @@ def output_contract(structured=False):
     digest = hashlib.sha256(json.dumps(decision_schema(), sort_keys=True,
                                       separators=(',', ':')).encode()).hexdigest()
     return dict(transport=TRANSPORT, version=DECODER_VERSION, schema_sha256=digest,
-                stage='final_only', **PARSER_OPTIONS)
+                stage='final_only', string_token_filter=STRING_TOKEN_FILTER, **PARSER_OPTIONS)
 
 
 def check_contract(contract):
@@ -108,7 +109,28 @@ def prepare_decoder(tokenizer, stop_token_ids):
     if tokenizer.eos_token_id not in stop_token_ids:
         raise ValueError('decoder EOS differs from qualified generation stop tokens')
     from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data
-    return build_token_enforcer_tokenizer_data(tokenizer)
+    return harden_string_token_cache(build_token_enforcer_tokenizer_data(tokenizer))
+
+
+def harden_string_token_cache(data):
+    """Keep LMFE's fast path, but exclude every raw JSON control character.
+
+    LMFE 0.11.3 checks newlines/CR in its freetext cache, but misses tabs and
+    other U+0000..001F characters. A real Nemo token passed that cache while
+    the character parser rejected it. Rebuild only the string shortcut cache;
+    the ordinary token tree still accepts valid whitespace outside strings.
+    Escaped control sequences remain available, and no model text is repaired.
+    """
+    from lmformatenforcer.tokenizerprefixtree import JsonFreetextTokenCache
+    cache = JsonFreetextTokenCache(data.use_bitmask, data.vocab_size)
+    for token_id, text, _ in data.regular_tokens:
+        if not any(ord(character) < 32 for character in text):
+            cache.add_token(text, token_id)
+    cache.freeze()
+    data.tokenizer_tree.json_freetext_tokens = cache
+    # Also cover tokens that open a string and contain controls in one step.
+    data.tokenizer_alphabet = ''.join(c for c in data.tokenizer_alphabet if ord(c) >= 32)
+    return data
 
 
 def prefix_filter(tokenizer_data, prompt):
