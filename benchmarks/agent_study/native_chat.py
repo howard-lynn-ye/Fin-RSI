@@ -25,6 +25,9 @@ def policy(model):
     return dict(transport=row['transport'], model=model, effort=row['effort'], revision=REVISION,
         prompt_wrapper=WRAPPER, relay_sha256=source_digest(),
         final_output={'transport': 'text'}, queue=str(QUEUE),
+        context_isolation=('custom fin-replay-response agent; tools=[] and inheritCustomizations=false requested; '
+            'CLI still advertises its tool registry, so complete native isolation is not attested'
+            if row['transport'] == 'antigravity_subscription' else 'declared native client flags'),
         reference_tokenizer=list(old.MODELS[0][1:]),
         output_budget='1024 Qwen2.5-Coder-7B reference tokens; oversize text is rejected, never trimmed',
         reasoning_budget='provider CLI effort; hidden reasoning, system instructions and host global rules not controlled',

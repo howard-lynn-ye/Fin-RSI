@@ -102,7 +102,7 @@ def test_codex_events_do_not_claim_server_model_attestation():
 
 
 def test_gemini_native_tool_events_invalidate_otherwise_successful_response():
-    events = [dict(event='init', init={'model': 'gemini-3.8-flash-high'}),
+    events = [dict(event='init', init={'model': 'gemini-3.8-flash-high', 'agent': relay.GEMINI_AGENT_NAME, 'tools': []}),
               dict(event='step_update', step_update={'step_type': 'tool_call'}),
               dict(event='result', result={'status': 'SUCCESS', 'response': '{}'})]
     assert not relay.parse_events('antigravity_subscription', '\n'.join(map(json.dumps, events)), 0)['success']
@@ -151,7 +151,7 @@ def test_repeat_mismatch_is_rejected_before_publishing(fixture):
 
 
 def test_gemini_init_echo_is_not_server_attestation():
-    events = [dict(event='init', init={'model': 'gemini-3.8-flash-high'}),
+    events = [dict(event='init', init={'model': 'gemini-3.8-flash-high', 'agent': relay.GEMINI_AGENT_NAME, 'tools': []}),
               dict(event='result', result={'status': 'SUCCESS', 'response': '{}'})]
     value = relay.parse_events('antigravity_subscription', '\n'.join(map(json.dumps, events)), 0)
     assert value['success'] and value['identity_level'] == 'client_init_model'
@@ -181,3 +181,19 @@ def test_observed_codex_startup_notice_is_not_a_model_tool_call():
     assert not parse([start, notice, answer, done])['success']
     unknown = dict(type='item.completed', item=dict(type='error', message='unknown provider error'))
     assert not parse([unknown, start, answer, done])['success']
+
+@pytest.mark.parametrize('changed',[{'agent':'default'}, {'tools':None}])
+def test_gemini_wrong_agent_or_missing_tool_inventory_fails(changed):
+    init = dict(model='gemini-3.8-flash-high', agent=relay.GEMINI_AGENT_NAME, tools=[])
+    init.update(changed)
+    events = [dict(event='init', init=init), dict(event='result', result={'status':'SUCCESS','response':'{}'})]
+    assert not relay.parse_events('antigravity_subscription','\n'.join(map(json.dumps,events)),0)['success']
+
+def test_gemini_registry_is_reported_without_claiming_it_proves_tools_disabled():
+    events = [dict(event='init',init=dict(model='gemini-3.8-flash-high',
+        agent=relay.GEMINI_AGENT_NAME,tools=['view_file','run_command'])),
+        dict(event='result',result={'status':'SUCCESS','response':'{}'})]
+    parsed=relay.parse_events('antigravity_subscription','\n'.join(map(json.dumps,events)),0)
+    assert parsed['success'] and parsed['client_advertised_tools'] == ['view_file','run_command']
+    events.insert(1,dict(event='step_update',step_update={'step_type':'tool','tool_name':'view_file'}))
+    assert not relay.parse_events('antigravity_subscription','\n'.join(map(json.dumps,events)),0)['success']

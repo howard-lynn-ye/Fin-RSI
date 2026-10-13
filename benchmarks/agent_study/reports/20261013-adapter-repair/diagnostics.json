@@ -1,0 +1,68 @@
+{
+  "scope": "Adapter diagnostics and fixes; not a Return Rate experiment and not completion of 20 models",
+  "failed_campaign": {
+    "root": "v9-access-matrix-20261013-r4",
+    "failures": [
+      {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "observed": "CUDA invalid sampling probability",
+        "stage": "decoder preflight"
+      },
+      {
+        "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+        "observed": "CUDA invalid sampling probability",
+        "stage": "decoder preflight"
+      },
+      {
+        "model": "mistralai/Mistral-Small-24B-Instruct-2501",
+        "observed": "CUDA invalid sampling probability",
+        "stage": "decoder preflight"
+      },
+      {
+        "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+        "observed": "publisher template opens <think>; structured final transport rejected",
+        "stage": "decoder preflight"
+      }
+    ],
+    "full_cycle_results": false,
+    "job": 2125007
+  },
+  "diagnosis": {
+    "original_cuda_root_cause": "not established; failure not reproduced",
+    "deepseek": "Actual pinned template ends with <think> and a newline; decoder preserves reasoning markers and parser executes only final JSON",
+    "same_frozen_decoder_prompt": true,
+    "job": 2125052,
+    "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+    "result": "valid structured response",
+    "hardware": "2 NVIDIA L40S"
+  },
+  "repair": {
+    "reasoning": "Separate matrix_reasoning track; pinned DeepSeek model, publisher template unchanged, 8192 generated tokens including reasoning per response for both arms; text final transport; same 6+2 responses; independent accounting",
+    "sampling": "Fail before invalid multinomial; preserve generated token IDs, distribution counts, original request and hardware; do not change logits, retry or choose a portfolio",
+    "gemini": "Custom primary response agent requests tools=[] and inheritCustomizations=false; native tool use remains forbidden and causes explicit failure"
+  },
+  "gemini_observation": {
+    "sources": [
+      "https://antigravity.google/docs/subagents/",
+      "https://antigravity.google/docs/cli/headless/",
+      "https://antigravity.google/docs/changelog?tab=cli"
+    ],
+    "new_toy_probe": "Exact gemini-3.8-flash-high, high effort, succeeded without native tool events",
+    "failure": "Native view_file on shared backend README was auto-denied; empty response; preflight stopped",
+    "old_request": "8092cb46ede240d83027fe1de82ece898cecf160aa3445fd3511c99bec1a4cc6",
+    "isolation_limit": "CLI init advertises a broad tool registry even with custom tools=[]; complete tool/context isolation is not attested; registry is retained in receipt"
+  },
+  "validation": {
+    "slurm_job": 2125064,
+    "real_evidence_qualification": "passed; frozen real-evidence reasoning smoke",
+    "build_index": "passed",
+    "regression_tests_passed": 188,
+    "build_package": "passed",
+    "validate": "OK; pre-existing skill-discovery budget warning"
+  },
+  "independent_review": {
+    "new_patch_gemini": "Completed with exact gemini-3.8-flash-high/high; seven findings reviewed against complete call sites and existing invariants; see review-resolution.json. No unresolved blocking defect established by those findings.",
+    "previous_native_transport": "Claude Fable 5.1 and Gemini 3.8 review resolutions in 20261013-native-transport",
+    "claude_new_review": "Unavailable: observed weekly quota exhausted until 2026-10-14T18:00:00Z; no alternate account or model substitution"
+  }
+}

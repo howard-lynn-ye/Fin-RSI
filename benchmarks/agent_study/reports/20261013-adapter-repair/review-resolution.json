@@ -1,0 +1,37 @@
+{
+  "model": "gemini-3.8-flash-high",
+  "effort": "high",
+  "success": true,
+  "identity_level": "client_init_model, not independent server attestation",
+  "findings": [
+    {
+      "resolution": "Not reproduced: both multisource_model_study.run and the GPU preflight constructor explicitly pass max_tokens=protocol[max_tokens]; check_backend rejects receipt identity/budget mismatch. Default only applies when callers omit the argument.",
+      "finding": "Backend default 2048 overrides declared 8192"
+    },
+    {
+      "resolution": "Incorrect: DecoderFailure diagnostic status is infrastructure_failure; raised exception stops preflight or cycle. No failed decision, HOLD, score or return is created from it. persist_failure stores immutable diagnostic only.",
+      "finding": "DecoderFailure turns GPU error into model failure score"
+    },
+    {
+      "resolution": "No: full source hashes and canonical relay_sha256 are frozen and strictly checked; old runs require archived old source. REVISION declares the unpinned native provider route, not sole implementation identity.",
+      "finding": "Unchanged native REVISION permits silent substitution"
+    },
+    {
+      "resolution": "Each invocation creates a fresh TemporaryDirectory; exclusive agent-directory creation is intentional and prevents accepting an unexpected existing configuration.",
+      "finding": "mkdir without exist_ok fails on repeat calls"
+    },
+    {
+      "resolution": "Intentional: final_output marks structured final responses only. Unstructured response identity/budget and full content remain in backend receipts; text parsing uses frozen protocol. Adding this marker to research responses would miscount structured-final usage.",
+      "finding": "Unstructured responses lack final_output metadata"
+    },
+    {
+      "resolution": "Incorrect: freeze first calls model_spec, which validates batch/family/seed; default batch is original. DeepSeek is excluded from matrix_hf and admitted only to matrix_reasoning.",
+      "finding": "freeze permits DeepSeek in matrix_hf without checking family"
+    },
+    {
+      "resolution": "Antigravity branch always assigns init with next(...,{}); the return uses a conditional expression that evaluates init only for that branch. Missing init fails agent/inventory checks.",
+      "finding": "init can be unbound"
+    }
+  ],
+  "limits": "Review is not proof that all defects are absent. Original CUDA failure root cause remains unresolved; new preflight plus fail-fast diagnostics must succeed before each cycle."
+}

@@ -72,11 +72,12 @@ def qualify(root, manifest, output, cache):
                     default_tokenizer_duplicates |= tokenizer(rendered)['input_ids'] != ids
                     counts[arm].append(len(ids))
                 maxima = {arm: max(values) for arm, values in counts.items()}
-                if max(maxima.values()) + 1024 > limit:
+                budget = study.REASONING_MAX_TOKENS if row['id'] in study.REASONING_FAMILIES else study.old.MAX_TOKENS
+                if max(maxima.values()) + budget > limit:
                     raise ValueError(f'initial context plus output exceeds {limit} tokens: {maxima}')
                 result.update(status='initial_template_passed', revision=row['revision'],
                     model_type=config.model_type, context_limit=limit,
-                    max_initial_tokens=maxima, dates_per_arm=len(counts['raw']),
+                    max_initial_tokens=maxima, max_output_tokens=budget, dates_per_arm=len(counts['raw']),
                     default_tokenizer_changes_template=default_tokenizer_duplicates,
                     reasoning_template=('think' in (tokenizer.chat_template or '').lower()),
                     remaining_gate='GPU action parsing, tool round-trip and multi-turn context checks')

@@ -189,7 +189,11 @@ def qualify_decoder(root, backend, protocol):
         # The actual cases reset seed/calls again. This response/history is never
         # passed to a case or a return ledger and does not select a strategy for it.
         backend.seed, backend.calls = protocol['seed'] * 1000, 0
-        response = backend.final_decision(messages)
+        try:
+            response = backend.final_decision(messages)
+        except DecoderFailure as exc:
+            persist_failure(root, 'decoder-preflight', exc)
+            raise
         old.write(path, dict(protocol_sha256=old.sha(root / 'protocol.json'),
                              messages=messages, response=response))
     return require_decoder(root, protocol)
