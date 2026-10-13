@@ -1,0 +1,51 @@
+{
+  "scope": "Observed multi-GPU transfer defect and single-GPU repair; not a completed return experiment",
+  "observed_utc_date": "2026-10-13",
+  "failed_campaign": {
+    "job": 2125070,
+    "node": "ihccs602",
+    "root": "v9-access-matrix-20261013-r5",
+    "source": "v9-decoder-20261013-candidate5/source",
+    "completed_pairs": 0,
+    "disposition": "Canceled this owned job after reproducing corrupted inter-GPU copies; all original failures retained",
+    "14b_preflight": {"stage": "first generated token", "nan_count": 99, "finite_per_row": [280], "generated_token_ids": [[]]},
+    "other_observations": "32B also failed preflight; Mistral freeze started; DeepSeek not started"
+  },
+  "transfer_probe": {
+    "job": 2125070,
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0",
+    "gpus": ["NVIDIA RTX 6000 Ada Generation", "NVIDIA RTX 6000 Ada Generation"],
+    "source_tensor": "152064 BF16 linspace values from -20 to 20",
+    "results": [
+      {"src":0,"dst":1,"peer":true,"mode":"combined_copy_cast","nan":0,"inf":0,"exact":false,"max_error":20.0},
+      {"src":0,"dst":1,"peer":true,"mode":"cast_then_copy","nan":0,"inf":0,"exact":false,"max_error":20.0},
+      {"src":0,"dst":1,"peer":true,"mode":"host_bounce","nan":0,"inf":0,"exact":true,"max_error":0.0},
+      {"src":1,"dst":0,"peer":true,"mode":"combined_copy_cast","nan":0,"inf":0,"exact":false,"max_error":20.125},
+      {"src":1,"dst":0,"peer":true,"mode":"cast_then_copy","nan":0,"inf":0,"exact":false,"max_error":20.125},
+      {"src":1,"dst":0,"peer":true,"mode":"host_bounce","nan":0,"inf":0,"exact":true,"max_error":0.0}
+    ],
+    "inference": "Automatic model sharding used the defective copy path; this is a concrete candidate mechanism for the observed first-token failures",
+    "limits": "Does not isolate driver, hardware or PyTorch responsibility; does not establish that all RTX systems fail or that historical return differences were caused by this defect"
+  },
+  "repair": {
+    "model_placement": "The entire model is loaded on allocated CUDA device 0; no automatic sharding or CPU offload",
+    "large_model_resources": "One scheduler-selected H100 80GB; no node pinning",
+    "fresh_campaign": "v9-access-matrix-20261013-r6",
+    "job": 2125097,
+    "source": "single-gpu-20261013-candidate7/source",
+    "families": ["14b", "32b", "mistral-small-24b", "deepseek-r1-distill-14b"],
+    "seeds": [11, 23, 37],
+    "track_separation": "DeepSeek uses separately labeled 8192-token reasoning track; other listed models use 1024-token structured-final track",
+    "completion": "Not yet observed at publication; access, decoder, decision and accounting gates remain required"
+  },
+  "validation": {
+    "slurm_job": 2124996,
+    "execution": "CPU-only overlapping step in existing owned allocation",
+    "build_index": "passed",
+    "build_package": "passed",
+    "validate": "OK, one existing discovery-budget warning",
+    "regression_tests": {"passed":209,"seconds":107.90},
+    "limits": "Regression validation is not proof of H100 full-cycle success; fresh real-model qualification still required"
+  }
+}
