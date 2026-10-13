@@ -25,6 +25,8 @@ def policy(model):
     return dict(transport=row['transport'], model=model, effort=row['effort'], revision=REVISION,
         prompt_wrapper=WRAPPER, relay_sha256=source_digest(),
         final_output={'transport': 'text'}, queue=str(QUEUE),
+        client_input=('single text stdin prompt; client-added follow-up inputs and multi-turn results rejected'
+                      if row['transport'] == 'antigravity_subscription' else 'declared native client input'),
         context_isolation=('custom fin-replay-response agent; tools=[] and inheritCustomizations=false requested; '
             'CLI still advertises its tool registry, so complete native isolation is not attested'
             if row['transport'] == 'antigravity_subscription' else 'declared native client flags'),

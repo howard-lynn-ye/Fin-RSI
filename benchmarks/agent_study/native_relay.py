@@ -103,10 +103,20 @@ def parse_events(transport, stdout, exit_code):
         for event in events:
             if event.get('event') == 'step_update':
                 step = event.get('step_update', {})
-                if step.get('step_type') not in ('user_input', 'agent_response', 'agent_thought'):
+                kind = step.get('step_type')
+                if kind == 'error_message':
+                    errors.append(event)
+                elif kind == 'user_input':
+                    # The supplied stdin prompt is step zero. Additional client
+                    # prompts (for example a finish nudge) change the experiment.
+                    if step.get('step_index') != 0:
+                        errors.append(event)
+                elif kind not in ('agent_response', 'agent_thought'):
                     tools.append(event)
             elif event.get('event') not in ('init', 'result'):
                 tools.append(event)
+        if result.get('status') != 'SUCCESS' or result.get('num_turns', 1) != 1:
+            errors.append(dict(event='result', result=result))
         text, usage = result.get('response', ''), result.get('usage')
         ok = (result.get('status') == 'SUCCESS' and not result.get('denied_actions')
               and init.get('init', {}).get('agent') == GEMINI_AGENT_NAME
@@ -188,9 +198,12 @@ def invoke(request, *, timeout=900):
             binary = Path.home()/'AppData/Local/agy/bin/agy.exe'
             command = [str(binary), '--model', model, '--effort', effort, '--mode', 'plan',
                        '--agent', GEMINI_AGENT_NAME,
-                       '--input-format', 'stream-json', '--output-format', 'stream-json', '--print-timeout', '10m',
+                       '--input-format', 'text', '--output-format', 'stream-json', '--print-timeout', '10m',
                        '--sandbox', '--log-file', 'NUL']
-            payload = json.dumps({'event': 'user', 'message': {'content': prompt}}, ensure_ascii=False)+'\n'
+            # One text stdin prompt. The stream-json input route was observed to
+            # inject follow-up prompts and concatenate multiple model answers.
+            # Keep long financial prompts out of Windows command-line arguments.
+            payload = prompt
         elif transport == 'codex_subscription':
             binary = Path.home()/'AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe'
             command = [str(binary), 'exec', '--model', model, '--json', '--ephemeral', '--sandbox', 'read-only',
