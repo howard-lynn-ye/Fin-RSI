@@ -70,7 +70,17 @@ unchanged.
 - Repository validation: `OK`, with the pre-existing fin-libraries discovery warning.
 - Focused new/API/JSON/JEV/Bundle tests: 283 passed on NumPy 1.24.0, pandas 2.2.2,
   SciPy 1.11.4. One pandas categorical conversion warning was emitted.
-- Full regression, script execution and distribution checks are pending completion.
+- Wheel and sdist both passed strict metadata checks, installed in separate temporary
+  environments outside the checkout, and passed the expanded installed-package smoke test
+  on NumPy 2.4.6, pandas 3.0.6 and SciPy 1.17.1.
+- The local environment that inherits global site packages aborted with a Windows native
+  access violation while importing cvxpy through PyPortfolioOpt during the full suite.
+  A separate cvxpy import succeeded. This aborted run is not counted as passing validation;
+  the isolated base-dependency run and clean CI environments provide the regression checks.
+- Final full-suite, standalone-script and cross-platform CI outcomes are recorded in
+  [PR #30](https://github.com/howard-lynn-ye/Fin-RSI/pull/30). Those checks were still running
+  when this source receipt was committed; passing results must be read from their actual
+  completed logs rather than inferred from this note.
 
 ## Preservation
 

@@ -117,5 +117,3 @@ def audit_stock_jev_causality(features_df: pd.DataFrame, asof_date: str) -> bool
     if dates.max() > cutoff:
         raise ValueError("Look-ahead violation: feature timestamp exceeds asof_date")
     return True
-
-
