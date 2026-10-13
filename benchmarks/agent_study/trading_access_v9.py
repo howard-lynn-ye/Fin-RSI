@@ -5,6 +5,7 @@ library function, strategy competence, or spontaneous use during the return stud
 """
 from inspect import signature as function_signature
 from pathlib import Path
+from benchmarks.agent_study import trading_research_v9 as research_schema
 
 from benchmarks.agent_study import trading_runtime_v8 as v8, trading_runtime_v9 as v9
 
@@ -87,7 +88,8 @@ def run(root, backend):
                 controller = v9.Controller(root, workspace, arm, p['seed'] * 1000)
                 try:
                     record = v8.decide(backend, controller, request, prompt_factory=prompt,
-                                       interface='v9', final_output=p['final_output'])
+                                       interface='v9', final_output=p['final_output'],
+                        research_output=research_schema.arm_contract(p, arm))
                 except v8.schema.DecoderFailure as exc:
                     v8.schema.persist_failure(root, f'access-{arm}', exc)
                     raise
@@ -124,7 +126,8 @@ def require(root):
         if row['record'] != path.relative_to(root).as_posix() or row['sha256'] != study.old.sha(path):
             raise ValueError('model access original record changed')
         record = study.old.load(path)
-        v8.validate_decision(record, expected_final_output=p['final_output'])
+        v8.validate_decision(record, expected_final_output=p['final_output'],
+            expected_research_output=research_schema.arm_contract(p, arm))
         v8.schema.check_backend(record, p)
         if p.get('batch') == 'matrix_native':
             from benchmarks.agent_study.native_chat import validate_record

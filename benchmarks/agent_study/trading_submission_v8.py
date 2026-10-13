@@ -3,6 +3,7 @@
 Relative allocations require a model-chosen CASH entry. Absolute weights keep
 their original budget constraint; an over-budget order is never silently scaled.
 """
+import ast
 import json
 import math
 import re
@@ -25,7 +26,8 @@ def extract_decision(text):
 
     A single Markdown fence is only a transport wrapper. Its complete JSON body
     is still JSON even when a model labels the fence ``python``. Otherwise only
-    an explicitly Python fence is executable code, and only in research turns.
+    an explicit Python fence or complete language-prefixed program is code;
+    the runtime permits it only in research turns.
     """
     if not isinstance(text, str):
         return None, 'non-text-response'
@@ -43,11 +45,11 @@ def extract_decision(text):
     answer = answer[position:].strip()
     if answer.lower() == 'hold':
         return {'tool': 'hold', 'arguments': {}}, 'json'
-    # A standalone language label is a transport wrapper only if the entire
-    # remainder is one JSON value. It never makes unfenced Python executable.
-    label = re.fullmatch(r'(?:json|python|py)[ \t]*\r?\n(.*)', answer, re.DOTALL | re.IGNORECASE)
+    # A language label may wrap JSON or a complete Python program. Never infer
+    # Python from unlabelled prose, or choose between code and a separate order.
+    label = re.fullmatch(r'(json|python|py)[ \t]*\r?\n(.*)', answer, re.DOTALL | re.IGNORECASE)
     if label:
-        answer = label.group(1).strip()
+        answer = label.group(2).strip()
     fence = None if label else re.fullmatch(
         r'```(json|python|py)?[ \t]*\r?\n(.*?)\n?```', answer, re.DOTALL | re.IGNORECASE)
     if fence:
@@ -61,6 +63,19 @@ def extract_decision(text):
     except ValueError as exc:
         if str(exc) == 'duplicate key':
             return None, 'duplicate-keys'
+        if label and label.group(1).casefold() in ('python', 'py'):
+            try:
+                program = ast.parse(answer)
+            except (SyntaxError, ValueError, RecursionError):
+                return None, 'invalid-python-label'
+            # Bare literal statements can be a second JSON order, a second
+            # data response, or commentary. Assignments inside real code are
+            # ordinary data and retain the existing Python worker semantics.
+            literals = (ast.Dict, ast.List, ast.Tuple, ast.Set, ast.Constant)
+            if not program.body or any(isinstance(node, ast.Expr) and
+                    isinstance(node.value, literals) for node in program.body):
+                return None, 'mixed-python-and-data'
+            return {'tool': 'run_python', 'arguments': {'code': answer}}, 'python-label'
         if fence and (fence.group(1) or '').casefold() in ('python', 'py'):
             return {'tool': 'run_python', 'arguments': {'code': answer}}, 'python-fence'
         if isinstance(exc, json.JSONDecodeError) and exc.msg == 'Extra data':

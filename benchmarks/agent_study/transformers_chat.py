@@ -106,10 +106,23 @@ class TransformersChat:
         self.prepare_final_decision()
         return self._generate(messages, structured=True)
 
+    def prepare_research_call(self, contract):
+        from benchmarks.agent_study.trading_research_v9 import check_contract
+        from benchmarks.agent_study.trading_schema_v8 import TRANSPORT
+        check_contract(contract)
+        if contract['transport'] != TRANSPORT:
+            raise ValueError('structured research contract required')
+        self.prepare_final_decision()
+        return contract
+
+    def research_call(self, messages, contract):
+        self.prepare_research_call(contract)
+        return self._generate(messages, structured=False, research_output=contract)
+
     def __call__(self, messages):
         return self._generate(messages, structured=False)
 
-    def _generate(self, messages, *, structured):
+    def _generate(self, messages, *, structured, research_output=None):
         import torch
         from transformers import set_seed
         set_seed(self.seed + self.calls)
@@ -125,6 +138,11 @@ class TransformersChat:
             from benchmarks.agent_study.trading_schema_v8 import output_contract, prefix_filter
             options['prefix_allowed_tokens_fn'] = prefix_filter(self._decision_tokenizer_data, prompt)
             metadata['final_output'] = output_contract(True)
+        elif research_output is not None:
+            from benchmarks.agent_study.trading_research_v9 import prefix_filter
+            options['prefix_allowed_tokens_fn'] = prefix_filter(
+                self._decision_tokenizer_data, prompt, research_output)
+            metadata['research_output'] = research_output
         started = time.monotonic()
         try:
             with torch.inference_mode():
