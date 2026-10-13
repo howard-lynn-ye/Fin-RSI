@@ -327,7 +327,8 @@ def run(root):
         from benchmarks.agent_study import trading_preflight_v8 as preflight
         if not (root / 'decision-preflight.json').exists():
             preflight.run(root, backend)
-        preflight.require(root)
+        preflight.require_campaign_ready(root,
+            require_library_use=p['model'][0] in ('qwen-general-7b', '32b'))
     inputs, packets = old.load(root / "inputs.json"), old.load(root / "evidence-packets.json")
     total = pd.read_csv(root / "data" / md.HIDDEN, index_col=0)
     returns, picks, receipts = total.pct_change().fillna(0.), inputs["picks"], {}

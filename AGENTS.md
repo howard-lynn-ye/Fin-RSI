@@ -124,3 +124,13 @@ the previous close, not the close itself. Date every rule and name the decree.
 - `metadata.verified_on` is a date, and it should move when you re-check the file
 - Scripts use only numpy / pandas / scipy, run with a fixed seed, and work whether or not the
   library they describe is installed
+
+## Beacon experiment resource budget (user instruction, 2026-10-13)
+
+Allow at most ONE fin-skills Slurm job in total, counting running and pending jobs.
+Do not expand model experiments while source/interface defects are being repaired.
+Use only necessary focused verification, preferably CPU-only; finish the repairs and
+verification before resuming a model campaign. Preserve partial and completed results.
+No paid model calls, heartbeat monitors, automatic full-campaign restarts or parallel
+version sweeps. This instruction supersedes earlier multi-job campaign launch plans.
+This is a project job limit; the shared six-connection SSH limit is a separate rule.

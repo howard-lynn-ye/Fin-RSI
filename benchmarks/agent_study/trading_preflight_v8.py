@@ -71,6 +71,32 @@ def interpretation(rows):
         library_reference_vintage='current_installed_knowledge')
 
 
+def campaign_readiness(rows, *, require_library_use=False):
+    """Operational release review; never select on a return or rewrite a decision.
+
+    The optional usage check qualifies the pilot adapter, not each investment
+    action. A model can still decide to HOLD or avoid tools in the real cycle.
+    """
+    rows = list(rows)
+    reasons = []
+    if not rows or {row['arm'] for row in rows} != {'raw', 'library'}:
+        reasons.append('missing paired research cases')
+    for row in rows:
+        case = f"{row['arm']}-{row['decision_index']:02d}"
+        if not row['decision_completed']:
+            reasons.append(case + ': decision incomplete')
+        if row['research_status'] == 'all_attempts_failed':
+            reasons.append(case + ': every research attempt failed')
+        if row['parse_failures'] or row['truncated_responses']:
+            reasons.append(case + ': malformed or truncated research response')
+    if require_library_use and not any(
+            row['arm'] == 'library' and row['library_execution_observed'] for row in rows):
+        reasons.append('pilot has no autonomous library execution receipt')
+    return dict(ready=not reasons, reasons=reasons,
+                require_library_use=require_library_use,
+                scope='research readiness only; no Return Rate or full-capability claim')
+
+
 def run(root, backend):
     from benchmarks.agent_study import multisource_model_study as study
     import pandas as pd
@@ -182,6 +208,14 @@ def require(root):
     if not report['passed']:
         raise ValueError('model did not qualify: full-period run not started')
     return report
+
+
+def require_campaign_ready(root, *, require_library_use=False):
+    report = require(root)  # Recompute observations from the original, hash-bound records.
+    review = campaign_readiness(report['cases'], require_library_use=require_library_use)
+    if not review['ready']:
+        raise ValueError('Research preflight blocks full-period run: ' + '; '.join(review['reasons']))
+    return review
 
 
 def qualify_decoder(root, backend, protocol):

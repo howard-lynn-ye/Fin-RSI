@@ -85,3 +85,18 @@ def test_missing_tool_result_variable_is_not_filled_and_file_reader_recovers(arm
         'import pandas as pd; quotes=pd.read_csv("quotes.csv"); print(quotes.columns.tolist())'})
     assert recovered['ok'] and 'close' in recovered['output']
     assert not recovered.get('submission')
+
+@pytest.mark.parametrize('arm', ['raw', 'library'])
+@pytest.mark.skipif(not confinement_available(), reason='requires Linux confinement')
+def test_long_table_example_and_series_error_feedback(arm, workspace):
+    controller = v8.Controller(workspace/('long-table-'+arm), workspace, arm)
+    failed = controller.call('run_python', {'code':
+        'import pandas as pd; q=pd.read_csv("quotes.csv"); print(q["close"]["close"])'})
+    assert not failed['ok'] and 'KeyError' in failed['error']
+    assert 'Series' in failed['hint'] and 'long format' in failed['hint']
+    recovered = controller.call('run_python', {'code':
+        'import pandas as pd; quotes=pd.read_csv("quotes.csv"); '
+        'prices=quotes.pivot(index="date", columns="ticker", values="close").sort_index(); '
+        'print(prices.columns.tolist())'})
+    assert recovered['ok'] and 'SPY' in recovered['output']
+    assert not recovered.get('submission')

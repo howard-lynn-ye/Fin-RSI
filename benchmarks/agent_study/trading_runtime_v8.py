@@ -38,6 +38,10 @@ Long-only, no leverage; unallocated money is cash earning zero. Orders execute n
 Exact research tool signatures are listed below. Use help_tool(name) for details.
 Python has numpy/pandas/scipy and bound tools; each call starts fresh. Files are read-only;
 quotes.csv columns: date,ticker,open,high,low,close,volume (lowercase, raw prices).
+It is long format: tickers are VALUES in the ticker column, not column names.
+A raw price matrix is quotes.pivot(index="date", columns="ticker", values="close").sort_index().
+A single ticker is quotes.loc[quotes.ticker == ticker].sort_values("date").
+Selecting frame["close"] returns a Series; do not select ["close"] again inside a helper.
 corporate_actions.csv columns: date,ticker,kind,value,note; README.md explains adjustment.
 Read these existing files with pandas.read_csv; do not recreate supplied rows in code.
 read_market/read_snapshot return dictionaries: check ok, then use rows (a list of records),
@@ -61,10 +65,14 @@ LIBRARY = '''fin-skills is available for financial knowledge, data preparation, 
 Discover it with list_skills(query=""), list_algorithms(task=None), list_library_tools(query="").
 Use help_tool(name) for exact study contracts; describe_algorithm(algorithm_id) for a runnable
 method example; read_skill(name) for knowledge. Tools support your decision; you choose what to use.
+For adjusted history in Python, load_history(lookback=252) returns a dictionary with full
+pandas matrices prices and returns (date index, ticker columns); it is already bound, no import.
+Example inspection only: h=load_history(lookback=252); print(h["returns"].tail(3)).
+This does not select a strategy or trade. You may use any available method or make no tool call.
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-reader-recovery-v7'
+INTERACTION_REVISION = '20261013-research-readiness-v8'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -94,8 +102,9 @@ def system_prompt(arm, turn_index=0, *, tools_type=None):
     names = tools_type.COMMON + (tools_type.LIBRARY if arm == 'library' else ())
     contracts = '\n'.join(name + str(inspect.signature(getattr(tools_type, name))).replace('self, ', '')
                           for name in names)
-    text = COMMON + 'Research signatures:\n' + contracts + '\nrun_python(code)\n'
-    text += 'To finish your decision:\n' + DECISION_FORMAT + '\n' + (LIBRARY if arm == 'library' else '')
+    text = (LIBRARY if arm == 'library' else '') + COMMON
+    text += 'Research signatures:\n' + contracts + '\nrun_python(code)\n'
+    text += 'To finish your decision:\n' + DECISION_FORMAT + '\n'
     if arm == 'library':
         from fin_skills.algorithms import TASKS
         text += ('\nSkill names identify documents: use read_skill(name). Algorithm IDs come from '
@@ -239,7 +248,13 @@ class Controller(cap.Controller):
             elif 'NameError' in message:
                 result['hint'] = ('Each Python call starts fresh. Define imports and variables in this call. '
                                   'Read files or call bound readers; no previous tool-result variables exist.')
-            elif any(x in message for x in ('TypeError', 'ImportError', 'KeyError', 'AttributeError')):
+            elif any(x in message for x in ('KeyError', 'AttributeError')):
+                result['hint'] = ('Inspect the object at the failing line: print(type(obj)); for a DataFrame, '
+                    'print(obj.columns.tolist()); for a Series, print(obj.name, obj.index.names). '
+                    'quotes.csv is long format: ticker symbols are values in ticker, not columns. '
+                    'frame["close"] is a Series; do not index it with "close" again. '
+                    'Use help_tool(name) for the exact reader contract. Do not repeat unchanged failing code.')
+            elif any(x in message for x in ('TypeError', 'ImportError')):
                 result['hint'] = 'Study tools are already bound; inspect help_tool(name) for exact arguments and return fields.'
         return result
 
