@@ -69,3 +69,28 @@ isolated branch, and produced only the intended 16-line runtime diff.
 - Pattern-Key: powershell.literal_edit_script
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-13
+
+## [HEAL-20261013-CI4] keep model roster test independent of optional study packages
+
+**Status**: verified
+**Trigger**: minimum-dependency CI failure
+**Area**: tests
+
+### Failure and diagnosis
+CI job 115535830481 failed with ModuleNotFoundError: No module named 'bs4'. The new
+roster test imported multisource_model_study, which imports the optional evidence collector.
+The basic library environment intentionally does not install the study extra. Its other
+3974 tests passed. This was a test dependency mistake, not a Pandas or trading-accounting bug.
+
+### Fix and verification
+Keep the twenty-model/no-paid roster assertions in the dependency-free model-matrix tests.
+Move the actual disabled-freeze integration into the existing optional study module, which
+already declares pytest.importorskip('bs4'). In an isolated Beacon publication copy, the
+relevant tests passed with bs4 (39 passed) and with bs4 deliberately unavailable (25 passed,
+one optional module skipped). All generation/validation scripts also passed. The active
+candidate24 runtime and GPU jobs were not modified by this test-only correction.
+
+### Metadata
+- Pattern-Key: ci.optional_study_dependency_scope
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-13

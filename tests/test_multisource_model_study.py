@@ -152,3 +152,14 @@ def test_aggregate_rejects_complete_older_experiment(tmp_path):
             (root / "protocol.json").write_text(json.dumps({"version": "trading-interface-v5-2"}))
     with pytest.raises(ValueError, match="protocol/source changed"):
         aggregate(tmp_path)
+
+
+def test_disabled_external_models_fail_before_creating_a_run(tmp_path):
+    from benchmarks.agent_study.model_matrix import matrix
+    for row in matrix():
+        if row['transport'] != 'hf':
+            root = tmp_path/row['id']
+            with pytest.raises(ValueError, match='execution disabled'):
+                freeze(root, row['id'], 11, tmp_path/'absent-evidence.json',
+                    batch='matrix_native', interface='v9', allow_retrospective=True)
+            assert not root.exists()
