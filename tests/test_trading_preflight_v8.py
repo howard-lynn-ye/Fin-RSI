@@ -174,3 +174,40 @@ def test_cannot_upgrade_unobserved_library_use_or_unverified_history(preflight, 
     (root / 'decision-preflight.json').write_text(json.dumps(report))
     with pytest.raises(ValueError, match='observations|interpretation'):
         gate.require(root)
+
+def test_release_review_rejects_successful_decision_with_no_research_delivery():
+    row = dict(arm='raw', decision_index=0, decision_completed=True,
+               research_status='successful_delivery_observed', library_execution_observed=False,
+               parse_failures=0, truncated_responses=0)
+    library = dict(row, arm='library', research_status='all_attempts_failed')
+    review = gate.campaign_readiness([row, library], require_library_use=True)
+    assert not review['ready']
+    assert any('every research attempt failed' in reason for reason in review['reasons'])
+    assert any('no autonomous library' in reason for reason in review['reasons'])
+    assert library['decision_completed']  # The valid original decision is not rewritten.
+
+
+def test_release_review_accepts_recovered_error_and_preserves_optional_use():
+    row = dict(arm='raw', decision_index=0, decision_completed=True,
+               research_status='not_attempted', library_execution_observed=False,
+               parse_failures=0, truncated_responses=0)
+    library = dict(row, arm='library', research_status='successful_delivery_observed',
+                   library_execution_observed=True, research_errors=1)
+    assert gate.campaign_readiness([row, library], require_library_use=True)['ready']
+    unused = dict(library, library_execution_observed=False)
+    assert gate.campaign_readiness([row, unused])['ready']
+    assert not gate.campaign_readiness([row, unused], require_library_use=True)['ready']
+    assert not gate.campaign_readiness([row, dict(library, truncated_responses=1)])['ready']
+
+
+def test_campaign_gate_checks_bound_records_and_preserves_optional_hold(preflight):
+    root, report = preflight
+    assert gate.require_campaign_ready(root)['ready']
+    with pytest.raises(ValueError, match='no autonomous library execution receipt'):
+        gate.require_campaign_ready(root, require_library_use=True)
+    row = report['cases'][0]
+    # Claimed success cannot bypass the underlying record/hash verification.
+    row['library_execution_observed'] = True
+    (root/'decision-preflight.json').write_text(json.dumps(report))
+    with pytest.raises(ValueError, match='observations differ'):
+        gate.require_campaign_ready(root)
