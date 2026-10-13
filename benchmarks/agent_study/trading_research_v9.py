@@ -37,7 +37,8 @@ def output_contract(arm, interface='v9', structured=True):
                                       separators=(',', ':')).encode()).hexdigest()
     return dict(transport=final.TRANSPORT, version=final.DECODER_VERSION,
         stage='research_only', revision='single-json-call-v1', arm=arm, interface=interface,
-        tool_names=names, schema_sha256=digest, **PARSER_OPTIONS)
+        tool_names=names, schema_sha256=digest,
+        string_token_filter=final.STRING_TOKEN_FILTER, **PARSER_OPTIONS)
 
 
 def protocol_contract(interface, batch):

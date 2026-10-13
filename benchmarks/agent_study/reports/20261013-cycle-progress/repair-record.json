@@ -1,0 +1,73 @@
+{
+  "observed_utc": "2026-10-13T18:24:56.0324698Z",
+  "code_base": "a42964d47c12e90aef88d514f1aa0e9362b54933",
+  "interaction_revision": "20261013-control-filter-v6",
+  "results": {
+    "groups": [
+      "original",
+      "structured-general",
+      "structured-other",
+      "reader-general",
+      "native-existing"
+    ],
+    "metric": "100 * (ending_capital / initial_capital - 1), net cumulative Return Rate percent; never annualized",
+    "averaging": "Only complete seeds 11,23,37 within the same source/protocol version have means. Do not pool versions.",
+    "source_of_truth": "Each summary.json binds original protocol, inference and accounting receipts; ledgers.json contains all decisions and full NAV/trade ledgers for its listed complete pairs.",
+    "limitation": "Retrospective current-archive backfills with assumed availability; historical vintages not independently verified. Not an unseen holdout or live trading.",
+    "native_limit": "Existing Astra run only; provider model revision unpinned and not independently attested. Not a controlled HF seed. No new native model calls.",
+    "new_fix_results": "None. Published returns precede this control-filter revision and cannot establish its effect."
+  },
+  "repairs": [
+    {
+      "issue": "LMFE 0.11.3 freetext cache admitted raw tab inside a Mistral JSON rationale",
+      "evidence": "Original r8 mistral12b seed37 preflight failed before any scored cycle. Strict character check rejected U+0009 at offset484; the actual pinned tokenizer token filter accepted the entire re-encoded invalid response.",
+      "change": "Rebuild string shortcut token cache without U+0000..001F; remove these characters from string alphabet. Preserve ordinary token tree for legal whitespace and escapes. Research/final receipts identify the new filter. No response rewriting or trade selection."
+    },
+    {
+      "issue": "Falcon copied a 922-character task/evidence block into query and repeated it five times",
+      "change": "Publish 1..512 query constraint in prompt and help; errors report actual received length and explain that visible evidence is already loaded. No automatic truncation or substituted query."
+    }
+  ],
+  "validation": {
+    "slurm_job": "2125140",
+    "tests": "157 passed in 103.55s",
+    "commands": [
+      "python -m pytest -q tests/test_decoder_control_filter.py tests/test_trading_schema_v8.py tests/test_trading_schema_review_v8.py tests/test_trading_research_v9.py tests/test_trading_terminal_v8.py tests/test_model_matrix_qualification.py tests/test_algorithm_discovery_contract.py",
+      "python scripts/build_index.py",
+      "python scripts/build_package.py",
+      "python scripts/validate.py"
+    ],
+    "validate": "OK - 131 skills; existing fin-libraries 24-skill discovery-budget warning",
+    "known_decoder_limit": "Preferred Mistral token for an incomplete backslash-u Unicode escape is blocked before AND after the repair. Ordinary escaped tab/newline and text remain accepted; Unicode escapes are covered character-by-character in unit tests. Not every valid JSON token segmentation is guaranteed.",
+    "tokenizer_qualification": "Revised four-tokenizer CPU qualification launched on Slurm; final receipt unavailable after shared SSH disconnect. Do not report it as passed.",
+    "model_canary": "Mistral12B/Falcon10B scripts prepared, NOT submitted. Existing prior-revision 7B/32B canary2125223 was PENDING Priority at18:10UTC."
+  },
+  "cost_policy": {
+    "paid_model_calls": "prohibited by user",
+    "new_native_model_calls": "disabled unless independently confirmed no additional charge",
+    "claude_quota_retries": "disabled",
+    "heartbeats": "none",
+    "existing_results": "Preserve and publish, without rerunning native inference"
+  },
+  "connection": {
+    "state": "paused after TBA master33688 network abort",
+    "last_successful_shared_operations": "Build/test pass, source hashes, independent audits and downloaded public exports were received before the disconnect.",
+    "shared_pause": "2026-10-13T18:22:18.3787923Z",
+    "recovery_attempt": "New master request rejected by automatic approval review; no new connection was made.",
+    "reason": "Reviewer requires fresh explicit recovery authority for this incident despite standing user instruction."
+  },
+  "remaining": [
+    "Read tokenizer qualification receipt after authorized connection recovery.",
+    "Run small Mistral/Falcon interface canary before any full-cycle replacement.",
+    "Finish prior and repaired full cycles; never extrapolate partial returns.",
+    "Twenty distinct models with all required repeats are not complete. Large-model jobs were still queued.",
+    "Publish subsequent positive and negative results and full numerical ledgers."
+  ],
+  "source_hashes": {
+    "benchmarks/agent_study/trading_schema_v8.py": "4d0ba7cc538db343086968a8b8d759284c9fe534fee47f75e044310a81e3ec2b",
+    "benchmarks/agent_study/trading_research_v9.py": "25d26baec97f78fa65d06a8e08437828ba1eea3ecf75223f2939b6f03c76fe76",
+    "benchmarks/agent_study/trading_runtime_v8.py": "cd24ef8a64306c96f1237f6b9d96b6c3288c9fe93ea0c643dc00ce958d5d9e67",
+    "benchmarks/agent_study/trading_runtime_v9.py": "ce7115aeee6b5d4d68c8faff83099af595a572b7bbfd404b86fb97cb19dee8e5",
+    "tests/test_decoder_control_filter.py": "10bafa8a1eb6e38ce2759635e97b82e3b0e829b8d6601cebce4e1ebcac5da395"
+  }
+}

@@ -59,7 +59,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-discovery-contract-v5'
+INTERACTION_REVISION = '20261013-control-filter-v6'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.

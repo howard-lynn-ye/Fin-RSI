@@ -9,6 +9,7 @@ OBJECTIVE, INITIAL_CAPITAL, task = v8.OBJECTIVE, v8.INITIAL_CAPITAL, v8.task
 validate_decision = v8.validate_decision
 RAG_GUIDE = '''
 For one-query knowledge and evidence lookup call research_context(query="your research question").
+Use a short research question (1..512 characters), not a copy of the task or evidence.
 This study shortcut takes only query, offset and limit; it already loads the visible evidence.
 It returns relevant skill passages, current eligible evidence and exact interface contracts.
 Use package contracts through call_library_tool(name, arguments), not as direct study calls.
@@ -35,13 +36,19 @@ class Tools(v8.Tools):
         if name == 'research_context':
             result['note'] = ('The study shortcut loads visible evidence internally. '
                               'Only query, offset and limit are accepted; no evidence argument. '
+                              'Use a short research question, not the full task or evidence. '
                               'For a package schema use describe_library_tool(name).')
+            result['query_contract'] = dict(type='string', minLength=1, maxLength=512,
+                                          whitespace_only=False)
         return result
 
     def research_context(self, query, offset=0, limit=3500):
         from fin_skills.rag.research import research_context
         if not isinstance(query, str) or not query.strip() or len(query) > 512:
-            raise ValueError('query must contain 1..512 characters')
+            raise ValueError('query must be a nonblank string of 1..512 characters; received ' +
+                (str(len(query)) + ' characters' if isinstance(query, str) else type(query).__name__) +
+                '. Write a shorter research question yourself. Visible evidence is already loaded; '
+                'do not paste the task or evidence into query. No query was truncated or executed.')
         packet = self._evidence()  # Confined snapshot, independently checked against market cutoff.
         documents = []
         for row in packet['records']:
