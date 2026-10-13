@@ -100,9 +100,10 @@ FUNCTIONS = {f.__name__: f for f in (list_algorithms, recommend_algorithms, run_
 
 def definitions():
     from fin_skills.algorithms import TASKS
+    from fin_skills.algorithms.core import ALIASES
     strings = {"type": "array", "items": {"type": "string"}, "uniqueItems": True}
     task = {"type": "string", "description": "Task name or documented Chinese alias.",
-            "examples": list(TASKS)}
+            "enum": list(TASKS) + list(ALIASES), "examples": list(TASKS)}
     constraints = {
         "objective": {"type": "string"}, "preferences": strings,
         "required_capabilities": strings, "allowed_libraries": strings,

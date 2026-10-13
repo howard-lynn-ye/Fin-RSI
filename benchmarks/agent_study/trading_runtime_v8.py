@@ -59,7 +59,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-structured-research-v4'
+INTERACTION_REVISION = '20261013-discovery-contract-v5'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -91,6 +91,11 @@ def system_prompt(arm, turn_index=0, *, tools_type=None):
                           for name in names)
     text = COMMON + 'Research signatures:\n' + contracts + '\nrun_python(code)\n'
     text += 'To finish your decision:\n' + DECISION_FORMAT + '\n' + (LIBRARY if arm == 'library' else '')
+    if arm == 'library':
+        from fin_skills.algorithms import TASKS
+        text += ('\nSkill names identify documents: use read_skill(name). Algorithm IDs come from '
+                 'list_algorithms(): use describe_algorithm(algorithm_id) before running a method. '
+                 'Omit task to list all methods; valid task filters: ' + ', '.join(TASKS) + '.\n')
     return text + f'\n{old.MAX_TURNS - turn_index} replies left including this one. Send one request or decision, then stop.'
 
 
@@ -133,7 +138,12 @@ class Tools(cap.Tools):
             result['python_example'] = 'h=load_history(lookback=252)\nprint(h["returns"].tail(3))'
             result['returns'] = 'prices and returns are full adjusted pandas matrices; metadata describes conventions'
         elif name == 'list_algorithms':
-            result['example'] = {'tool': name, 'arguments': {'task': 'portfolio', 'limit': 8}}
+            from fin_skills.algorithms import TASKS
+            from fin_skills.algorithms.core import ALIASES
+            result['example'] = {'tool': name, 'arguments': {}}
+            result['allowed_tasks'] = list(TASKS)
+            result['task_aliases'] = dict(ALIASES)
+            result['omit_task_to_list_all'] = True
             result['returns'] = 'algorithms list: id, task, inputs, status; next_offset'
             result['note'] = 'task filters method type, not a strategy recommendation; no query argument'
         elif name == 'describe_algorithm':
@@ -168,12 +178,24 @@ class Tools(cap.Tools):
     def submit_order(arguments):
         return submission(arguments)
 
-    def failure_help(self, name, result):
+    def failure_help(self, name, result, arguments=None):
         if result.get('ok') or name == 'help_tool':
             return result
         try:
             result['contract'] = self.help_tool(name)
             result['hint'] = 'Use the attached exact signature and return contract; no arguments were renamed.'
+            if self.arm == 'library' and name in ('list_algorithms', 'describe_algorithm', 'run_algorithm'):
+                result['recovery_call'] = {'tool': 'list_algorithms', 'arguments': {}}
+                if (name in ('describe_algorithm', 'run_algorithm') and isinstance(arguments, dict)
+                        and 'unknown algorithm' in str(result.get('error', '')).lower()):
+                    import fin_skills
+                    identifier = arguments.get('algorithm_id')
+                    if isinstance(identifier, str) and identifier in fin_skills.names():
+                        result['identifier_kind'] = 'skill_document'
+                        result['recovery_call'] = {'tool': 'read_skill', 'arguments': {'name': identifier}}
+                        result['hint'] = ('This identifier names a skill document, not an algorithm. '
+                                          'Read it with the suggested call; it has not been executed. '
+                                          'Discover executable IDs with list_algorithms().')
         except ValueError:
             result['hint'] = 'Use help_tool(name) to discover exact available study contracts.'
             if self.arm == 'library':
@@ -192,7 +214,7 @@ class Tools(cap.Tools):
         return result
 
     def call(self, name, arguments):
-        return self.failure_help(name, super().call(name, arguments))
+        return self.failure_help(name, super().call(name, arguments), arguments)
 
 
 class Controller(cap.Controller):
@@ -204,7 +226,7 @@ class Controller(cap.Controller):
             result = self.tools.call(tool, {} if arguments is None else arguments)
             self.calls.append(dict(tool=tool, ok=bool(result.get('ok'))))
             return result
-        result = self.tools.failure_help(tool, super().call(tool, arguments))
+        result = self.tools.failure_help(tool, super().call(tool, arguments), arguments)
         if not result.get('ok') and tool == 'run_python':
             message = str(result.get('error', ''))
             if "name 'evidence' is not defined" in message:
