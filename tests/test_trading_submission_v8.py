@@ -182,11 +182,12 @@ def test_rounding_tolerance_is_explicit_in_receipt_and_cannot_be_tampered():
         v8.validate_decision(record)
 
 
-def test_research_parse_feedback_does_not_push_model_to_stop_research():
+def test_research_parse_feedback_preserves_research_and_early_decision_choices():
     record = v8.decide(lambda _: text_response('incomplete'), Controller('raw'), 'fixture')
     for turn in record['turns'][:5]:
-        assert 'HOLD' not in turn['model_feedback'] and 'allocation' not in turn['model_feedback']
-        assert 'tool JSON' in turn['model_feedback']
+        assert all(choice in turn['model_feedback'] for choice in (
+            'tool JSON call', 'Python fence', 'allocation JSON', 'action hold JSON'))
+        assert not any(ticker in turn['model_feedback'] for ticker in v8.TICKERS)
 
 
 def test_non_text_backend_is_an_infrastructure_error_not_a_trading_outcome():

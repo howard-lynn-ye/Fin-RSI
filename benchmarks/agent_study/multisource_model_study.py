@@ -138,6 +138,8 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         treatment=("v7 complete capability discovery and same-policy execution; full current evidence in both arms"
                    if interface == "v7" else "v6 library orientation, skill documents, adjusted history and tools"),
         common_information="same dated market files and complete evidence packet in initial user prompt",
+        information_mode="retrospective_availability_assumptions",
+        historical_availability_verified=False,
         evidence_counts=dict(Counter(r["category"] for r in records)),
         limits=["development market path, not unseen holdout", "three seeds are not independent markets",
                 "unverified archive vintages and assumed CFTC/House availability",
@@ -179,6 +181,9 @@ def verify(root):
     if p["version"] != expected_version or p["source_sha256"] != sources():
         raise ValueError("protocol/source changed; use the archived source matching this protocol, "
                          "or freeze a new run. Never weaken hashes to score an old run with new code.")
+    if (p.get('information_mode') != 'retrospective_availability_assumptions' or
+            p.get('historical_availability_verified') is not False):
+        raise ValueError('historical availability is unverified; cannot relabel this replay as point-in-time verified')
     if p.get('interface') in ('v8', 'v9'):
         from benchmarks.agent_study.trading_runtime_v8 import (
             OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION, RESEARCH_RESPONSES)
@@ -391,6 +396,14 @@ def score(root):
             paths[arm].update(initial_capital=initial_capital, ending_capital=ending_capital,
                               capital_currency=p['capital_currency'],
                               return_rate_pct=100 * (ending_capital / initial_capital - 1))
+            from benchmarks.agent_study.trading_preflight_v8 import observations
+            observed = [observations(record) for record in records]
+            paths[arm]['tool_usage'] = dict(
+                decisions_with_research=sum(r['research_attempts'] > 0 for r in observed),
+                decisions_with_successful_research=sum(r['research_successes'] > 0 for r in observed),
+                decisions_with_library_execution=sum(r['library_execution_observed'] for r in observed),
+                decisions_with_all_research_failed=sum(r['research_status'] == 'all_attempts_failed' for r in observed),
+                claim='Execution and delivered results, not proof of understanding or causal benefit.')
             paths[arm].update(explicit_holds=sum(r['decision_action'] == 'hold' for r in records),
                               failed_decisions=sum(r['decision_action'] == 'failed' for r in records),
                               completed_decisions=sum(r['decision_completed'] for r in records))
@@ -399,6 +412,8 @@ def score(root):
                   batch=p.get('batch', 'original'), executor=p.get('executor', 'transformers'),
                   counts_toward_twenty_models=p.get('counts_toward_twenty_models', True),
                   reference_tokenizer=p.get('reference_tokenizer'),
+                  information_mode='retrospective_availability_assumptions',
+                  historical_availability_verified=False,
                   return_difference_pp=paths["library"]["return_rate_pct"]-paths["raw"]["return_rate_pct"],
                   limits=p["limits"], inference_receipt_sha256=old.sha(root / "inference-receipt.json"))
     old.write(root / "scores.json", result)
@@ -465,6 +480,7 @@ def aggregate(batch, group="original"):
                 mean_ending_capital={arm: sum(r['paths'][arm]['ending_capital'] for r in family_rows) /
                                     len(family_rows) for arm in ('raw', 'library')})
     result = dict(status="complete", version=reference["version"], batch=group, return_rate_pct=summary,
+                  information_mode='retrospective_availability_assumptions', historical_availability_verified=False,
                   seed_results=rows, interpretation="Three seeds on one development market path with retrospective evidence assumptions.")
     path = batch / "aggregate.json"
     if path.exists():

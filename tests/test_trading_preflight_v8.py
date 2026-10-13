@@ -31,10 +31,9 @@ def preflight(tmp_path, monkeypatch):
         path = tmp_path / 'interface-preflight' / f'{arm}-{i:02d}.json'
         v8.old.write(path, record)
         rows.append(dict(record=path.relative_to(tmp_path).as_posix(), sha256=v8.old.sha(path),
-                         arm=arm, decision_index=i, date=record['date'], decision_action='hold',
-                         decision_completed=True))
+                         arm=arm, decision_index=i, date=record['date'], **gate.observations(record)))
     report = dict(protocol_sha256=v8.old.sha(tmp_path / 'protocol.json'), model=protocol['model'],
-                  cases=rows, passed=True)
+                  cases=rows, passed=True, interpretation=gate.interpretation(rows))
     v8.old.write(tmp_path / 'decision-preflight.json', report)
     return tmp_path, report
 
@@ -60,7 +59,7 @@ def test_failed_decision_blocks_full_run_even_if_report_claims_success(preflight
     record.update(protocol_sha256=report['protocol_sha256'], arm=row['arm'],
                   decision_index=row['decision_index'], date=row['date'])
     path.write_text(json.dumps(record))
-    row.update(sha256=v8.old.sha(path), decision_action='failed', decision_completed=False)
+    row.update(sha256=v8.old.sha(path), **gate.observations(record))
     (root / 'decision-preflight.json').write_text(json.dumps(report))
     with pytest.raises(ValueError, match='did not qualify'):
         gate.require(root)
@@ -126,3 +125,43 @@ def test_run_uses_real_workspace_cutoffs_and_records_each_case(tmp_path, monkeyp
     assert not list((root / 'tmp').iterdir())
     assert [r['decision_action'] for r in report['cases']] == [
         'submit', 'submit', 'hold', 'hold', 'submit', 'submit']
+
+
+def test_zero_tool_decisions_do_not_claim_library_use(preflight):
+    root, report = preflight
+    assert gate.require(root)['passed']
+    assert report['interpretation']['library_execution_cases'] == 0
+    assert not report['interpretation']['historical_availability_verified']
+    assert all(r['research_status'] == 'not_attempted' for r in report['cases'])
+    assert not any(r['library_execution_observed'] for r in report['cases'])
+
+
+def test_successful_tool_delivery_is_separate_from_execution_and_submission():
+    record = v8.decide(lambda _: response('hold'), Controller('library'), 'fixture')
+    record['turns'].insert(0, dict(phase='research', tool='research_context',
+        result=dict(ok=True, payload='x' * 5000)))
+    record['tool_calls'] = [dict(tool='research_context', ok=True)]
+    result = gate.observations(record)
+    assert result['decision_completed'] and result['library_execution_observed']
+    assert result['research_attempts'] == result['research_errors'] == 1
+    assert result['research_status'] == 'all_attempts_failed'
+    assert result['research_successes'] == 0
+
+
+def test_discovery_and_failed_attempts_do_not_count_as_library_execution():
+    record = v8.decide(lambda _: response('hold'), Controller('library'), 'fixture')
+    record['tool_calls'] = [dict(tool='list_algorithms', ok=True),
+                            dict(tool='library_attempt', library_tool='run_algorithm', ok=False)]
+    assert not gate.observations(record)['library_execution_observed']
+
+
+@pytest.mark.parametrize('tamper', ['case', 'interpretation'])
+def test_cannot_upgrade_unobserved_library_use_or_unverified_history(preflight, tamper):
+    root, report = preflight
+    if tamper == 'case':
+        report['cases'][0]['library_execution_observed'] = True
+    else:
+        report['interpretation']['historical_availability_verified'] = True
+    (root / 'decision-preflight.json').write_text(json.dumps(report))
+    with pytest.raises(ValueError, match='observations|interpretation'):
+        gate.require(root)

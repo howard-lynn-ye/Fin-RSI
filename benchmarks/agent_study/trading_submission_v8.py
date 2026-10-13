@@ -76,6 +76,11 @@ def extract_decision(text):
 
 
 def submission(arguments):
+    if isinstance(arguments, dict) and 'action' in arguments and set(arguments) & {'weights', 'allocation'}:
+        return dict(ok=False, submission=None, error=(
+            'Conflicting decision: action cannot accompany allocation or weights. '
+            'Choose ONE: an allocation/weights object to rebalance, or {"action":"hold"} '
+            'to keep current units and cash. Nothing was executed.'))
     if (not isinstance(arguments, dict) or
             len(set(arguments) & {'weights', 'allocation'}) != 1 or
             set(arguments) - {'weights', 'allocation', 'rationale'} or
@@ -96,7 +101,7 @@ def submission(arguments):
         result = dict(ok=target is not None, submission=target, error=problem,
                       weights_input=weights,
                       budget_rounding_applied=target is not None and any(
-+                          target[t] != weights.get(t, 0.) for t in TICKERS))
+                          target[t] != weights.get(t, 0.) for t in TICKERS))
         if problem:
             result['hint'] = ('Absolute weights must total at most 1. For relative parts instead, '
                 'explicitly send allocation with your chosen assets AND CASH (zero is allowed). '

@@ -207,6 +207,14 @@ def test_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(t
     assert protocol['objective'] == v8.OBJECTIVE and protocol['deadline'] == '2025-01-06'
     assert protocol['research_responses'] == 6 and protocol['final_decision_responses'] == 2
     assert protocol['interaction_revision'] == v8.INTERACTION_REVISION
+    assert protocol['information_mode'] == 'retrospective_availability_assumptions'
+    assert protocol['historical_availability_verified'] is False
+    protocol['historical_availability_verified'] = True
+    (root / 'protocol.json').write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match='cannot relabel'):
+        study.verify(root)
+    protocol['historical_availability_verified'] = False
+    (root / 'protocol.json').write_text(json.dumps(protocol))
     for arm, messages in prompts(root):
         assert messages[0]['content'] == study.terminal_runtime(interface).system_prompt(arm)
         assert '2025-01-06' in messages[1]['content'] and 'risk-adjusted' not in messages[1]['content']
@@ -260,6 +268,8 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
         assert account['ending_capital'] == pytest.approx(100000 * (1 - .0005) * 1.32)
         assert account['return_rate_pct'] == pytest.approx(100 * (account['ending_capital'] / 100000 - 1))
         assert account['explicit_holds'] == 1 and account['failed_decisions'] == 0
+        assert account['tool_usage']['decisions_with_library_execution'] == 0
+        assert scores['historical_availability_verified'] is False
     bad_scores = study.old.load(root / 'scores.json')
     bad_scores['paths']['library']['ending_capital'] += 100
     (root / 'scores.json').write_text(json.dumps(bad_scores))
