@@ -20,6 +20,7 @@ import pandas as pd
 from benchmarks.agent_study import market_data as md, trading_study as old
 from benchmarks.agent_study import trading_study_v5 as previous
 from benchmarks.agent_study import trading_runtime_v6 as runtime
+from benchmarks.agent_study.trading_schema_v8 import output_contract, DecoderFailure, persist_failure, check_backend
 from benchmarks.agent_study.manual_multisource import AGE_LIMITS, asof_records, digest
 from benchmarks.agent_study.trading_tools_v5 import turn_counts
 from benchmarks.agent_study.model_matrix import MANIFEST, hf_models, matrix
@@ -151,6 +152,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION, RESEARCH_RESPONSES
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         interaction_revision=INTERACTION_REVISION,
+                        final_output=output_contract(batch != 'personal'),
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=RESEARCH_RESPONSES, final_decision_responses=2,
                         allocation_contract='explicit asset/CASH relative parts; absolute weights remain strict',
@@ -189,6 +191,7 @@ def verify(root):
             OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION, RESEARCH_RESPONSES)
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p.get('interaction_revision') != INTERACTION_REVISION or
+                p.get('final_output') != output_contract(p.get('batch') != 'personal') or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
                 p['research_responses'] != RESEARCH_RESPONSES or p['final_decision_responses'] != 2 or
@@ -308,8 +311,13 @@ def run(root):
                                 old.load(root / "evidence.json"), packets[day], workspace)
                         request = (runner.task(day, holdings, p['deadline']) if p['interface'] in ('v8', 'v9')
                                    else previous.task(day, pick, holdings))
-                        record = runner.decide(backend, c, request + supplied,
-                                               orientation_path=GUIDE)
+                        try:
+                            record = runner.decide(backend, c, request + supplied,
+                                                  orientation_path=GUIDE,
+                                                  **({'final_output': p['final_output']} if p['interface'] in ('v8', 'v9') else {}))
+                        except DecoderFailure as exc:
+                            persist_failure(root, f'cycle-{arm}-{i:02d}', exc)
+                            raise
                         record['evidence_snapshot_sha256'] = snapshot_sha256
                     else:
                         record = runtime.decide(backend, c, previous.task(day, pick, holdings) + supplied,
@@ -323,6 +331,8 @@ def run(root):
                                       decision=i+1, planned=len(picks), submitted=record["submitted"],
                                       decision_action=record.get('decision_action'),
                                       decision_completed=record.get('decision_completed'))), flush=True)
+            if p.get('interface') in ('v8', 'v9'):
+                check_backend(record, p)
             assert record["evidence_packet_sha256"] == digest(packets[day])
             if p.get('interface') in ('v7', 'v8', 'v9'):
                 expected_snapshot = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])
@@ -363,7 +373,8 @@ def validate_receipt(root):
             from benchmarks.agent_study.trading_runtime_v8 import validate_decision
             if record.get('interface') != protocol['interface']:
                 raise ValueError('decision interface differs from frozen protocol')
-            validate_decision(record)
+            validate_decision(record, expected_final_output=protocol['final_output'])
+            check_backend(record, protocol)
         if old.load(root / 'protocol.json').get('batch') == 'personal':
             from benchmarks.agent_study.personal_chat import validate_exchange
             if not record.get('personal_response_receipts'):

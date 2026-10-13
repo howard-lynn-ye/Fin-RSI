@@ -209,6 +209,12 @@ def test_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(t
     assert protocol['interaction_revision'] == v8.INTERACTION_REVISION
     assert protocol['information_mode'] == 'retrospective_availability_assumptions'
     assert protocol['historical_availability_verified'] is False
+    contract = protocol.pop('final_output')
+    (root / 'protocol.json').write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match='terminal objective'):
+        study.verify(root)
+    protocol['final_output'] = contract
+    assert contract == v8.schema.output_contract(True)
     protocol['historical_availability_verified'] = True
     (root / 'protocol.json').write_text(json.dumps(protocol))
     with pytest.raises(ValueError, match='cannot relabel'):
@@ -237,6 +243,7 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
     prices.to_csv(root / 'data' / study.md.HIDDEN)
     protocol = dict(interface=interface, model=['fixture', 'fixture', 'fixture'], seed=11,
                     initial_capital=v8.INITIAL_CAPITAL, capital_currency='USD', cost_bps=5,
+                    max_tokens=1024, final_output=v8.schema.output_contract(),
                     universe=list(study.md.TICKERS), window=[dates[1], dates[-1]], limits=[])
     inputs = dict(arms=['raw', 'library'], picks=[0, 2])
     study.old.write(root / 'protocol.json', protocol)
@@ -255,6 +262,8 @@ def test_reported_capital_and_return_reconcile_with_independent_holdings_replay(
                                lambda _: response('hold') if index else response('submit', {
                                    'allocation': {'SPY': 7, 'CASH': 0}}),
                                Controller(arm), 'synthetic test')
+            for turn in record['turns']:
+                turn['backend_metadata'] = {'identity': v8.schema.backend_identity(protocol)}
             record.update(date=dates[pick], index=pick)
             name = f'decisions/{arm}/{index:02d}.json'
             study.old.write(root / name, record)

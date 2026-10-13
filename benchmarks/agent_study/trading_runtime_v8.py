@@ -13,6 +13,7 @@ from benchmarks.agent_study.trading_capabilities import encoded, evidence_snapsh
 from benchmarks.agent_study.market_data import TICKERS
 from benchmarks.agent_study.trading_tools_v6 import execution_status, validate_weights
 from benchmarks.agent_study.trading_submission_v8 import extract_decision, submission
+from benchmarks.agent_study import trading_schema_v8 as schema
 
 
 DECISION_FORMAT = '''The available decision tools are submit and hold. Choose ONE call:
@@ -52,7 +53,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-single-action-envelope'
+INTERACTION_REVISION = '20261013-structured-final-v1'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -186,7 +187,18 @@ class Controller(cap.Controller):
         return result
 
 
-def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **unused):
+def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
+           final_output=None, **unused):
+    final_output = schema.output_contract() if final_output is None else final_output
+    schema.check_contract(final_output)
+    structured = final_output['transport'] == schema.TRANSPORT
+    if structured:
+        try:
+            if (not callable(getattr(backend, 'final_decision', None)) or
+                    backend.prepare_final_decision() != final_output):
+                raise ValueError('missing or mismatched structured backend')
+        except (AttributeError, ImportError, ValueError) as exc:
+            raise RuntimeError('infrastructure qualification failed: structured final backend required') from exc
     prompt_factory = system_prompt if prompt_factory is None else prompt_factory
     history = [dict(role='system', content=prompt_factory(controller.arm)), dict(role='user', content=task)]
     initial_request = [dict(m) for m in history]
@@ -196,7 +208,7 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
         history[0]['content'] = prompt_factory(controller.arm, index)
         fingerprint = hashlib.sha256(cap.encoded(history).encode()).hexdigest()
         try:
-            response = backend(history)
+            response = backend.final_decision(history) if final and structured else backend(history)
         except ValueError as exc:
             raise RuntimeError('infrastructure qualification failed; preserve and resume') from exc
         choice = response['choices'][0]
@@ -204,13 +216,23 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
         if not isinstance(text, str):
             raise RuntimeError('infrastructure qualification failed: backend must return text; '
                                'native tool calls require a qualified adapter')
+        format_error = None
+        if final and structured:
+            try:
+                format_error = schema.check_turn(dict(response=text, finish_reason=choice['finish_reason'],
+                                       backend_metadata=response.get('backend_metadata')), final_output)
+            except (ValueError, RecursionError) as exc:
+                raise schema.DecoderFailure(response, turns, final_output, history) from exc
         call, status = ((None, 'generation-truncated') if choice['finish_reason'] == 'length'
-                        else extract_decision(text))
+                        else (None, format_error) if format_error else extract_decision(text))
         tool = call.get('tool') if call else None
         args = call.get('arguments') if call else None
         if call is None:
             instruction = ('Return one complete submit or hold JSON call.' if final else
                            'Return one complete tool JSON call (including submit or hold), or one Python fence.')
+            if status == 'structured-json-rejected':
+                instruction += (' The format filter allowed text rejected by strict JSON validation. '
+                                'Escape control characters inside strings; use complete JSON numbers. ')
             result = dict(ok=False, error='Response not executed: ' + status + '. ' + instruction +
                           ' Remove text outside the JSON. A submit explanation may be inside arguments.rationale. '
                           'Send only the current request or decision, then stop. ' +
@@ -259,11 +281,16 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8', **
     return dict(target=target, submitted=action == 'submit', decision_action=action or 'failed',
                 decision_completed=action is not None, turns=turns, tool_calls=controller.calls,
                 menu_seed=controller.menu_seed, initial_request=initial_request,
-                library_orientation=None, backend_responses=len(turns), interface=interface)
+                library_orientation=None, backend_responses=len(turns), interface=interface,
+                final_output=final_output)
 
 
-def validate_decision(record):
+def validate_decision(record, *, expected_final_output=None):
     """Do not let an absent submission masquerade as an intentional hold."""
+    contract = record.get('final_output')
+    schema.check_contract(contract)
+    if expected_final_output is not None and contract != expected_final_output:
+        raise ValueError('decision output transport differs from frozen protocol')
     action = record.get('decision_action')
     if action not in ('submit', 'hold', 'failed'):
         raise ValueError('missing v8 decision disposition')
@@ -279,6 +306,12 @@ def validate_decision(record):
         if (turn.get('turn_index') != index + 1 or
                 turn.get('phase') != ('research' if index < RESEARCH_RESPONSES else 'final')):
             raise ValueError('decision turn sequence or phase changed')
+        if index >= RESEARCH_RESPONSES and contract['transport'] == schema.TRANSPORT:
+            format_error = schema.check_turn(turn, contract)
+            if format_error and (turn.get('parse') != format_error or turn['result'].get('ok')):
+                raise ValueError('strict JSON rejection cannot be hidden or executed')
+        elif (turn.get('backend_metadata') or {}).get('final_output') is not None:
+            raise ValueError('unexpected constrained decoding outside declared final stage')
         if index < len(record['turns']) - 1 and (turn['result'].get('submission') is not None or
                 turn['result'].get('decision_action') == 'hold'):
             raise ValueError('an accepted earlier decision cannot be shadowed by later turns')
@@ -355,6 +388,39 @@ def qualify(root, *, controller_type=None, decide_fn=None):
     report = dict(passed=all(checks.values()), checks=checks,
                   protocol_sha256=old.sha(root / 'protocol.json'),
                   capability_sha256=old.sha(root / 'capability-qualification.json'))
+    contract = old.load(root / 'protocol.json')['final_output']
+    if contract['transport'] == schema.TRANSPORT:
+        class SyntheticStructured:
+            def prepare_final_decision(self):
+                return contract
+            def __call__(self, messages):
+                return {'choices': [{'message': {'content': '{"tool":"read_market","arguments":{}}'},
+                                     'finish_reason': 'stop'}]}
+            def final_decision(self, messages):
+                return {'choices': [{'message': {'content': self.answer}, 'finish_reason': 'stop'}],
+                        'backend_metadata': {'final_output': contract}}
+        for tool, args in [('hold', {}), ('submit', {'allocation': {'SPY': 2, 'CASH': 1}})]:
+            backend = SyntheticStructured()
+            backend.answer = json.dumps({'tool': tool, 'arguments': args}, indent=2)
+            record = decide_fn(backend, controller_type(root, root / 'capability-visible', 'raw'),
+                               'Synthetic structured route, not model inference.', final_output=contract)
+            validate_decision(record, expected_final_output=contract)
+            checks['structured/' + tool] = record['decision_action'] == tool and len(record['turns']) == 7
+        backend.answer = '{"tool":"submit","arguments":{"allocation":{"CASH":0}}}'
+        record = decide_fn(backend, controller_type(root, root / 'capability-visible', 'raw'),
+                           'Synthetic semantic failure.', final_output=contract)
+        validate_decision(record, expected_final_output=contract)
+        checks['structured/semantic_failure'] = record['decision_action'] == 'failed'
+        backend.answer = '{"tool":"submit","arguments":{"allocation":{"SPY":1},"CASH":0}}'
+        try:
+            decide_fn(backend, controller_type(root, root / 'capability-visible', 'raw'),
+                      'Synthetic decoder failure.', final_output=contract)
+        except schema.DecoderFailure:
+            checks['structured/decoder_failure'] = True
+        else:
+            checks['structured/decoder_failure'] = False
+    report.update(passed=all(checks.values()), final_output=contract,
+                  scope='Synthetic execution route; real tokenizer/model decoding qualified separately.')
     old.write(root / 'decision-qualification.json', report)
     return report
 
@@ -362,7 +428,8 @@ def qualify(root, *, controller_type=None, decide_fn=None):
 def require_qualification(root):
     cap.require_qualification(root)
     report = old.load(root / 'decision-qualification.json')
-    if (not report['passed'] or not report['checks'] or not all(report['checks'].values()) or
+    if (report.get('final_output') != old.load(root / 'protocol.json')['final_output'] or
+            not report['passed'] or not report['checks'] or not all(report['checks'].values()) or
             report['protocol_sha256'] != old.sha(root / 'protocol.json') or
             report['capability_sha256'] != old.sha(root / 'capability-qualification.json')):
         raise ValueError('v8 decision qualification absent, failed or stale')

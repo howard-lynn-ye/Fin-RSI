@@ -2,7 +2,7 @@
 
 This repair follows the retained [three-model preflight](../20261012-reviewed-preflight/README.md).
 Its source starts at master `037cc0c`, including V2 integration `f29f5da`.
-New freezes use interaction revision `20261013-single-action-envelope`.
+New freezes use interaction revision `20261013-structured-final-v1`.
 The first attempted revision is retained below with its failures.
 
 The task distinguishes the visible observation cutoff from the future valuation deadline. It shows
@@ -64,3 +64,30 @@ canonical path; details and bounded remaining choices are in [envelope-review.js
 Candidate4 passed build/index/spec checks and 112 targeted tests (Slurm 2124699). Two additional
 canonical-envelope regression cases and a fresh identical three-model replay are tracked in
 [validation.json](validation.json). The previous failed attempt is not relabeled as a pass.
+
+
+## Structured final output
+
+The [second attempt](attempt-2/README.md) completed 16/18 fixed-date cases. Its two remaining
+failures put CASH beside allocation. Both failed attempts remain published; neither launched a
+full-cycle comparison. The new repair constrains final-stage JSON structure with the pinned
+[lm-format-enforcer](https://github.com/noamgat/lm-format-enforcer) 0.11.3 transport. It does not
+choose HOLD, assets, allocation amounts or a default cash value. Research and early decisions
+remain in the first six responses. Both arms get the same final two-response transport and budget.
+
+Strict JSON and financial validation still apply. A grammar-accepted string or number that strict
+JSON rejects is retained as an interface error and consumes the existing correction budget. A
+response the grammar could not produce stops the run with a private infrastructure diagnostic.
+Neither class is silently salvaged, scored as an intentional HOLD, or replaced by a policy.
+
+The protocol binds decoder version, schema hash and parser configuration. Per-response receipts
+bind the actual backend model ID, revision and token budget. The preflight additionally requires
+one real final-stage generation per model, even when all calendar cases submit early. That extra
+response is stored separately, never executed, and never passed into the paired experiment's
+history. Each real case resets seed/call counters. This is an additional interface qualification
+cost, not an equal-inference-budget comparison with the older protocols.
+
+Claude and Gemini reviewed the supplied implementation independently. Their verified receipts,
+accepted repairs and source-checked objections are in [schema-review.json](schema-review.json).
+The personal conversation path declares text transport separately. Unqualified model families,
+reasoning templates and closed API transports are not silently substituted into the HF protocol.
