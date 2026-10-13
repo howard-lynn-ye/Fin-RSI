@@ -93,3 +93,23 @@ remain explicitly outside the automatic model preflight because their replies
 are manually delivered through a separate provenance protocol. They must not be
 reported as having passed this automatic gate. A stale gate requires a new frozen
 run directory; operators must preserve the old records rather than delete them.
+### Integration failures found during the first launch
+
+The first real-model preflight (Slurm 2124502) stopped before any model decision:
+`decision_workspace` was called without its required `personal` argument. This was a
+bug in the newly added preflight, not a model failure or an explanation for older
+returns. The first launch and frozen source are preserved. The fix explicitly selects
+the non-personal workspace and creates its temporary parent directory first.
+
+The regression now runs the actual workspace, date cutoff, evidence snapshot,
+Controller, prompt, decision parsing and record verification for both v8 and v9,
+with a synthetic backend and synthetic prices. Slurm 2124508 passed 66 related tests.
+These are integration results, not real-model performance. The test also collects
+cleanly without the optional study dependency (1 passed, 6 skipped); CI had exposed
+an unconditional `bs4` import in the earlier test module.
+
+A fresh three-model preflight was submitted as 2124509 using the corrected frozen
+source and a separate output root. `preflight-r2.sbatch` preserves its launcher.
+No successful model qualification or new full-period Return Rate is claimed here.
+The review passes and prior unit tests did not catch this integration failure;
+source review alone is not evidence of a bug-free experiment.

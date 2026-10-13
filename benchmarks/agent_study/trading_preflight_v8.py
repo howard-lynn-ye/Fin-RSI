@@ -28,6 +28,7 @@ def run(root, backend):
     dates = pd.read_csv(root / 'data' / md.HIDDEN, index_col=0).index
     destination = root / 'interface-preflight'
     destination.mkdir(exist_ok=True)
+    (root / 'tmp').mkdir(exist_ok=True)
     planned = cases(inputs['picks'])
     rows = []
     for arm, i in planned:
@@ -35,7 +36,7 @@ def run(root, backend):
         day = str(dates[inputs['picks'][i]])
         if not path.exists():
             backend.seed, backend.calls = protocol['seed'] * 1000 + i, 0
-            with study.decision_workspace(root, arm, i) as workspace:
+            with study.decision_workspace(root, arm, i, personal=False) as workspace:
                 md.truncate(root / 'data', workspace, day)
                 snapshot = runtime.write_evidence_snapshot(old.load(root / 'evidence.json'), packets[day], workspace)
                 controller = runtime.Controller(root, workspace, arm, protocol['seed'] * 1000 + i)

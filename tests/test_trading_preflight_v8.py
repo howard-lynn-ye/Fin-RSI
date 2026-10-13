@@ -2,7 +2,6 @@
 import json
 import pytest
 
-from benchmarks.agent_study import multisource_model_study as study
 from benchmarks.agent_study import trading_preflight_v8 as gate, trading_runtime_v8 as v8
 from test_trading_terminal_v8 import Controller, response
 
@@ -17,6 +16,9 @@ def test_cases_cover_both_arms_and_calendar_positions_without_return_selection()
 
 @pytest.fixture
 def preflight(tmp_path, monkeypatch):
+    pytest.importorskip('bs4', reason='multisource integration requires the study extra')
+    from benchmarks.agent_study import multisource_model_study as study
+
     protocol = dict(interface='v8', model=['synthetic', 'fixture', 'no-real-model'])
     monkeypatch.setattr(study, 'verify', lambda _: protocol)
     v8.old.write(tmp_path / 'protocol.json', protocol)
@@ -71,3 +73,56 @@ def test_changed_original_record_invalidates_qualification(preflight):
     path.write_text('{}')
     with pytest.raises(ValueError, match='record changed'):
         gate.require(root)
+
+
+@pytest.mark.parametrize('interface', ['v8', 'v9'])
+def test_run_uses_real_workspace_cutoffs_and_records_each_case(tmp_path, monkeypatch, interface):
+    pytest.importorskip('bs4', reason='multisource integration requires the study extra')
+    import pandas as pd
+    from benchmarks.agent_study import multisource_model_study as study
+
+    root = tmp_path / 'run'
+    data = root / 'data'
+    data.mkdir(parents=True)
+    days = ['2025-01-02', '2025-01-03', '2025-01-06']
+    protocol = dict(interface=interface, seed=11, deadline=days[-1],
+                    model=['synthetic', 'fixture', 'no-real-model'])
+    study.old.write(root / 'protocol.json', protocol)
+    study.old.write(root / 'inputs.json', dict(picks=[0, 1, 2]))
+    pd.DataFrame({t: [100., 101., 102.] for t in study.md.TICKERS}, index=days).to_csv(
+        data / study.md.HIDDEN)
+    pd.DataFrame([dict(date=day, ticker=t, open=100., high=101., low=99., close=100., volume=10)
+                  for day in days for t in study.md.TICKERS]).to_csv(data / 'quotes.csv', index=False)
+    pd.DataFrame(columns=['date', 'ticker', 'kind', 'value']).to_csv(
+        data / 'corporate_actions.csv', index=False)
+    records = [dict(category=c, series=c, id=c, event_date='2025-01-01',
+                    eligible_date=days[0], text='synthetic evidence')
+               for c in ('news', 'psychology', 'behavior', 'officials')]
+    study.old.write(root / 'evidence.json', records)
+    packets = {day: study.evidence_packet(records, day) for day in days}
+    study.old.write(root / 'evidence-packets.json', packets)
+    monkeypatch.setattr(study, 'verify', lambda _: protocol)
+    runtime = study.terminal_runtime(interface)
+    # Source/qualification files are outside this fixture. Workspace, truncation,
+    # evidence, Controller, prompts, decision parsing and record verification are real.
+    monkeypatch.setattr(runtime, 'require_qualification', lambda _: {'passed': True})
+    seen = []
+    def backend(messages):
+        arm, index = gate.cases(days)[len(seen)]
+        assert backend.seed == 11000 + index and backend.calls == 0
+        visible, = (root / 'tmp').glob('*/visible')
+        assert str(pd.read_csv(visible / 'quotes.csv').date.max()) == days[index]
+        assert study.old.load(visible / 'evidence.json')['as_of'] == days[index]
+        assert not (visible / study.md.HIDDEN).exists()
+        assert messages[0]['content'] == runtime.system_prompt(arm)
+        assert messages[1]['content'].endswith(study.evidence_text(packets[days[index]]))
+        seen.append((arm, index))
+        return response('hold') if index == 1 else response('submit', {
+            'allocation': {'SPY': 1, 'CASH': 1}})
+    assert not (root / 'tmp').exists()
+    report = gate.run(root, backend)
+    assert report['passed'] and seen == gate.cases(days)
+    assert len(report['cases']) == 6 and gate.require(root) == report
+    assert not list((root / 'tmp').iterdir())
+    assert [r['decision_action'] for r in report['cases']] == [
+        'submit', 'submit', 'hold', 'hold', 'submit', 'submit']

@@ -12,12 +12,37 @@
     "confined-worker allocation and isolation tests"
   ],
   "model_preflight_job": "2124502",
-  "model_preflight_status": "submitted; no results claimed at publication preparation",
+  "model_preflight_status": "Initial job failed before any model decision; corrected real-model preflight 2124509 submitted after integration regression passed",
   "preflight_models": [
     "7b",
     "granite-8b",
     "qwen3-4b"
   ],
   "preflight_scope": "First/middle/last scheduled date in both arms, seed11, independent all-cash scenarios; no Return Rate",
-  "limitations": "Related test counts overlap and must not be summed. No guarantee all model decisions succeed. No new full-period repair result is claimed."
+  "limitations": "Related test counts overlap and must not be summed. No guarantee all model decisions succeed. No new full-period repair result is claimed.",
+  "ci_collection_fix": {
+    "failed_ci_run": "38329489543",
+    "cause": "New test imported the optional bs4 study dependency during collection",
+    "job": "2124507",
+    "with_study": "5 passed",
+    "without_study": "1 passed, 4 skipped",
+    "fix": "Import optional multisource dependency inside fixtures, preserving dependency-free coverage"
+  },
+  "integration_fix": {
+    "failed_job": "2124502",
+    "failure": "TypeError: decision_workspace() missing required personal argument; no model decision generated",
+    "additional_setup": "Create root/tmp before entering the actual workspace",
+    "patch_sha256": "583cb8cb6151cb6bb018a453a59a96bd8bbdf0f4b01505719081689e34c06eed",
+    "job": "2124508",
+    "result": "66 related tests passed, including actual workspace/truncation/evidence/controller/prompt/record path for v8 and v9",
+    "without_study": "1 passed, 6 skipped",
+    "checks": [
+      "build_index.py",
+      "build_package.py",
+      "validate.py: OK"
+    ],
+    "replacement_preflight_job": "2124509",
+    "replacement_scope": "Same three models, first/middle/last date, both arms; fresh frozen source and output root",
+    "replacement_status": "Submitted; real-model outcome pending"
+  }
 }
