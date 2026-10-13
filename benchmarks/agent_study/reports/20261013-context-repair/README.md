@@ -91,3 +91,8 @@ Claude and Gemini reviewed the supplied implementation independently. Their veri
 accepted repairs and source-checked objections are in [schema-review.json](schema-review.json).
 The personal conversation path declares text transport separately. Unqualified model families,
 reasoning templates and closed API transports are not silently substituted into the HF protocol.
+
+
+The [structured-final preflight](attempt-3/README.md) completed 18/18 decisions and 3/3 real decoder
+checks, independently verified by Slurm audit 2124808. Full-cycle array 2124818 was then submitted;
+this launch is not a completed Return Rate result.
