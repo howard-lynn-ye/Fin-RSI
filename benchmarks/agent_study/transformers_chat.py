@@ -56,6 +56,7 @@ class TransformersChat:
         from transformers import AutoModelForCausalLM
         if not torch.cuda.is_available():
             raise RuntimeError("GPU allocation required; no CPU inference fallback")
+        self.identity = dict(model=model, revision=revision, max_tokens=max_tokens)
         self.tokenizer = load_tokenizer(model, revision)
         validate_reasoning_tokens(self.tokenizer)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -68,7 +69,20 @@ class TransformersChat:
         self.stop_token_ids = tuple(stops if isinstance(stops, (list, tuple)) else
                                     [self.tokenizer.eos_token_id if stops is None else stops])
 
+    def prepare_final_decision(self):
+        from benchmarks.agent_study.trading_schema_v8 import output_contract, prepare_decoder
+        if not hasattr(self, '_decision_tokenizer_data'):
+            self._decision_tokenizer_data = prepare_decoder(self.tokenizer, self.stop_token_ids)
+        return output_contract(True)
+
+    def final_decision(self, messages):
+        self.prepare_final_decision()
+        return self._generate(messages, structured=True)
+
     def __call__(self, messages):
+        return self._generate(messages, structured=False)
+
+    def _generate(self, messages, *, structured):
         import torch
         from transformers import set_seed
         set_seed(self.seed + self.calls)
@@ -77,18 +91,23 @@ class TransformersChat:
         count = inputs.input_ids.shape[-1]
         if count + self.max_tokens > self.context_limit:
             raise ValueError("context budget exceeded; no silent truncation")
+        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        options, metadata = {}, {'stop_token_ids': self.stop_token_ids, 'identity': dict(self.identity)}
+        if structured:
+            from benchmarks.agent_study.trading_schema_v8 import output_contract, prefix_filter
+            options['prefix_allowed_tokens_fn'] = prefix_filter(self._decision_tokenizer_data, prompt)
+            metadata['final_output'] = output_contract(True)
         started = time.monotonic()
         with torch.inference_mode():
             result = self.model.generate(**inputs, max_new_tokens=self.max_tokens,
                                          do_sample=True, temperature=.1, top_p=1.0,
-                                         pad_token_id=self.tokenizer.eos_token_id)
+                                         pad_token_id=self.tokenizer.eos_token_id, **options)
         tokens = result[0, count:]
-        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         stopped = any(int(token) in self.stop_token_ids for token in tokens)
         return {"choices": [{"message": {"content": decode_response(
                     self.tokenizer, tokens, prompt, self.stop_token_ids)},
                               "finish_reason": "length" if len(tokens) == self.max_tokens and not stopped else "stop"}],
-                "backend_metadata": {"stop_token_ids": self.stop_token_ids},
+                "backend_metadata": metadata,
                 "usage": {"prompt_tokens": count, "completion_tokens": len(tokens),
                           "total_tokens": count + len(tokens)},
                 "generation_seconds": time.monotonic() - started}
