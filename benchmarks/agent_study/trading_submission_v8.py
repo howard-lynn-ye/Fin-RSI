@@ -43,7 +43,13 @@ def extract_decision(text):
     answer = answer[position:].strip()
     if answer.lower() == 'hold':
         return {'tool': 'hold', 'arguments': {}}, 'json'
-    fence = re.fullmatch(r'```(json|python|py)?[ \t]*\r?\n(.*?)\n?```', answer, re.DOTALL | re.IGNORECASE)
+    # A standalone language label is a transport wrapper only if the entire
+    # remainder is one JSON value. It never makes unfenced Python executable.
+    label = re.fullmatch(r'(?:json|python|py)[ \t]*\r?\n(.*)', answer, re.DOTALL | re.IGNORECASE)
+    if label:
+        answer = label.group(1).strip()
+    fence = None if label else re.fullmatch(
+        r'```(json|python|py)?[ \t]*\r?\n(.*?)\n?```', answer, re.DOTALL | re.IGNORECASE)
     if fence:
         answer = fence.group(2).strip()
         if '```' in answer:
@@ -112,7 +118,9 @@ def submission(arguments):
     if not isinstance(allocation, dict) or 'CASH' not in allocation:
         problem = 'allocation requires a dictionary with an explicit CASH part, including zero.'
     elif set(allocation) - set(TICKERS) - {'CASH'}:
-        problem = 'allocation contains an unknown instrument.'
+        unknown = ', '.join(sorted(str(k) for k in set(allocation) - set(TICKERS) - {'CASH'}))
+        problem = ('allocation contains an unknown instrument: ' + unknown + '. Allowed instruments: ' +
+                   ', '.join((*TICKERS, 'CASH')) + '.')
     else:
         try:
             if any(type(v) not in (int, float) or not math.isfinite(v) or v < 0
@@ -121,7 +129,22 @@ def submission(arguments):
         except OverflowError:
             problem = 'allocation parts exceed the supported numeric range.'
     if problem:
-        return dict(ok=False, submission=None, error=problem)
+        result = dict(ok=False, submission=None, error=problem)
+        if isinstance(allocation, dict):
+            invalid = []
+            for name, value in allocation.items():
+                try:
+                    valid = type(value) in (int, float) and math.isfinite(value) and value >= 0
+                except OverflowError:
+                    valid = False
+                if not valid:
+                    invalid.append(str(name))
+            if invalid:
+                result['invalid_parts'] = invalid
+                result['hint'] = ('Correct these allocation fields yourself: ' + ', '.join(invalid) +
+                    '. Parts are relative amounts, not a budget remainder; they need not sum to 1. '
+                    'Every asset and CASH must be nonnegative. No order was executed or changed.')
+        return result
     scale = max(allocation.values())
     if scale == 0:
         return dict(ok=False, submission=None, error='At least one allocation part must be positive.')

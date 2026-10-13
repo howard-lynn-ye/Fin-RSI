@@ -195,10 +195,15 @@ def invoke(request, *, timeout=900):
             binary = Path.home()/'AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe'
             command = [str(binary), 'exec', '--model', model, '--json', '--ephemeral', '--sandbox', 'read-only',
                 '--ignore-user-config', '--skip-git-repo-check', '-C', isolated,
-                '-c', 'model_reasoning_effort='+json.dumps(effort), '-c', 'web_search="disabled"']
+                '-c', 'model_reasoning_effort='+json.dumps(effort), '-c', 'web_search="disabled"',
+                # The CLI's coding-agent role must not reinterpret "wait for the
+                # result" in simulated messages as permission for a native tool.
+                '-c', 'developer_instructions='+json.dumps(WRAPPER)]
             for feature in ('shell_tool', 'unified_exec', 'apps', 'plugins', 'hooks', 'multi_agent',
                             'computer_use', 'browser_use', 'in_app_browser', 'view_image',
-                            'image_generation', 'workspace_dependencies', 'skill_search', 'code_mode_host'):
+                            'image_generation', 'workspace_dependencies', 'skill_search', 'code_mode_host',
+                            'multi_agent_v2', 'goals', 'sleep_tool', 'tool_suggest',
+                            'default_mode_request_user_input', 'send_message_to_user_async'):
                 command += ['-c', f'features.{feature}=false']
             command += ['-c', 'features.skip_host_skill_discovery=true', '-']
             payload = prompt
