@@ -37,8 +37,12 @@ both default to the visible history. A supplied date must not exceed the observa
 Long-only, no leverage; unallocated money is cash earning zero. Orders execute next-session close.
 Exact research tool signatures are listed below. Use help_tool(name) for details.
 Python has numpy/pandas/scipy and bound tools; each call starts fresh. Files are read-only;
-quotes.csv is unadjusted, corporate_actions.csv contains visible actions, evidence.json
-contains current eligible records. Source dates/coverage limitations remain in the evidence packet.
+quotes.csv columns: date,ticker,open,high,low,close,volume (lowercase, raw prices).
+corporate_actions.csv columns: date,ticker,kind,value,note; README.md explains adjustment.
+Read these existing files with pandas.read_csv; do not recreate supplied rows in code.
+read_market/read_snapshot return dictionaries: check ok, then use rows (a list of records),
+not data or a DataFrame. These raw rows have close, not adj_close. Pages are not full history.
+evidence.json contains current eligible records. Source dates/coverage limits remain in the packet.
 Return ONE JSON call {"tool":"name","arguments":{...}}.
 For Python, choose run_python and put your complete program in arguments.code as a JSON string.
 Check reply["ok"]. Readers page results; follow next_offset when needed. Print compact output.
@@ -55,7 +59,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-structured-research-v3'
+INTERACTION_REVISION = '20261013-structured-research-v4'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -119,6 +123,12 @@ class Tools(cap.Tools):
             result['python_example'] = ('import json\nevidence=json.load(open("evidence.json"))\n'
                                         'print([(r["id"],r["category"]) for r in evidence["records"]])')
             result['note'] = 'Variables do not persist. Load inputs, calculate and optionally submit in one call.'
+            result['file_inspection_example'] = ('import pandas as pd\n'
+                'quotes=pd.read_csv("quotes.csv")\nprint(quotes.columns.tolist())')
+            result['input_files'] = {
+                'quotes.csv': ['date', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
+                'corporate_actions.csv': ['date', 'ticker', 'kind', 'value', 'note']}
+            result['input_convention'] = 'Raw prices, not adj_close; visible corporate actions are separate.'
         elif name == 'load_history':
             result['python_example'] = 'h=load_history(lookback=252)\nprint(h["returns"].tail(3))'
             result['returns'] = 'prices and returns are full adjusted pandas matrices; metadata describes conventions'
@@ -140,7 +150,14 @@ class Tools(cap.Tools):
         elif name in ('read_market', 'read_snapshot'):
             result['note'] = ('Visible data only. Omit read_market start/end to use current visible history; '
                               'never use the investment deadline as a query bound. No future dates are clamped.')
-            result['returns'] = 'rows (raw observations), next_offset; pages/snapshots are not full return history'
+            result['returns'] = 'dictionary with ok, rows (list of raw records), as_of, next_offset, total_rows'
+            result['row_fields_by_file'] = {
+                'quotes.csv': ['date', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
+                'corporate_actions.csv': ['date', 'ticker', 'kind', 'value', 'note']}
+            result['python_example'] = ('page=read_snapshot()\nassert page["ok"], page\nprint(page["rows"])'
+                if name == 'read_snapshot' else
+                'page=read_market(limit=3)\nassert page["ok"], page\nprint(page["rows"])')
+            result['page_only'] = True
         elif name == 'call_library_tool':
             result['note'] = ('Original package contracts are obtained with describe_library_tool(name). '
                               'They differ from prepared-history study shortcuts.')
