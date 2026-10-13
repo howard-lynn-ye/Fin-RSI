@@ -123,7 +123,21 @@ def test_no_forced_tool_usage_is_added_to_investment_prompt():
 def test_unscored_instruction_survives_transition_to_final_stage():
     for index in (6, 7):
         p = access.prompt('library', index)
-        assert 'UNSCORED INTERFACE CHECK' in p and 'Finish with one submit or hold' in p
+        assert 'UNSCORED INTERFACE CHECK' in p and 'one hold JSON call' in p
+
+
+def test_probe_has_no_competing_investment_task(frozen_access):
+    root, protocol, _ = frozen_access
+    _, request = access.task(root, protocol)
+    assert 'INVESTMENT DEADLINE' not in request
+    assert 'Maximize cumulative Return Rate' not in request
+    assert 'Start with that reader call' in request
+    for arm, reader in access.CASES:
+        text = access.prompt(arm)
+        assert f'Request {reader} before ending' in text
+        assert 'Choose your own investments' not in text
+        assert 'Finish early whenever ready' not in text
+        assert '"tool":"submit"' not in text
 
 
 def test_completed_submit_after_reader_is_not_misclassified_as_broken_access():

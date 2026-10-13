@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --account=angliece
+#SBATCH --partition=beacon
+#SBATCH --qos=medium
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=2-00:00:00
+#SBATCH --job-name=fin-access-probe-repair
+#SBATCH --output=/beacon-projects/radfm/wy891/fin-manual-multisource-20261005/fin-access-probe-repair-%j.log
+set -euo pipefail
+B=/beacon-projects/radfm/wy891/fin-multisource-models-20261005
+M=/beacon-projects/radfm/wy891/fin-manual-multisource-20261005
+S=$B/probe-20261013-candidate11/source
+test -f "$S/../passed.txt"
+export PYTHONPATH=$S:$B/schema-decoder-20261013/site PYTHONDONTWRITEBYTECODE=1 PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1
+export FIN_STUDY_SHARED_RUNTIME=/beacon-projects/radfm/envs/rfj-gpu
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 TOKENIZERS_PARALLELISM=false
+cd "$S"
+$B/v7-models-v1/env/bin/python "$M/fin-context-access-matrix-r8.py" qwen-general-7b phi4-mini smollm3-3b mistral12b falcon3-10b
