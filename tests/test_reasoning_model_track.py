@@ -2,13 +2,14 @@
 import json
 import pandas as pd
 import pytest
-from benchmarks.agent_study import multisource_model_study as study
 from benchmarks.agent_study import trading_runtime_v8 as runtime
 from benchmarks.agent_study.trading_schema_v8 import output_contract
 from test_trading_terminal_v8 import Controller, response
 
 
 def test_reasoning_track_freezes_separate_output_budget_and_rejects_changes(tmp_path, monkeypatch):
+    pytest.importorskip('bs4')
+    from benchmarks.agent_study import multisource_model_study as study
     archive = tmp_path / 'market-source'
     archive.write_text('fixture')
     monkeypatch.setattr(study.md, 'RAW', archive)

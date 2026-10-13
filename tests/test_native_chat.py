@@ -197,3 +197,34 @@ def test_gemini_registry_is_reported_without_claiming_it_proves_tools_disabled()
     assert parsed['success'] and parsed['client_advertised_tools'] == ['view_file','run_command']
     events.insert(1,dict(event='step_update',step_update={'step_type':'tool','tool_name':'view_file'}))
     assert not relay.parse_events('antigravity_subscription','\n'.join(map(json.dumps,events)),0)['success']
+
+def test_codex_recovered_503_keeps_diagnostic_and_accepts_only_completed_answer():
+    notice = dict(type='error', message='Reconnecting... 2/5 (unexpected status 503 Service Unavailable: temporary outage)')
+    answer = dict(type='item.completed', item=dict(type='agent_message', text='{"tool":"hold","arguments":{}}'))
+    events = [dict(type='turn.started'), notice, answer, dict(type='turn.completed', usage={'output_tokens':12})]
+    parsed = relay.parse_events('codex_subscription','\n'.join(map(json.dumps,events)),0)
+    assert parsed['success'] and parsed['text'] == answer['item']['text']
+    assert parsed['diagnostic_events'] == [notice] and parsed['events'] == events
+
+
+@pytest.mark.parametrize('failure',['unfinished','failed','unknown_error','quota','answer_before_retry','error_after_completion','multiple_turns'])
+def test_codex_retry_does_not_hide_terminal_errors_partial_answers_or_quota(failure):
+    notice = dict(type='error', message='Reconnecting... 2/5 (unexpected status 503 Service Unavailable: temporary outage)')
+    answer = dict(type='item.completed', item=dict(type='agent_message', text='{}'))
+    start, done = dict(type='turn.started'), dict(type='turn.completed')
+    events = [start, notice, answer, done]
+    if failure == 'unfinished':
+        events.pop()
+    elif failure == 'failed':
+        events.append(dict(type='turn.failed'))
+    elif failure == 'unknown_error':
+        notice['message'] = 'unknown error'
+    elif failure == 'quota':
+        notice['message'] = notice['message'].replace('503 Service Unavailable','429 Too Many Requests')
+    elif failure == 'answer_before_retry':
+        events.insert(1, answer)
+    elif failure == 'error_after_completion':
+        events = [start, answer, done, notice]
+    else:
+        events = [start, done, start, notice, answer, done]
+    assert not relay.parse_events('codex_subscription','\n'.join(map(json.dumps,events)),0)['success']

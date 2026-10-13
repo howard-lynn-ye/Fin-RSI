@@ -62,6 +62,20 @@ def fingerprint(value):
                                     allow_nan=False).encode()).hexdigest()
 
 
+def recovered_codex_retry(events, index):
+    """Only the observed 503 reconnect notice, before any answer, may recover."""
+    event = events[index]
+    match = re.fullmatch(r'Reconnecting\.\.\. ([1-9][0-9]*)/([1-9][0-9]*) '
+        r'\(unexpected status 503 Service Unavailable: [\s\S]+\)', event.get('message', ''))
+    before, after = events[:index], events[index+1:]
+    return bool(match and int(match[1]) <= int(match[2])
+        and sum(e.get('type') == 'turn.started' for e in events) == 1
+        and any(e.get('type') == 'turn.started' for e in before)
+        and not any(e.get('type') in ('turn.failed', 'turn.completed') or
+            e.get('item', {}).get('type') == 'agent_message' for e in before)
+        and sum(e.get('type') == 'turn.completed' for e in after) == 1
+        and not any(e.get('type') == 'turn.failed' for e in events))
+
 def parse_events(transport, stdout, exit_code):
     events, malformed = [], []
     for line in stdout.splitlines():
@@ -101,8 +115,13 @@ def parse_events(transport, stdout, exit_code):
         turn_started = False
         known_startup = ('Under-development features enabled: skip_host_skill_discovery.',
                          'Code Mode is unavailable because code-mode host is disabled.')
-        for event in events:
+        for index, event in enumerate(events):
             turn_started |= event.get('type') == 'turn.started'
+            if event.get('type') == 'error':
+                if recovered_codex_retry(events, index):
+                    diagnostics.append(event)
+                else:
+                    errors.append(event)
             item = event.get('item', {})
             if item.get('type') == 'error':
                 # Retain observed client notices; never reclassify an in-turn error.
@@ -117,7 +136,7 @@ def parse_events(transport, stdout, exit_code):
         text = '\n'.join(messages)
         done = [x for x in events if x.get('type') == 'turn.completed']
         usage = done[-1].get('usage') if done else None
-        ok = bool(done) and not any(x.get('type') in ('error', 'turn.failed') for x in events)
+        ok = len(done) == 1 and not any(x.get('type') == 'turn.failed' for x in events)
     else:
         raise ValueError('undeclared transport')
     return dict(success=bool(ok and exit_code == 0 and text and not tools and not malformed and not errors),
