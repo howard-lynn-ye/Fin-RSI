@@ -71,3 +71,17 @@ def test_common_data_contracts_and_python_failure_feedback_are_equal(workspace):
         assert result['contract']['input_files']['quotes.csv'][0] == 'date'
         assert 'Date' not in result['contract']['input_files']['quotes.csv']
         assert 'submission' not in result or result['submission'] is None
+
+
+@pytest.mark.parametrize('arm', ['raw', 'library'])
+@pytest.mark.skipif(not confinement_available(), reason='requires Linux confinement')
+def test_missing_tool_result_variable_is_not_filled_and_file_reader_recovers(arm, workspace):
+    controller = v8.Controller(workspace/('missing-variable-'+arm), workspace, arm)
+    failed = controller.call('run_python', {'code': 'print(rows)'})
+    assert not failed['ok'] and 'NameError' in failed['error']
+    assert 'starts fresh' in failed['hint']
+    assert not failed.get('submission')
+    recovered = controller.call('run_python', {'code':
+        'import pandas as pd; quotes=pd.read_csv("quotes.csv"); print(quotes.columns.tolist())'})
+    assert recovered['ok'] and 'close' in recovered['output']
+    assert not recovered.get('submission')

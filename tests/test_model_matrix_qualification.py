@@ -153,3 +153,13 @@ def test_matrix_cannot_silently_replace_a_declared_revision_or_model():
     row.update(id='7b', model='Other/New', revision='a' * 40)
     with pytest.raises(ValueError, match='collides'):
         hf_models([row], legacy)
+
+
+def test_free_campaign_has_twenty_distinct_enabled_hf_models():
+    from benchmarks.agent_study.model_matrix import matrix
+    rows = matrix()
+    enabled = [r for r in rows if r.get('execution_enabled', True)]
+    assert len(enabled) == 20 and all(r['transport'] == 'hf' for r in enabled)
+    assert len({r['model'] for r in enabled}) == 20
+    assert len({r['family'] for r in enabled}) >= 8
+    assert all(not r.get('execution_enabled', True) for r in rows if r['transport'] != 'hf')

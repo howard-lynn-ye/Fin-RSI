@@ -42,7 +42,12 @@ corporate_actions.csv columns: date,ticker,kind,value,note; README.md explains a
 Read these existing files with pandas.read_csv; do not recreate supplied rows in code.
 read_market/read_snapshot return dictionaries: check ok, then use rows (a list of records),
 not data or a DataFrame. These raw rows have close, not adj_close. Pages are not full history.
-evidence.json contains current eligible records. Source dates/coverage limits remain in the packet.
+evidence.json is a dictionary: json.load(open("evidence.json"))["records"] is the records list.
+read_evidence() is also a dictionary: check ok, then use reply["records"], not reply itself.
+Records contain metadata, not uniform numeric positions. Inspect keys; use read_evidence_document(id).
+For prices: import pandas as pd; quotes=pd.read_csv("quotes.csv"). No tool-result variables
+such as rows exist automatically in Python. Load files or call the bound reader in the same program.
+Source dates/coverage limits remain in the packet.
 Return ONE JSON call {"tool":"name","arguments":{...}}.
 For Python, choose run_python and put your complete program in arguments.code as a JSON string.
 Check reply["ok"]. Readers page results; follow next_offset when needed. Print compact output.
@@ -59,7 +64,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-control-filter-v6'
+INTERACTION_REVISION = '20261013-reader-recovery-v7'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -231,6 +236,9 @@ class Controller(cap.Controller):
             message = str(result.get('error', ''))
             if "name 'evidence' is not defined" in message:
                 result['hint'] = 'Load it in this call: import json; evidence=json.load(open("evidence.json"))'
+            elif 'NameError' in message:
+                result['hint'] = ('Each Python call starts fresh. Define imports and variables in this call. '
+                                  'Read files or call bound readers; no previous tool-result variables exist.')
             elif any(x in message for x in ('TypeError', 'ImportError', 'KeyError', 'AttributeError')):
                 result['hint'] = 'Study tools are already bound; inspect help_tool(name) for exact arguments and return fields.'
         return result
@@ -306,7 +314,9 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
             result = dict(ok=False, error='Response not executed: ' + status + '. ' + instruction +
                           ' Remove text outside the JSON. A submit explanation may be inside arguments.rationale. '
                           'Send only the current request or decision, then stop. ' +
-                          (' Shorten the output so the complete response fits.'
+                          (' Shorten the output so the complete response fits. Do not copy data rows into code. '
+                           'Load the existing file: import pandas as pd; quotes=pd.read_csv("quotes.csv"). '
+                           'Keep only the calculation you currently need.'
                            if status == 'generation-truncated' else ''))
         elif final and (tool not in ('submit', 'hold') or status != 'json'):
             result = dict(ok=False, error=('Final stage accepts only tool="submit" with arguments.allocation, '

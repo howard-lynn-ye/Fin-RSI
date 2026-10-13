@@ -108,7 +108,8 @@ def test_complete_expansion_keeps_batch_identity_and_all_seed_means(tmp_path, mo
 def test_hf_matrix_uses_pinned_declarations_without_aliases_and_binds_manifest():
     from benchmarks.agent_study import multisource_model_study as study
     from benchmarks.agent_study.model_matrix import MANIFEST, matrix
-    declared = {(r['model'], r['revision']) for r in matrix() if r['transport'] == 'hf'}
+    declared = {(r['model'], r['revision']) for r in matrix()
+                if r['transport'] == 'hf' and r.get('execution_enabled', True)}
     assert not set(BATCHES['matrix_hf']) & set(BATCHES['matrix_reasoning'])
     specs = [model_spec(family, 11, batch) for batch in ('matrix_hf', 'matrix_reasoning')
              for family in BATCHES[batch]]
@@ -151,3 +152,14 @@ def test_aggregate_rejects_complete_older_experiment(tmp_path):
             (root / "protocol.json").write_text(json.dumps({"version": "trading-interface-v5-2"}))
     with pytest.raises(ValueError, match="protocol/source changed"):
         aggregate(tmp_path)
+
+
+def test_disabled_external_models_fail_before_creating_a_run(tmp_path):
+    from benchmarks.agent_study.model_matrix import matrix
+    for row in matrix():
+        if row['transport'] != 'hf':
+            root = tmp_path/row['id']
+            with pytest.raises(ValueError, match='execution disabled'):
+                freeze(root, row['id'], 11, tmp_path/'absent-evidence.json',
+                    batch='matrix_native', interface='v9', allow_retrospective=True)
+            assert not root.exists()

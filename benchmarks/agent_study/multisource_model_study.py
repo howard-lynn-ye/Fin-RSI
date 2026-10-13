@@ -31,7 +31,7 @@ GUIDE = Path(__file__).with_name("trading_library_guide_multisource.md")
 MODELS = old.MODELS + (("mistral12b", "mistralai/Mistral-Nemo-Instruct-2407",
                         "04d8a90549d23fc6bd7f642064003592df51e9b3"),
                       ("assistant", "assistant_in_current_conversation", "not_independently_attested"))
-HF_ROWS = tuple(r for r in matrix() if r['transport'] == 'hf')
+HF_ROWS = tuple(r for r in matrix() if r['transport'] == 'hf' and r.get('execution_enabled', True))
 # Preserve identifiers used by existing archived runs; aliases never add a model.
 LEGACY_IDS = {name: family for family, name, revision in MODELS}
 MATRIX_MODELS = hf_models(HF_ROWS, MODELS)
@@ -107,7 +107,11 @@ def model_spec(family, seed, batch):
         raise ValueError("model/seed is outside the declared batch")
     if batch == 'personal' and seed != 11:
         raise ValueError('personal case has one run; 11 controls menu/order, not model sampling')
-    return next(m for m in MODELS if m[0] == family)
+    spec = next(m for m in MODELS if m[0] == family)
+    declared = next((r for r in matrix() if r['model'] == spec[1]), None)
+    if declared is not None and not declared.get('execution_enabled', True):
+        raise ValueError('model execution disabled by current access/cost policy: ' + family)
+    return spec
 
 
 def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batch="original",
