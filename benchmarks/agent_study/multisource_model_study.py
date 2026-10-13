@@ -37,8 +37,11 @@ MODELS += tuple(m for m in MATRIX_MODELS if m[1] not in LEGACY_IDS)
 from benchmarks.agent_study.native_chat import REVISION as NATIVE_REVISION, policy as native_policy
 NATIVE_ROWS = tuple(r for r in matrix() if r['transport'] != 'hf')
 MODELS += tuple((r['id'], r['model'], NATIVE_REVISION) for r in NATIVE_ROWS)
+REASONING_FAMILIES = ('deepseek-r1-distill-14b',)
+REASONING_MAX_TOKENS = 8192
 BATCHES = {"original": ("7b", "14b"), "expansion": ("32b", "mistral12b"),
-           "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS)}
+           "personal": ("assistant",), "matrix_hf": tuple(m[0] for m in MATRIX_MODELS if m[0] not in REASONING_FAMILIES),
+           "matrix_reasoning": REASONING_FAMILIES}
 BATCHES["matrix_native"] = tuple(r["id"] for r in NATIVE_ROWS)
 VERSIONS = {"v6": "multisource-model-v1", "v7": "multisource-model-v2",
             "v8": "multisource-model-v3", "v9": "multisource-model-v4-rag"}
@@ -114,8 +117,8 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         raise ValueError("unknown interface")
     if batch == 'matrix_hf' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new model matrix requires the repaired v7 interface')
-    if batch == 'matrix_native' and interface != 'v9':
-        raise ValueError('native model track requires the current v9 replay interface')
+    if batch in ('matrix_native', 'matrix_reasoning') and interface != 'v9':
+        raise ValueError('native/reasoning model track requires the current v9 replay interface')
     if batch == 'personal' and interface not in ('v7', 'v8', 'v9'):
         raise ValueError('new personally authored comparison requires the repaired v7 interface')
     records = old.load(evidence_path)
@@ -158,7 +161,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         from benchmarks.agent_study.trading_runtime_v8 import INTERACTION_REVISION, RESEARCH_RESPONSES
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         interaction_revision=INTERACTION_REVISION,
-                        final_output=output_contract(batch not in ('personal', 'matrix_native')),
+                        final_output=output_contract(batch not in ('personal', 'matrix_native', 'matrix_reasoning')),
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=RESEARCH_RESPONSES, final_decision_responses=2,
                         allocation_contract='explicit asset/CASH relative parts; absolute weights remain strict',
@@ -190,6 +193,11 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         protocol['limits'] += ['Native CLI hidden instructions/reasoning differ from HF; report this track separately.',
                                'Provider model weights are unpinned; GPT response events do not independently attest server model.',
                                'Output budget uses a declared reference tokenizer; native tool use invalidates a response.']
+    if batch == 'matrix_reasoning':
+        protocol.update(max_tokens=REASONING_MAX_TOKENS, reasoning_policy=dict(
+            template='publisher unchanged', output='preserve reasoning; execute only balanced final action',
+            budget='8192 generated tokens per response including reasoning; identical in both arms'))
+        protocol['limits'].append('Reasoning text track has a larger declared output budget; report separately from structured HF.')
     old.write(root / "protocol.json", protocol)
 
 
@@ -207,13 +215,18 @@ def verify(root):
             OBJECTIVE, INITIAL_CAPITAL, INTERACTION_REVISION, RESEARCH_RESPONSES)
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p.get('interaction_revision') != INTERACTION_REVISION or
-                p.get('final_output') != output_contract(p.get('batch') not in ('personal', 'matrix_native')) or
+                p.get('final_output') != output_contract(p.get('batch') not in ('personal', 'matrix_native', 'matrix_reasoning')) or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
-                p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != old.MAX_TOKENS or
+                p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != (
+                    REASONING_MAX_TOKENS if p.get('batch') == 'matrix_reasoning' else old.MAX_TOKENS) or
                 p['research_responses'] != RESEARCH_RESPONSES or p['final_decision_responses'] != 2 or
                 p.get('allocation_contract') != 'explicit asset/CASH relative parts; absolute weights remain strict' or
                 p['final_actions'] != ['submit', 'hold']):
             raise ValueError('terminal objective/deadline/decision budget changed')
+    if p.get('batch') == 'matrix_reasoning' and p.get('reasoning_policy') != dict(
+            template='publisher unchanged', output='preserve reasoning; execute only balanced final action',
+            budget='8192 generated tokens per response including reasoning; identical in both arms'):
+        raise ValueError('reasoning output policy changed')
     if p.get('interface') == 'v9' and p.get('batch') != 'personal':
         from benchmarks.agent_study.trading_access_v9 import contract
         if p.get('model_access_probe') != contract():

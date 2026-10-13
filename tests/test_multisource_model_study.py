@@ -109,7 +109,9 @@ def test_hf_matrix_uses_pinned_declarations_without_aliases_and_binds_manifest()
     from benchmarks.agent_study import multisource_model_study as study
     from benchmarks.agent_study.model_matrix import MANIFEST, matrix
     declared = {(r['model'], r['revision']) for r in matrix() if r['transport'] == 'hf'}
-    specs = [model_spec(family, 11, 'matrix_hf') for family in BATCHES['matrix_hf']]
+    assert not set(BATCHES['matrix_hf']) & set(BATCHES['matrix_reasoning'])
+    specs = [model_spec(family, 11, batch) for batch in ('matrix_hf', 'matrix_reasoning')
+             for family in BATCHES[batch]]
     assert {(m[1], m[2]) for m in specs} == declared
     assert len(specs) == len(declared)
     key = MANIFEST.relative_to(study.previous.REPO).as_posix()

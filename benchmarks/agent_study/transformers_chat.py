@@ -50,6 +50,29 @@ def decode_response(tokenizer, tokens, prompt, stop_token_ids=()):
     return text
 
 
+class InvalidSamplingScores(RuntimeError):
+    def __init__(self, diagnostic):
+        super().__init__('nonfinite or empty sampling distribution; generation stopped')
+        self.diagnostic = diagnostic
+
+
+class FiniteScores:
+    """Fail before multinomial poisons the CUDA context; never replace logits."""
+    def __init__(self, prompt_tokens):
+        self.prompt_tokens = prompt_tokens
+
+    def __call__(self, input_ids, scores):
+        import torch
+        finite = torch.isfinite(scores)
+        if (torch.isnan(scores).any() or torch.isposinf(scores).any()
+                or not finite.any(dim=-1).all()):
+            raise InvalidSamplingScores(dict(
+                nan_count=int(torch.isnan(scores).sum()),
+                positive_inf_count=int(torch.isposinf(scores).sum()),
+                finite_per_row=finite.sum(dim=-1).tolist(),
+                generated_token_ids=input_ids[:, self.prompt_tokens:].tolist()))
+        return scores
+
 class TransformersChat:
     def __init__(self, model, revision, *, max_tokens=2048, seed=0):
         import torch
@@ -63,6 +86,8 @@ class TransformersChat:
             model, revision=revision, torch_dtype=torch.bfloat16, device_map="auto",
             attn_implementation="sdpa")
         self.model.eval()
+        self.hardware = dict(gpus=[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+                             device_map={k: str(v) for k, v in self.model.hf_device_map.items()})
         self.max_tokens, self.seed, self.calls = max_tokens, seed, 0
         self.context_limit = context_limit(self.model.config, self.tokenizer)
         stops = self.model.generation_config.eos_token_id
@@ -92,16 +117,25 @@ class TransformersChat:
         if count + self.max_tokens > self.context_limit:
             raise ValueError("context budget exceeded; no silent truncation")
         prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        options, metadata = {}, {'stop_token_ids': self.stop_token_ids, 'identity': dict(self.identity)}
+        options, metadata = {}, {'stop_token_ids': self.stop_token_ids, 'identity': dict(self.identity),
+                                 'hardware': self.hardware}
         if structured:
             from benchmarks.agent_study.trading_schema_v8 import output_contract, prefix_filter
             options['prefix_allowed_tokens_fn'] = prefix_filter(self._decision_tokenizer_data, prompt)
             metadata['final_output'] = output_contract(True)
         started = time.monotonic()
-        with torch.inference_mode():
-            result = self.model.generate(**inputs, max_new_tokens=self.max_tokens,
-                                         do_sample=True, temperature=.1, top_p=1.0,
-                                         pad_token_id=self.tokenizer.eos_token_id, **options)
+        try:
+            with torch.inference_mode():
+                result = self.model.generate(**inputs, max_new_tokens=self.max_tokens,
+                                             do_sample=True, temperature=.1, top_p=1.0,
+                                             logits_processor=[FiniteScores(count)],
+                                             pad_token_id=self.tokenizer.eos_token_id, **options)
+        except InvalidSamplingScores as exc:
+            from benchmarks.agent_study.trading_schema_v8 import DecoderFailure
+            failure = DecoderFailure(dict(error=str(exc), sampling_diagnostic=exc.diagnostic,
+                backend_metadata=metadata), [], metadata.get('final_output'), messages)
+            failure.args = ('infrastructure failure: invalid sampling scores; no decision executed',)
+            raise failure from exc
         tokens = result[0, count:]
         stopped = any(int(token) in self.stop_token_ids for token in tokens)
         return {"choices": [{"message": {"content": decode_response(

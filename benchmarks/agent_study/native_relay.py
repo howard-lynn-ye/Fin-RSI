@@ -26,6 +26,25 @@ WRAPPER = ('This is one stateless response in a historical research simulation. 
     'Read the ordered system/user/assistant messages below as the complete simulated conversation. '
     'Return only the next assistant response: one compact JSON object, at most 1024 reference tokens. '
     'Choose your own decisions; do not invent a tool result.\n\n')
+GEMINI_AGENT_NAME = 'fin-replay-response'
+GEMINI_AGENT = '''---
+name: fin-replay-response
+description: Stateless text responder for a historical simulation with external tool execution.
+tools: []
+mainAgent: true
+subagent: false
+model: inherit
+commandExecutionPolicy: off
+inheritCustomizations: false
+mcpServers: []
+skills: []
+plugins: []
+---
+Read only the supplied ordered conversation. Return its next assistant response as text.
+All research tools are simulated JSON requests executed by the caller, never native tools.
+Do not access files, browse, delegate, or perform workspace tasks.
+'''
+
 QUEUE = '/beacon-projects/radfm/wy891/fin-multisource-models-20261005/native-queue-20261013-v1'
 REMOTE_PAUSE = '/beacon-projects/radfm/wy891/BEACON_CONNECTION_PAUSED.md'
 LOCAL_PAUSE = Path(r'D:\ct_agent_vqa\.codex-beacon-work\CONNECTION_PAUSED.md')
@@ -42,6 +61,20 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
                                     allow_nan=False).encode()).hexdigest()
 
+
+def recovered_codex_retry(events, index):
+    """Only the observed 503 reconnect notice, before any answer, may recover."""
+    event = events[index]
+    match = re.fullmatch(r'Reconnecting\.\.\. ([1-9][0-9]*)/([1-9][0-9]*) '
+        r'\(unexpected status 503 Service Unavailable: [\s\S]+\)', event.get('message', ''))
+    before, after = events[:index], events[index+1:]
+    return bool(match and int(match[1]) <= int(match[2])
+        and sum(e.get('type') == 'turn.started' for e in events) == 1
+        and any(e.get('type') == 'turn.started' for e in before)
+        and not any(e.get('type') in ('turn.failed', 'turn.completed') or
+            e.get('item', {}).get('type') == 'agent_message' for e in before)
+        and sum(e.get('type') == 'turn.completed' for e in after) == 1
+        and not any(e.get('type') == 'turn.failed' for e in events))
 
 def parse_events(transport, stdout, exit_code):
     events, malformed = [], []
@@ -75,13 +108,20 @@ def parse_events(transport, stdout, exit_code):
             elif event.get('event') not in ('init', 'result'):
                 tools.append(event)
         text, usage = result.get('response', ''), result.get('usage')
-        ok = result.get('status') == 'SUCCESS' and not result.get('denied_actions')
+        ok = (result.get('status') == 'SUCCESS' and not result.get('denied_actions')
+              and init.get('init', {}).get('agent') == GEMINI_AGENT_NAME
+              and isinstance(init.get('init', {}).get('tools'), list))
     elif transport == 'codex_subscription':
         turn_started = False
         known_startup = ('Under-development features enabled: skip_host_skill_discovery.',
                          'Code Mode is unavailable because code-mode host is disabled.')
-        for event in events:
+        for index, event in enumerate(events):
             turn_started |= event.get('type') == 'turn.started'
+            if event.get('type') == 'error':
+                if recovered_codex_retry(events, index):
+                    diagnostics.append(event)
+                else:
+                    errors.append(event)
             item = event.get('item', {})
             if item.get('type') == 'error':
                 # Retain observed client notices; never reclassify an in-turn error.
@@ -96,14 +136,16 @@ def parse_events(transport, stdout, exit_code):
         text = '\n'.join(messages)
         done = [x for x in events if x.get('type') == 'turn.completed']
         usage = done[-1].get('usage') if done else None
-        ok = bool(done) and not any(x.get('type') in ('error', 'turn.failed') for x in events)
+        ok = len(done) == 1 and not any(x.get('type') == 'turn.failed' for x in events)
     else:
         raise ValueError('undeclared transport')
     return dict(success=bool(ok and exit_code == 0 and text and not tools and not malformed and not errors),
                 text=text, reported_models=models, native_tool_events=tools, usage=usage,
                 identity_level={'codex_subscription': 'configured_request_only', 'antigravity_subscription': 'client_init_model',
                                 'claude_subscription': 'response_model'}[transport],
-                events=events, diagnostic_events=diagnostics, provider_error_events=errors, malformed_event_lines=malformed)
+                events=events, diagnostic_events=diagnostics, provider_error_events=errors, malformed_event_lines=malformed,
+                client_advertised_tools=(init.get('init', {}).get('tools')
+                                         if transport == 'antigravity_subscription' else None))
 
 
 def invoke(request, *, timeout=900):
@@ -140,8 +182,12 @@ def invoke(request, *, timeout=900):
                 '--output-format', 'stream-json', '--verbose']
             payload = prompt
         elif transport == 'antigravity_subscription':
+            agent_path = Path(isolated)/'.agents/agents'/GEMINI_AGENT_NAME/'agent.md'
+            agent_path.parent.mkdir(parents=True)
+            agent_path.write_text(GEMINI_AGENT, encoding='utf-8')
             binary = Path.home()/'AppData/Local/agy/bin/agy.exe'
             command = [str(binary), '--model', model, '--effort', effort, '--mode', 'plan',
+                       '--agent', GEMINI_AGENT_NAME,
                        '--input-format', 'stream-json', '--output-format', 'stream-json', '--print-timeout', '10m',
                        '--sandbox', '--log-file', 'NUL']
             payload = json.dumps({'event': 'user', 'message': {'content': prompt}}, ensure_ascii=False)+'\n'
