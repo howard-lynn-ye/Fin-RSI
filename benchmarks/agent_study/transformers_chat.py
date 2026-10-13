@@ -82,8 +82,10 @@ class TransformersChat:
         self.identity = dict(model=model, revision=revision, max_tokens=max_tokens)
         self.tokenizer = load_tokenizer(model, revision)
         validate_reasoning_tokens(self.tokenizer)
+        # The declared Slurm GPU must fit the whole model. Never silently shard or
+        # CPU-offload: a reproduced RTX peer-copy defect corrupted cross-GPU tensors.
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, revision=revision, torch_dtype=torch.bfloat16, device_map="auto",
+            model, revision=revision, torch_dtype=torch.bfloat16, device_map={"": 0},
             attn_implementation="sdpa")
         self.model.eval()
         self.hardware = dict(gpus=[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
