@@ -1,0 +1,40 @@
+{
+  "interface": "v9",
+  "interaction_revision": "20261008-explicit-allocation",
+  "scope": "Same first five-model full-period wave under the explicit allocation contract; preserve the prior frozen batch",
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "models": [
+    {
+      "family": "7b",
+      "cache": "coder"
+    },
+    {
+      "family": "granite-8b",
+      "cache": "matrix-v1"
+    },
+    {
+      "family": "falcon3-10b",
+      "cache": "matrix-v2"
+    },
+    {
+      "family": "qwen3-4b",
+      "cache": "matrix-v2"
+    },
+    {
+      "family": "smollm3-3b",
+      "cache": "matrix-v1"
+    }
+  ],
+  "selection_reason": "Cached models with completed v7 accounting, including all three failed v9 pilot models; family coverage and ready transport, not expected return",
+  "decisions_per_arm": 44,
+  "initial_capital_usd": 100000,
+  "primary_metric": "100 * (ending_capital / initial_capital - 1)",
+  "budget": "8 responses of 1024 output tokens: up to6research+2decision; same in both arms",
+  "completion_rule": "All 88 dated decisions plus receipt and independent cash/unit accounting per seed; all three seeds per completed model",
+  "failure_rule": "Invalid decisions stay in the ledger with unchanged units; infrastructure failure leaves an incomplete pair, never a fabricated zero return",
+  "comparison_limit": "Development path and retrospective source-availability assumptions; this is not a causal before/after estimate of a single repair"
+}

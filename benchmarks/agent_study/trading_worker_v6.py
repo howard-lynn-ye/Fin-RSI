@@ -16,11 +16,21 @@ class Submitted(BaseException):
 
 def run_python(code, tools):
     out, err, target = io.StringIO(), io.StringIO(), None
-    def submit(weights):
-        nonlocal target
-        target, problem = validate_weights(weights)
+    receipt = {}
+    def submit(weights=None, **kwargs):
+        nonlocal target, receipt
+        if hasattr(tools, 'submit_order'):
+            arguments = dict(kwargs)
+            if weights is not None:
+                arguments['weights'] = weights
+            receipt = tools.submit_order(arguments)
+            target, problem = receipt.get('submission'), receipt.get('error')
+        elif kwargs:
+            raise TypeError('submit accepts absolute weights only in this interface')
+        else:
+            target, problem = validate_weights(weights)
         if problem:
-            raise ValueError(problem)
+            raise ValueError(problem + (' ' + receipt['hint'] if receipt.get('hint') else ''))
         raise Submitted()
     namespace = dict(__name__='__main__', submit=submit, **tools.python_bindings())
     ok, error = True, None
@@ -39,7 +49,9 @@ def run_python(code, tools):
             target = None
             traceback.print_exc(limit=4)
     text = out.getvalue() + ('\n[stderr]\n' + err.getvalue() if err.getvalue() else '')
-    return dict(ok=ok, error=error, output=text, truncated=False,
+    return dict({k: v for k, v in receipt.items() if k in (
+                    'allocation_input', 'cash_weight', 'conversion', 'weights_input', 'budget_rounding_applied')},
+                ok=ok, error=error, output=text, truncated=False,
                 submission=target, tool_calls=tools.calls)
 
 
