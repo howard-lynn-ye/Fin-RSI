@@ -420,6 +420,24 @@ def build_qdii_premium() -> dict:
     }
 
 
+def build_stock_jev_gate() -> dict:
+    from tests.test_stock_jev import example
+    questions, response = example()
+    clean = dict(decision_result=response, questions=questions)
+    return {"clean": clean, "defect": dict(clean, max_disqualification_rate=0.1)}
+
+
+def build_lob_liquidity_gate() -> dict:
+    from tests.test_microstructure_lob_liquidity_shock_shield import make_panel
+    from fin_skills.microstructure.lob_liquidity_shock_shield import compute_lob_liquidity_shock_shield
+    panel = make_panel()
+    panel["score"] = compute_lob_liquidity_shock_shield(panel)
+    bad = panel.copy()
+    bad["score"] = bad["score"] + .1
+    return {"clean": dict(panel=panel, signal_col="score"),
+            "defect": dict(panel=bad, signal_col="score")}
+
+
 _BUILDERS: dict[str, Callable[[], dict]] = {
     k[len("build_"):]: v for k, v in dict(globals()).items() if k.startswith("build_")}
 

@@ -23,6 +23,7 @@ from fin_skills.api.guards import (  # noqa: F401  (import for the registration 
     greeks_convention,
     join_asof_sortedness,
     leveraged_reset,
+    lob_liquidity_gate,
     npv_zero,
     paper_account_guard,
     pit_fundamentals,
@@ -38,6 +39,7 @@ from fin_skills.api.guards import (  # noqa: F401  (import for the registration 
     rf_convention,
     safe_asof,
     spa_test,
+    stock_jev_gate,
     survivorship_audit,
     synthesis_integrity,
     trial_ledger,
@@ -54,5 +56,5 @@ __all__ = [
     "pre_trade", "purge_effect", "qdii_premium", "reconcile_sources", "regime_coverage", "regime_lookahead",
     "research_audit", "result_manifest", "rf_convention", "safe_asof", "spa_test",
     "survivorship_audit", "synthesis_integrity", "trial_ledger", "warmup_probe",
-    "weight_traps"
+    "weight_traps", "lob_liquidity_gate", "stock_jev_gate"
 ]

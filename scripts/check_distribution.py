@@ -18,7 +18,17 @@ import fin_skills
 from fin_skills.rag import Document, RAGIndex, RAGPipeline
 from fin_skills.model_zoo import create_model, model_catalog
 from fin_skills.algorithms import auto_run, fit, load_model, research, catalog
+from fin_skills.jev import build_macro_regime_question
+from fin_skills.api import get
+from fin_skills.microstructure.lob_liquidity_shock_shield import compute_lob_liquidity_shock_shield
 assert fin_skills.load('backtest-validation')
+assert fin_skills.load('stock-jev-meta-gate')
+assert fin_skills.load('lob-liquidity-shock-shield')
+assert callable(compute_lob_liquidity_shock_shield)
+assert not get('stock_jev_gate').run(
+    decision_result={'answers': {'q': {'type': 'invented'}}},
+    questions=build_macro_regime_question(),
+).passed
 assert len(catalog()) >= 1
 assert auto_run('forecast', {'series': [1., 2., 3.]})['result'][0] == 3
 r = research('forecast', {'series': list(range(40))}, initial_train=10, horizon=5,
@@ -66,6 +76,8 @@ def main():
             assert "fin_skills/_skills/index.json" in names
             assert "fin_skills/rag/pipeline.py" in names
             assert "fin_skills/model_zoo/jev.py" in names
+            assert "fin_skills/jev/stock_jev.py" in names
+            assert "fin_skills/microstructure/lob_liquidity_shock_shield.py" in names
             assert not any(n.startswith("fin_skills_fly/") for n in names)
             assert not any(n.startswith(("tests/", ".venv", "benchmarks/")) for n in names)
         for i, artifact in enumerate(artifacts):

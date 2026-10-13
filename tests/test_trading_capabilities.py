@@ -97,6 +97,19 @@ def test_guard_execution_success_does_not_hide_failed_audit(workspace, rf, passe
     assert tools.calls[-2]['passed'] is passed
 
 
+@pytest.mark.parametrize('name', ['check_stock_jev_gate', 'check_lob_liquidity_gate'])
+def test_selected_v2_guards_execute_through_the_existing_offline_policy(workspace, name):
+    from tests.test_stock_jev import example
+    from tests.test_microstructure_lob_liquidity_shock_shield import make_panel
+    questions, response = example()
+    arguments = (dict(decision_result=response, questions=questions)
+                 if name == 'check_stock_jev_gate' else dict(panel=make_panel()))
+    result = cap.Tools(workspace, 'library').call(
+        'call_library_tool', dict(name=name, arguments=arguments))
+    assert result['ok'] and result['passed'] and result['result']['passed'], result
+    assert result['result']['guard'] == name.removeprefix('check_')
+
+
 def test_external_and_secondary_model_requests_are_explicitly_rejected(workspace):
     tools = cap.Tools(workspace, 'library')
     for name, arguments in (('search_news', {}), ('collect_once', {'database': 'x'}),
