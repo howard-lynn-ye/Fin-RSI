@@ -100,19 +100,59 @@ def decide(backend, controller, task, **options):
     return v8.decide(backend, controller, task, prompt_factory=system_prompt, interface='v9', **options)
 
 
+def retrieval_check(controller, arm):
+    """Exercise the public paging contract, including every delivered page.
+
+    Large real evidence rows legitimately produce text pages. A successful
+    first page alone does not prove that the complete JSON was retrievable.
+    """
+    import json
+    pages, chunks, offset, total = [], [], 0, None
+    for _ in range(32):
+        result = controller.call('research_context', {'query': 'news', 'offset': offset})
+        pages.append(result)
+        if arm == 'raw':
+            return not result.get('ok'), pages
+        if not v8.execution_status(result)['turn_ok']:
+            return False, pages
+        if 'text' not in result:
+            return bool(offset == 0 and 'knowledge' in result and 'evidence' in result), pages
+        if (result.get('offset') != offset or result.get('format') != 'json' or
+                result.get('name') != 'research_context' or not isinstance(result['text'], str) or
+                not result['text'] or not isinstance(result.get('total_chars'), int)):
+            return False, pages
+        if total is None:
+            total = result['total_chars']
+        if result['total_chars'] != total:
+            return False, pages
+        chunks.append(result['text'])
+        end = offset + len(result['text'])
+        if result.get('next_offset') is None:
+            if end != total:
+                return False, pages
+            try:
+                body = json.loads(''.join(chunks))
+            except (ValueError, TypeError):
+                return False, pages
+            return bool(isinstance(body, dict) and body.get('ok') and
+                        'knowledge' in body and 'evidence' in body), pages
+        if result['next_offset'] != end or not offset < end < total:
+            return False, pages
+        offset = end
+    return False, pages
+
+
+
 def qualify(root):
     decision = v8.qualify(root, controller_type=Controller, decide_fn=decide)
-    checks = {}
+    checks, pages = {}, {}
     for arm in ('raw', 'library'):
         controller = Controller(root, root / 'capability-visible', arm)
-        result = controller.call('research_context', {'query': 'news'})
-        checks[arm + '/direct_retrieval'] = (bool(v8.execution_status(result)['turn_ok'] and
-                                                'knowledge' in result and 'evidence' in result) if arm == 'library'
-                                            else not result.get('ok'))
+        checks[arm + '/direct_retrieval'], pages[arm] = retrieval_check(controller, arm)
         result = controller.call('run_python', {'code': 'print(research_context("news")["ok"])'})
         checks[arm + '/python_retrieval'] = (bool(result.get('ok') and 'True' in result.get('output', ''))
                                             if arm == 'library' else not result.get('ok'))
-    report = dict(passed=decision['passed'] and all(checks.values()), checks=checks,
+    report = dict(passed=decision['passed'] and all(checks.values()), checks=checks, retrieval_pages=pages,
                   protocol_sha256=v8.old.sha(root / 'protocol.json'),
                   decision_sha256=v8.old.sha(root / 'decision-qualification.json'))
     v8.old.write(root / 'rag-qualification.json', report)
