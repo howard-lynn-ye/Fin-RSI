@@ -1,0 +1,170 @@
+"""Daily liquidity proxy adapted from Shwai He's v2 liquidity-shield formula.
+
+This is a heuristic combination of observed daily statistics, not an L2 order-book
+model, calibrated alpha, fill probability or trading-cost estimate. All observations
+through a row's timestamp must already be available before using that row's score.
+"""
+from __future__ import annotations
+
+from numbers import Number
+
+import numpy as np
+import pandas as pd
+
+
+_FEATURES = {
+    "gk": ("garman_klass_volatility", "parkinson_volatility", "idio_vol_20d"),
+    "ret": ("stock_excess_return_1d", "ret_1d", "return_1d"),
+    "volume": ("volume",),
+    "margin": ("margin_balance_z30",),
+    "amihud": ("amihud_illiquidity",),
+}
+
+
+def _prepare(df: pd.DataFrame, date_col: str, symbol_col: str):
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise ValueError("df must be a nonempty DataFrame")
+    if not df.columns.is_unique:
+        raise ValueError("column names must be unique")
+    if date_col not in df or symbol_col not in df:
+        raise ValueError("date and symbol columns are required")
+    if df[[date_col, symbol_col]].isna().any().any():
+        raise ValueError("dates and symbols must not be missing")
+    if any(isinstance(value, Number) for value in df[date_col]):
+        raise ValueError("dates must be timestamps, not numeric offsets")
+    dates = pd.to_datetime(df[date_col], format="mixed", utc=True, errors="raise")
+    symbols = df[symbol_col].astype(str)
+    if dates.isna().any() or symbols.str.strip().eq("").any():
+        raise ValueError("dates and symbols must not be empty")
+    # Use positions internally: duplicate caller index labels must not realign data.
+    work = pd.DataFrame({"date": dates.to_numpy(), "symbol": symbols.to_numpy()})
+    if work.duplicated(["date", "symbol"]).any():
+        raise ValueError("each symbol/timestamp pair must be unique")
+    sources = {}
+    for field, aliases in _FEATURES.items():
+        source = next((c for c in aliases if c in df), None)
+        if source is None:
+            raise ValueError(f"missing observed feature: {aliases[0]}")
+        values = pd.to_numeric(df[source], errors="raise").to_numpy(dtype=float)
+        if not np.isfinite(values).all():
+            raise ValueError(f"{source} must contain finite observations")
+        if field in ("gk", "volume", "amihud") and (values < 0).any():
+            raise ValueError(f"{source} must be nonnegative")
+        work[field] = values
+        sources[field] = source
+    return work, sources
+
+
+def compute_lob_liquidity_shock_shield(
+    df: pd.DataFrame, window: int = 20, min_periods: int = 3,
+    date_col: str = "date", symbol_col: str = "symbol",
+) -> pd.Series:
+    """Return a same-timestamp cross-sectional liquidity proxy in caller row order.
+
+    Uses per-symbol rolling sample standard deviations and a fixed research weighting.
+    Warmup rows stay NaN; missing observations are rejected rather than fabricated.
+    A constant cross-section scores zero. Same-day closing inputs cannot be used to
+    justify an earlier intraday trade. Window lengths count observations, not days.
+    """
+    if type(window) is not int or type(min_periods) is not int or not 2 <= min_periods <= window:
+        raise ValueError("require integer window >= min_periods >= 2")
+    work, _ = _prepare(df, date_col, symbol_col)
+    work["log_volume"] = np.log1p(work["volume"])
+    work = work.sort_values(["symbol", "date"], kind="mergesort")
+    grouped = work.groupby("symbol", sort=False)
+    stats = {}
+    for name, source, operation in (
+        ("ret_std", "ret", "std"), ("gk_std", "gk", "std"),
+        ("gk_mean", "gk", "mean"), ("volume_std", "log_volume", "std"),
+        ("amihud_std", "amihud", "std"),
+    ):
+        stats[name] = grouped[source].transform(
+            lambda s: getattr(s.rolling(window, min_periods=min_periods), operation)()
+        )
+    stats["margin"] = work["margin"]
+    stats = pd.DataFrame(stats, index=work.index)
+    ready = stats.notna().all(axis=1)
+    # Ranking never branches on whole-sample uniqueness, which can depend on future rows.
+    ranks = stats.where(ready, np.nan).groupby(work["date"]).rank(pct=True) - 0.5
+    weights = pd.Series({"ret_std": -.32, "gk_std": -.24, "gk_mean": -.20,
+                         "volume_std": -.10, "amihud_std": -.06, "margin": -.08})
+    raw = (ranks * weights).sum(axis=1, min_count=len(weights))
+    daily = raw.groupby(work["date"])
+    scale = daily.transform("std").replace(0, 1).fillna(1)
+    score = ((raw - daily.transform("mean")) / (scale + 1e-8)).clip(-3.5, 3.5)
+    values = score.sort_index().to_numpy(dtype=float)
+    return pd.Series(values, index=df.index, name="lob_liquidity_shock_shield")
+
+
+def audit_lob_liquidity_causality(
+    df: pd.DataFrame, signal_col: str | None = None, date_col: str = "date",
+    symbol_col: str = "symbol", window: int = 20, min_periods: int = 3,
+) -> dict:
+    """Probe the built-in calculation and optionally compare a supplied score exactly.
+
+    Perturbs all consumed features after one cutoff; it does not audit an arbitrary
+    caller's signal-generating program or source publication times. A provided signal
+    must match this formula (including warmup NaNs), not merely correlate with it.
+    """
+    base = compute_lob_liquidity_shock_shield(df, window, min_periods, date_col, symbol_col)
+    work, sources = _prepare(df, date_col, symbol_col)
+    dates = work["date"]
+    unique_dates = dates.sort_values().unique()
+    cut = unique_dates[min(len(unique_dates) - 1, int(len(unique_dates) * .7))]
+    past = (dates <= cut).to_numpy()
+    finite_past = past & np.isfinite(base.to_numpy())
+    perturbation_tested = bool(finite_past.any() and (~past).any())
+    max_diff = None
+    if perturbation_tested:
+        perturbed = df.copy()
+        for source in sources.values():
+            values = pd.to_numeric(perturbed[source]).to_numpy(dtype=float, copy=True)
+            values[~past] = values[~past] * 1.7 + 1.0
+            perturbed[source] = values
+        other = compute_lob_liquidity_shock_shield(
+            perturbed, window, min_periods, date_col, symbol_col,
+        ).to_numpy()
+        max_diff = float(np.max(np.abs(base.to_numpy()[finite_past] - other[finite_past])))
+    caller_matches = True
+    if signal_col is not None:
+        if signal_col not in df:
+            raise ValueError("signal_col must name a supplied column")
+        signal = pd.to_numeric(df[signal_col], errors="raise").to_numpy(dtype=float)
+        caller_matches = bool(np.allclose(signal, base.to_numpy(), rtol=0, atol=1e-10,
+                                         equal_nan=True))
+    cross_std = pd.Series(base.to_numpy()).groupby(dates).std().dropna()
+    dispersion = float(cross_std.mean()) if len(cross_std) else 0.0
+    non_degenerate = bool(dispersion > .05)
+    passed = bool(perturbation_tested and max_diff <= 1e-10
+                  and caller_matches and non_degenerate)
+    return {
+        "passed": passed,
+        "verdict": "PASS: built-in liquidity proxy checks" if passed else
+                   "FAIL: insufficient observations, degenerate proxy, or signal mismatch",
+        "perturbation_tested": perturbation_tested,
+        "max_future_leak_diff": max_diff,
+        "caller_matches_causal": caller_matches,
+        "non_degenerate_dispersion": non_degenerate,
+        "mean_cross_sectional_std": dispersion,
+        "n_warmup_rows": int(base.isna().sum()),
+        "n_rows": len(df), "n_dates": len(unique_dates),
+    }
+
+
+def _demo() -> int:
+    rng = np.random.default_rng(19)
+    rows = [{"date": date, "symbol": symbol,
+             "garman_klass_volatility": rng.uniform(.01, .05),
+             "ret_1d": rng.normal(0, .02), "volume": rng.uniform(1e6, 5e7),
+             "margin_balance_z30": rng.normal(), "amihud_illiquidity": rng.uniform(.0005, .004)}
+            for date in pd.date_range("2025-01-01", periods=25)
+            for symbol in ("A", "B", "C", "D")]
+    panel = pd.DataFrame(rows)
+    panel["proxy"] = compute_lob_liquidity_shock_shield(panel)
+    audit = audit_lob_liquidity_causality(panel, signal_col="proxy")
+    print("Liquidity proxy demo:", audit)
+    return 0 if audit["passed"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(_demo())

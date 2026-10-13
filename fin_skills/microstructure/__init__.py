@@ -4,6 +4,7 @@ Module -> owning skill:
 
     copulas                      copulas-and-dependence
     hawkes                       hawkes-processes
+    lob_liquidity_shock_shield   lob-liquidity-shock-shield
     lob_models                   limit-order-book-models
     microstructure_measures      intraday-microstructure
     monte_carlo                  monte-carlo-methods
@@ -12,6 +13,7 @@ Module -> owning skill:
 __all__ = [
     'copulas',
     'hawkes',
+    'lob_liquidity_shock_shield',
     'lob_models',
     'microstructure_measures',
     'monte_carlo',
