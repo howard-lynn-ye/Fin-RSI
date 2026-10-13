@@ -16,6 +16,10 @@ This is a selective adaptation on top of master, not a merge of v2's research hi
 | `2c2c665` hostname cleanup | Existing master hygiene retained | No need to import unrelated older files to gain this cleanup. |
 | Earlier v2 paper, model-family, panel, macro and cross-board work | Preserved on v2 | Outside the selected October 2 additions; not represented as accepted experiments or validated functionality. |
 
+The two new guards are explicitly added to the existing offline replay capability allowlist,
+with execution tests through that interface. All existing classifications and fail-closed
+handling of future unreviewed tools remain intact. No frozen run or qualification is updated.
+
 The template text and liquidity weighting originate with Shwai He. The integration narrows
 their public claims, fixes the checks below, and adds independent regression tests. It does
 not claim new investment performance or independently reproduce the archived v2 experiments.
