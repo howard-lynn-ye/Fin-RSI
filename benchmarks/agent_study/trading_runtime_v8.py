@@ -14,6 +14,7 @@ from benchmarks.agent_study.market_data import TICKERS
 from benchmarks.agent_study.trading_tools_v6 import execution_status, validate_weights
 from benchmarks.agent_study.trading_submission_v8 import extract_decision, submission
 from benchmarks.agent_study import trading_schema_v8 as schema
+from benchmarks.agent_study import trading_research_v9 as research_schema
 
 
 DECISION_FORMAT = '''The available decision tools are submit and hold. Choose ONE call:
@@ -38,7 +39,8 @@ Exact research tool signatures are listed below. Use help_tool(name) for details
 Python has numpy/pandas/scipy and bound tools; each call starts fresh. Files are read-only;
 quotes.csv is unadjusted, corporate_actions.csv contains visible actions, evidence.json
 contains current eligible records. Source dates/coverage limitations remain in the evidence packet.
-Return ONE JSON call {"tool":"name","arguments":{...}} or ONE complete fence labeled python or py.
+Return ONE JSON call {"tool":"name","arguments":{...}}.
+For Python, choose run_python and put your complete program in arguments.code as a JSON string.
 Check reply["ok"]. Readers page results; follow next_offset when needed. Print compact output.
 Send only your CURRENT request or decision, then stop and wait for the real tool result.
 Do not write a dialogue, numbered responses, hypothetical results, explanations or future turns.
@@ -53,7 +55,7 @@ method example; read_skill(name) for knowledge. Tools support your decision; you
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-structured-final-v1'
+INTERACTION_REVISION = '20261013-structured-research-v3'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -196,9 +198,17 @@ class Controller(cap.Controller):
 
 
 def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
-           final_output=None, **unused):
+           final_output=None, research_output=None, **unused):
     final_output = schema.output_contract() if final_output is None else final_output
     schema.check_contract(final_output)
+    research_output = {'transport': 'text'} if research_output is None else research_output
+    research_schema.check_contract(research_output)
+    research_structured = research_output['transport'] == schema.TRANSPORT
+    if research_structured:
+        if (not callable(getattr(backend, 'research_call', None)) or
+                not callable(getattr(backend, 'prepare_research_call', None)) or
+                backend.prepare_research_call(research_output) != research_output):
+            raise RuntimeError('infrastructure qualification failed: structured research backend required')
     structured = final_output['transport'] == schema.TRANSPORT
     if structured:
         try:
@@ -216,7 +226,9 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
         history[0]['content'] = prompt_factory(controller.arm, index)
         fingerprint = hashlib.sha256(cap.encoded(history).encode()).hexdigest()
         try:
-            response = backend.final_decision(history) if final and structured else backend(history)
+            response = (backend.final_decision(history) if final and structured else
+                        backend.research_call(history, research_output) if not final and research_structured else
+                        backend(history))
         except ValueError as exc:
             raise RuntimeError('infrastructure qualification failed; preserve and resume') from exc
         choice = response['choices'][0]
@@ -225,6 +237,14 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
             raise RuntimeError('infrastructure qualification failed: backend must return text; '
                                'native tool calls require a qualified adapter')
         format_error = None
+        if not final and research_structured:
+            try:
+                format_error = research_schema.check_turn(dict(response=text, finish_reason=choice['finish_reason'],
+                    backend_metadata=response.get('backend_metadata')), research_output)
+            except (ValueError, RecursionError) as exc:
+                failure = schema.DecoderFailure(response, turns, final_output, history)
+                failure.diagnostic['research_output'] = research_output
+                raise failure from exc
         if final and structured:
             try:
                 format_error = schema.check_turn(dict(response=text, finish_reason=choice['finish_reason'],
@@ -238,6 +258,9 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
         if call is None:
             instruction = ('Return one complete submit or hold JSON call.' if final else
                            'Return one complete tool JSON call (including submit or hold), or one Python fence.')
+            if research_structured and not final:
+                instruction = ('Return one complete tool JSON call. For Python, use '
+                               'tool=run_python with the complete program in arguments.code.')
             if status == 'structured-json-rejected':
                 instruction += (' The format filter allowed text rejected by strict JSON validation. '
                                 'Escape control characters inside strings; use complete JSON numbers. ')
@@ -290,15 +313,19 @@ def decide(backend, controller, task, *, prompt_factory=None, interface='v8',
                 decision_completed=action is not None, turns=turns, tool_calls=controller.calls,
                 menu_seed=controller.menu_seed, initial_request=initial_request,
                 library_orientation=None, backend_responses=len(turns), interface=interface,
-                final_output=final_output)
+                final_output=final_output, research_output=research_output)
 
 
-def validate_decision(record, *, expected_final_output=None):
+def validate_decision(record, *, expected_final_output=None, expected_research_output=None):
     """Do not let an absent submission masquerade as an intentional hold."""
     contract = record.get('final_output')
     schema.check_contract(contract)
     if expected_final_output is not None and contract != expected_final_output:
         raise ValueError('decision output transport differs from frozen protocol')
+    research_output = record.get('research_output', {'transport': 'text'})
+    research_schema.check_contract(research_output)
+    if expected_research_output is not None and research_output != expected_research_output:
+        raise ValueError('research output transport differs from frozen protocol')
     action = record.get('decision_action')
     if action not in ('submit', 'hold', 'failed'):
         raise ValueError('missing v8 decision disposition')
@@ -314,6 +341,12 @@ def validate_decision(record, *, expected_final_output=None):
         if (turn.get('turn_index') != index + 1 or
                 turn.get('phase') != ('research' if index < RESEARCH_RESPONSES else 'final')):
             raise ValueError('decision turn sequence or phase changed')
+        if index < RESEARCH_RESPONSES and research_output['transport'] == schema.TRANSPORT:
+            format_error = research_schema.check_turn(turn, research_output)
+            if format_error and (turn.get('parse') != format_error or turn['result'].get('ok')):
+                raise ValueError('invalid research JSON cannot be hidden or executed')
+        elif (turn.get('backend_metadata') or {}).get('research_output') is not None:
+            raise ValueError('unexpected structured research receipt')
         if index >= RESEARCH_RESPONSES and contract['transport'] == schema.TRANSPORT:
             format_error = schema.check_turn(turn, contract)
             if format_error and (turn.get('parse') != format_error or turn['result'].get('ok')):

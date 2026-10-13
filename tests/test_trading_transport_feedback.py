@@ -19,10 +19,9 @@ def test_language_label_only_unwraps_one_complete_json_call(label):
     '{"tool":"hold","arguments":{}}\n{"tool":"read_snapshot","arguments":{}}',
     '{"tool":"hold","arguments":{}} explanation',
     '```python\nprint(123)\n```',
-    'print(123)',
     '{"tool":"hold","tool":"submit","arguments":{}}',
 ])
-def test_label_never_selects_between_actions_or_executes_unfenced_code(body):
+def test_label_never_selects_between_actions_or_executes_mixed_code(body):
     assert extract_decision('py\n' + body)[0] is None
 
 

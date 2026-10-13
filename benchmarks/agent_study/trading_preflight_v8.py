@@ -4,6 +4,7 @@ Each date is an independent all-cash scenario, not a simulated return path.
 Failures and original responses remain available; no model is silently dropped.
 """
 from pathlib import Path
+from benchmarks.agent_study import trading_research_v9 as research_schema
 
 from benchmarks.agent_study import market_data as md, trading_study as old
 from benchmarks.agent_study.trading_schema_v8 import (
@@ -105,7 +106,8 @@ def run(root, backend):
                 try:
                     record = runtime.decide(backend, controller,
                         runtime.task(day, holdings, protocol['deadline']) + study.evidence_text(packets[day]),
-                        final_output=protocol['final_output'])
+                        final_output=protocol['final_output'],
+                        research_output=research_schema.arm_contract(protocol, arm))
                 except DecoderFailure as exc:
                     persist_failure(root, f'preflight-{arm}-{i:02d}', exc)
                     raise
@@ -114,7 +116,8 @@ def run(root, backend):
                               protocol_sha256=old.sha(root / 'protocol.json'))
                 old.write(path, record)
         record = old.load(path)
-        runtime.validate_decision(record, expected_final_output=protocol['final_output'])
+        runtime.validate_decision(record, expected_final_output=protocol['final_output'],
+            expected_research_output=research_schema.arm_contract(protocol, arm))
         check_backend(record, protocol)
         if protocol.get('batch') == 'matrix_native':
             from benchmarks.agent_study.native_chat import validate_record
@@ -154,11 +157,13 @@ def require(root):
             report['model'] != protocol['model'] or actual != expected):
         raise ValueError('model decision preflight is stale or incomplete')
     for row in report['cases']:
+        arm = row['arm']
         path = root / 'interface-preflight' / f"{row['arm']}-{row['decision_index']:02d}.json"
         if row['record'] != path.relative_to(root).as_posix() or row['sha256'] != old.sha(path):
             raise ValueError('model preflight record changed')
         record = old.load(path)
-        runtime.validate_decision(record, expected_final_output=protocol['final_output'])
+        runtime.validate_decision(record, expected_final_output=protocol['final_output'],
+            expected_research_output=research_schema.arm_contract(protocol, arm))
         check_backend(record, protocol)
         if protocol.get('batch') == 'matrix_native':
             from benchmarks.agent_study.native_chat import validate_record

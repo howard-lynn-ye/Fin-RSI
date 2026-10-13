@@ -25,6 +25,8 @@ from benchmarks.agent_study.manual_multisource import AGE_LIMITS, asof_records, 
 from benchmarks.agent_study.trading_tools_v5 import turn_counts
 from benchmarks.agent_study.model_matrix import MANIFEST, hf_models, matrix
 
+from benchmarks.agent_study import trading_research_v9 as research_schema
+
 GUIDE = Path(__file__).with_name("trading_library_guide_multisource.md")
 MODELS = old.MODELS + (("mistral12b", "mistralai/Mistral-Nemo-Instruct-2407",
                         "04d8a90549d23fc6bd7f642064003592df51e9b3"),
@@ -162,6 +164,7 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
         protocol.update(objective=terminal.OBJECTIVE, deadline=str(total.index[-1]),
                         interaction_revision=INTERACTION_REVISION,
                         final_output=output_contract(batch not in ('personal', 'matrix_native', 'matrix_reasoning')),
+                        research_output=research_schema.protocol_contract(interface, batch),
                         initial_capital=terminal.INITIAL_CAPITAL, capital_currency='USD',
                         research_responses=RESEARCH_RESPONSES, final_decision_responses=2,
                         allocation_contract='explicit asset/CASH relative parts; absolute weights remain strict',
@@ -216,6 +219,7 @@ def verify(root):
         if (p['objective'] != OBJECTIVE or p['deadline'] != p['window'][-1] or
                 p.get('interaction_revision') != INTERACTION_REVISION or
                 p.get('final_output') != output_contract(p.get('batch') not in ('personal', 'matrix_native', 'matrix_reasoning')) or
+                p.get('research_output') != research_schema.protocol_contract(p['interface'], p['batch']) or
                 p['initial_capital'] != INITIAL_CAPITAL or p['capital_currency'] != 'USD' or
                 p['max_turns'] != old.MAX_TURNS or p['max_tokens'] != (
                     REASONING_MAX_TOKENS if p.get('batch') == 'matrix_reasoning' else old.MAX_TOKENS) or
@@ -356,7 +360,8 @@ def run(root):
                         try:
                             record = runner.decide(backend, c, request + supplied,
                                                   orientation_path=GUIDE,
-                                                  **({'final_output': p['final_output']} if p['interface'] in ('v8', 'v9') else {}))
+                                                  **({'final_output': p['final_output'], 'research_output': p['research_output'][arm]}
+                                                     if p['interface'] in ('v8', 'v9') else {}))
                         except DecoderFailure as exc:
                             persist_failure(root, f'cycle-{arm}-{i:02d}', exc)
                             raise
@@ -418,7 +423,8 @@ def validate_receipt(root):
             from benchmarks.agent_study.trading_runtime_v8 import validate_decision
             if record.get('interface') != protocol['interface']:
                 raise ValueError('decision interface differs from frozen protocol')
-            validate_decision(record, expected_final_output=protocol['final_output'])
+            validate_decision(record, expected_final_output=protocol['final_output'],
+                              expected_research_output=research_schema.arm_contract(protocol, Path(n).parent.name))
             check_backend(record, protocol)
         if protocol.get('batch') == 'matrix_native':
             from benchmarks.agent_study.native_chat import validate_record

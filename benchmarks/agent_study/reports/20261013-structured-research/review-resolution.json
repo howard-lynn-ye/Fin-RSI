@@ -1,0 +1,19 @@
+{
+  "reviewer": {"backend": "antigravity", "model": "gemini-3.8-flash-high", "effort": "high", "model_verified": true, "success": true, "exit_code": 0},
+  "review_scope": "Supplied candidate13 patch and new module/tests; conclusions were checked against full call sites. This review is not a guarantee of bug-free code or actual GPU qualification.",
+  "findings": [
+    {"claim": "Access.require has undefined arm", "resolution": "Not reproduced: existing access.require binds arm = row['arm'] before loading and validating each case. That unchanged line was outside the reviewed patch."},
+    {"claim": "structured-json-rejected is not propagated to turn parse", "resolution": "Not reproduced: decide already selects (None, format_error) before extract_decision. Added end-to-end research numeric-leniency correction and receipt-validation cases."},
+    {"claim": "Study run loses v9 interface", "resolution": "Not reproduced: terminal_runtime('v9') returns the v9 module; v9.decide forwards interface='v9' explicitly. Adding another interface keyword would be incorrect."},
+    {"claim": "Direct research_output indexing can fail on incomplete protocols", "resolution": "Not a real-run blocker: study.run calls verify first, which requires the exact frozen per-arm contracts. Real runs must not silently default missing contracts to text. Small isolated qualification fixtures use arm_contract's documented text default."},
+    {"claim": "prepare_research_call accepts text then decoder rejects later", "resolution": "Improved: prepare_research_call now rejects text before touching the model runtime. Existing runtime never selects research_call for text contracts; no fallback was added."},
+    {"claim": "Receipt test only covers early HOLD", "resolution": "Expanded to both arms with six research calls, an invalid model-authored final allocation and a model-authored HOLD correction, followed by full receipt validation."},
+    {"claim": "Actual Transformers integration still requires qualification", "resolution": "Accepted limitation: real model access and three-calendar-position preflights are mandatory before each full GPU cycle. Unit tests are not reported as real GPU-model completion."}
+  ],
+  "additional_test_findings": [
+    "Candidate13 exposed an actual lm-format-enforcer 0.11.3 bug for boolean additionalProperties=True. Candidate14 omitted that keyword, the JSON Schema equivalent, selecting the library's recursive ANY_JSON_OBJECT_SCHEMA; 326 tests passed.",
+    "Candidate15 declares max_json_array_length=4096 so the decoder's small default does not silently constrain tool arrays; nested data and a 40-element array passed among 327 tests.",
+    "Candidate16 adds the early text-contract guard and review-driven correction/receipt tests; its final result is recorded separately."
+  ],
+  "claude": "Not called for this revision because the known weekly quota has not reset. Do not describe this as a completed three-reviewer signoff."
+}
