@@ -85,6 +85,11 @@ def run(root, backend):
     (root / 'tmp').mkdir(exist_ok=True)
     planned = cases(inputs['picks'])
     decoder_check = qualify_decoder(root, backend, protocol)
+    if protocol.get('model_access_probe') is not None:
+        from benchmarks.agent_study import trading_access_v9 as access
+        if not (root / 'model-access-preflight.json').exists():
+            access.run(root, backend)
+        access.require(root)
     rows = []
     for arm, i in planned:
         path = destination / f'{arm}-{i:02d}.json'
@@ -134,6 +139,9 @@ def require(root):
     protocol = study.verify(root)
     runtime = study.terminal_runtime(protocol['interface'])
     report = old.load(root / 'decision-preflight.json')
+    if protocol.get('model_access_probe') is not None:
+        from benchmarks.agent_study import trading_access_v9 as access
+        access.require(root)
     if report.get('decoder_check') != require_decoder(root, protocol):
         raise ValueError('real decoder qualification absent, failed or stale')
     expected = cases(old.load(root / 'inputs.json')['picks'])

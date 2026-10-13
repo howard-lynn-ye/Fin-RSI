@@ -54,10 +54,22 @@ class Tools(v8.Tools):
         # The package template names package tools directly. In this replay they
         # are only reachable through the policy-checked wrapper; show that exact
         # route rather than advertising an unavailable top-level call.
+        availability = {r['name']: r for r in v8.cap.registry()}
         for contract in result['tool_contracts']:
-            contract['call_template'] = dict(tool='call_library_tool', arguments=dict(
-                name=contract['name'], arguments=contract['call_template']['arguments']))
-            contract['transport'] = 'Study wrapper; input_schema describes the inner arguments object.'
+            spec = availability.get(contract['name'], {})
+            status = spec.get('study_status', 'unreviewed')
+            contract['study_status'] = status
+            if status != 'offline_allowed':
+                contract['call_template'] = None
+                contract['transport'] = 'Unavailable in this historical replay; do not call.'
+                contract['study_reason'] = spec.get('study_reason', 'Unreviewed package tool.')
+            else:
+                contract['call_template'] = dict(tool='call_library_tool', arguments=dict(
+                    name=contract['name'], arguments=contract['call_template']['arguments']))
+                contract['transport'] = 'Study wrapper; input_schema describes the inner arguments object.'
+        result['replay_policy'] = ('Reference text may mention live tools that this replay cannot execute. '
+            'Read current visible prices with read_snapshot/read_market; dated source records with '
+            'read_evidence/read_evidence_document. No live or future data is fetched.')
         result['entrypoint_contract'] = 'research_context(query, offset=0, limit=3500); evidence is loaded internally'
         result['study_contracts'] = [dict(name=name,
             signature=name + str(inspect.signature(getattr(self, name))))

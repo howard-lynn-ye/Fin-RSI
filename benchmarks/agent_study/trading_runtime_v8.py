@@ -157,11 +157,19 @@ class Tools(cap.Tools):
             result['hint'] = 'Use the attached exact signature and return contract; no arguments were renamed.'
         except ValueError:
             result['hint'] = 'Use help_tool(name) to discover exact available study contracts.'
-            if self.arm == 'library' and any(r['name'] == name for r in cap.registry()):
-                result['hint'] = ('This is a package tool, not a study shortcut. First use '
-                    'describe_library_tool(name) for its schema and availability; then call_library_tool(name, arguments). '
-                    'The rejected call has not executed; choose whether to retry through that route.')
-                result['contract_lookup'] = {'tool': 'describe_library_tool', 'arguments': {'name': name}}
+            if self.arm == 'library':
+                spec = next((r for r in cap.registry() if r['name'] == name), None)
+                if spec is not None:
+                    result['study_status'] = spec['study_status']
+                    if spec['study_status'] == 'offline_allowed':
+                        result['hint'] = ('This is a package tool, not a study shortcut. First use '
+                            'describe_library_tool(name) for its schema and availability; then '
+                            'call_library_tool(name, arguments). The rejected call has not executed.')
+                        result['contract_lookup'] = {'tool': 'describe_library_tool', 'arguments': {'name': name}}
+                    else:
+                        result['hint'] = (spec['study_reason'] + ' No wrapper can enable this tool here. '
+                            'Use read_snapshot/read_market for visible prices or read_evidence for dated records.')
+                        result['available_readers'] = ['read_snapshot', 'read_market', 'read_evidence']
         return result
 
     def call(self, name, arguments):

@@ -163,6 +163,10 @@ def freeze(root, family, seed, evidence_path, *, allow_retrospective=False, batc
             protocol['treatment'] = ('direct research_context over installed knowledge and the same visible evidence; '
                                      'explicit asset/CASH parts; unchanged terminal objective and equal 6+2 budget')
             protocol['limits'].append('RAG reference skills/contracts are current installed knowledge, not historical vintages.')
+            if batch != 'personal':
+                from benchmarks.agent_study.trading_access_v9 import contract
+                protocol['model_access_probe'] = contract()
+                protocol['limits'].append('Separate unscored tool-access probes; investment tool use stays autonomous.')
     if batch == 'personal':
         protocol.update(executor='conversation_authored_responses', temperature=None, top_p=None,
             personal_order='each date: raw locked, then library locked, then next date',
@@ -198,6 +202,10 @@ def verify(root):
                 p.get('allocation_contract') != 'explicit asset/CASH relative parts; absolute weights remain strict' or
                 p['final_actions'] != ['submit', 'hold']):
             raise ValueError('terminal objective/deadline/decision budget changed')
+    if p.get('interface') == 'v9' and p.get('batch') != 'personal':
+        from benchmarks.agent_study.trading_access_v9 import contract
+        if p.get('model_access_probe') != contract():
+            raise ValueError('model access qualification policy changed')
     batch = p.get("batch", "original")
     if tuple(p["model"]) != model_spec(p["model"][0], p["seed"], batch):
         raise ValueError("model revision changed")
