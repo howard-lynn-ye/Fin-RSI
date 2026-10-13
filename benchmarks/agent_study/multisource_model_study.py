@@ -266,6 +266,11 @@ def run(root):
     else:
         from benchmarks.agent_study.transformers_chat import TransformersChat
         backend = TransformersChat(p["model"][1], p["model"][2], max_tokens=p["max_tokens"])
+    if p.get('interface') in ('v8', 'v9') and p.get('batch') != 'personal':
+        from benchmarks.agent_study import trading_preflight_v8 as preflight
+        if not (root / 'decision-preflight.json').exists():
+            preflight.run(root, backend)
+        preflight.require(root)
     inputs, packets = old.load(root / "inputs.json"), old.load(root / "evidence-packets.json")
     total = pd.read_csv(root / "data" / md.HIDDEN, index_col=0)
     returns, picks, receipts = total.pct_change().fillna(0.), inputs["picks"], {}
@@ -310,7 +315,9 @@ def run(root):
                     record['personal_response_receipts'] = list(backend.receipts)
                 old.write(path, record)
                 print(json.dumps(dict(family=p["model"][0], seed=p["seed"], arm=arm,
-                                      decision=i+1, planned=len(picks), submitted=record["submitted"])), flush=True)
+                                      decision=i+1, planned=len(picks), submitted=record["submitted"],
+                                      decision_action=record.get('decision_action'),
+                                      decision_completed=record.get('decision_completed'))), flush=True)
             assert record["evidence_packet_sha256"] == digest(packets[day])
             if p.get('interface') in ('v7', 'v8', 'v9'):
                 expected_snapshot = runner.evidence_snapshot(old.load(root / 'evidence.json'), packets[day])

@@ -111,7 +111,7 @@ def test_multi_action_never_silently_selects_a_trade():
     c = Controller('raw')
     record = v8.decide(lambda _: answer, c, 'fixture')
     assert record['decision_action'] == 'failed' and not c.calls
-    assert all(t['parse'] == 'multiple-actions' for t in record['turns'])
+    assert all(t['parse'] == 'trailing-content-or-multiple-actions' for t in record['turns'])
 
 
 def test_backend_failure_is_not_a_zero_return_model_decision():
@@ -163,8 +163,17 @@ def test_v8_real_worker_contract_submission_and_raw_isolation(workspace):
         help_reply = c.call('help_tool', {'name': 'run_python'})
         reply = c.call('run_python', {'code': help_reply['python_example'] + '\nsubmit({"SPY":.8})'})
         assert reply['ok'] and reply['submission']['SPY'] == .8, reply
+        record = v8.decide(lambda _: response('run_python', {
+            'code': 'submit(allocation={\"SPY\":7,\"CASH\":3})'}), c, 'fixture')
+        v8.validate_decision(record)
+        assert record['target']['SPY'] == .7
+        assert record['turns'][0]['result']['cash_weight'] == .3
         reply = c.call('run_python', {'code': 'print(help_tool("read_market")["signature"])'})
         assert reply['ok'] and 'read_market(' in reply['output'], reply
+        for name, args in (('read_market', {'start_date': '2024-01-01'}),
+                           ('read_snapshot', {'ticker': 'SPY'})):
+            reply = c.call(name, args)
+            assert not reply['ok'] and reply['contract']['signature'].startswith(name + '('), reply
         reply = c.call('run_python', {'code': 'print(evidence["records"])'})
         assert not reply['ok'] and 'json.load' in reply['hint']
         reply = c.call('run_python', {'code': 'import fin_skills'})
@@ -197,7 +206,7 @@ def test_freeze_uses_terminal_deadline_and_qualification_uses_identical_prompt(t
     assert protocol['version'] == study.VERSIONS[interface] and protocol['interface'] == interface
     assert protocol['objective'] == v8.OBJECTIVE and protocol['deadline'] == '2025-01-06'
     assert protocol['research_responses'] == 6 and protocol['final_decision_responses'] == 2
-    assert protocol['interaction_revision'] == '20261008-explicit-allocation'
+    assert protocol['interaction_revision'] == v8.INTERACTION_REVISION
     for arm, messages in prompts(root):
         assert messages[0]['content'] == study.terminal_runtime(interface).system_prompt(arm)
         assert '2025-01-06' in messages[1]['content'] and 'risk-adjusted' not in messages[1]['content']

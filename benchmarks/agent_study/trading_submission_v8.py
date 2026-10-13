@@ -7,7 +7,6 @@ import json
 import math
 import re
 
-from benchmarks.agent_study import trading_runtime_v6 as prior
 from benchmarks.agent_study.market_data import TICKERS
 from benchmarks.agent_study.trading_tools_v6 import validate_weights
 
@@ -22,43 +21,58 @@ def unique_keys(pairs):
 
 
 def extract_decision(text):
-    call, status = prior.extract_call(text)
-    if status.startswith('reasoning-') or status == 'multiple-actions':
-        return call, status
-    # prior has already checked that reasoning delimiters are balanced.
-    answer = text.rsplit('</think>', 1)[-1].strip()
+    """Parse one complete response; never mine a nested or competing instruction.
+
+    A single Markdown fence is only a transport wrapper. Its complete JSON body
+    is still JSON even when a model labels the fence ``python``. Otherwise only
+    an explicitly Python fence is executable code, and only in research turns.
+    """
+    if not isinstance(text, str):
+        return None, 'non-text-response'
+    answer = text.strip()
+    thinking, position = False, 0
+    for marker in re.finditer(r'</?think>', answer):
+        opening = marker.group() == '<think>'
+        if opening == thinking:
+            return None, 'reasoning-malformed'
+        if opening and answer[position:marker.start()].strip():
+            return None, 'reasoning-mixed-actions'
+        thinking, position = opening, marker.end()
+    if thinking:
+        return None, 'reasoning-incomplete'
+    answer = answer[position:].strip()
     if answer.lower() == 'hold':
         return {'tool': 'hold', 'arguments': {}}, 'json'
-    # Count complete top-level intents, including the shorter decision envelopes.
-    # Never select a trade from two competing instructions.
-    decoder, position, intents = json.JSONDecoder(object_pairs_hook=unique_keys), 0, 0
-    while (start := answer.find('{', position)) != -1:
-        try:
-            value, position = decoder.raw_decode(answer, start)
-        except ValueError as exc:
-            if str(exc) == 'duplicate key':
-                return None, 'duplicate-keys'
-            position = start + 1
-            continue
-        if isinstance(value, dict) and set(value) & {'tool', 'weights', 'allocation', 'action'}:
-            intents += 1
-    if intents > 1 and status != 'python-fence':
-        return None, 'multiple-actions'
-    if call is not None:
-        return call, status
-    fence = re.fullmatch(r'```(?:json)?\s*\n(.*?)\n?```', answer, re.DOTALL)
+    fence = re.fullmatch(r'```(json|python|py)?[ \t]*\r?\n(.*?)\n?```', answer, re.DOTALL | re.IGNORECASE)
     if fence:
-        answer = fence.group(1).strip()
+        answer = fence.group(2).strip()
+        if '```' in answer:
+            return None, 'multiple-actions'
     try:
         value = json.loads(answer, object_pairs_hook=unique_keys)
-    except ValueError:
-        return None, status
-    if value == {'action': 'hold'}:
+    except RecursionError:
+        return None, 'json-too-deep'
+    except ValueError as exc:
+        if str(exc) == 'duplicate key':
+            return None, 'duplicate-keys'
+        if fence and (fence.group(1) or '').casefold() in ('python', 'py'):
+            return {'tool': 'run_python', 'arguments': {'code': answer}}, 'python-fence'
+        if isinstance(exc, json.JSONDecodeError) and exc.msg == 'Extra data':
+            return None, 'trailing-content-or-multiple-actions'
+        return None, 'unparsed-or-multiple-actions'
+    if (isinstance(value, dict) and set(value) in ({'action'}, {'action', 'rationale'}) and
+            isinstance(value.get('rationale', ''), str) and
+            isinstance(value['action'], str) and value['action'].casefold() == 'hold'):
         return {'tool': 'hold', 'arguments': {}}, 'json'
+    if isinstance(value, dict) and 'tool' in value:
+        if (set(value) != {'tool', 'arguments'} or not isinstance(value['tool'], str)
+                or not isinstance(value['arguments'], dict)):
+            return None, 'invalid-tool-envelope'
+        return value, 'json'
     if isinstance(value, dict) and set(value) & {'weights', 'allocation'}:
         # Validate the entire envelope later, including unknown order parameters.
         return {'tool': 'submit', 'arguments': value}, 'json'
-    return None, status
+    return None, 'unparsed'
 
 
 def submission(arguments):
@@ -70,8 +84,19 @@ def submission(arguments):
             'submit requires exactly one of weights or allocation, plus optional string rationale. '
             'No other keys.'))
     if 'weights' in arguments:
+        weights = arguments['weights']
+        if isinstance(weights, dict):
+            try:
+                valid = all(type(v) in (int, float) and math.isfinite(v) for v in weights.values())
+            except OverflowError:
+                valid = False
+            if not valid:
+                return dict(ok=False, submission=None, error='weights must be finite numbers, not strings or booleans.')
         target, problem = validate_weights(arguments['weights'])
-        result = dict(ok=target is not None, submission=target, error=problem)
+        result = dict(ok=target is not None, submission=target, error=problem,
+                      weights_input=weights,
+                      budget_rounding_applied=target is not None and any(
++                          target[t] != weights.get(t, 0.) for t in TICKERS))
         if problem:
             result['hint'] = ('Absolute weights must total at most 1. For relative parts instead, '
                 'explicitly send allocation with your chosen assets AND CASH (zero is allowed). '
