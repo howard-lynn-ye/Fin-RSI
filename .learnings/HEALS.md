@@ -98,7 +98,7 @@ candidate24 runtime and GPU jobs were not modified by this test-only correction.
 ## [HEAL-20261013-G26] decision completion is insufficient to release a campaign
 
 **Logged**: 2026-10-13T22:03:00Z
-**Status**: pending-verify
+**Status**: verified (release gate; model behavior remains unverified)
 **Trigger**: complete candidate24 pilot had a false-positive campaign release
 **Area**: experiment qualification
 
@@ -115,7 +115,7 @@ prices and Series access; the optional library entry point precedes low-level Py
 The full-cycle CLI now verifies original preflight records and rejects all-failed research,
 malformed/truncated replies and, for the two pilot families, absence of autonomous library
 execution. It does not rewrite any response, force a trade, or select on Return Rate.
-Final CLI/preflight integration tests: 29 passed in 8.75s on the CPU allocation 2132885. Index, package, and repository validation passed. Broader reader/protocol tests remain in progress; no repaired-model inference has run.
+Final CLI/preflight integration tests: 29 passed in 8.75s on the CPU allocation 2132885. Index, package, and repository validation passed. The prior reader/protocol candidate passed 182 tests in 221.33s. Replaying the original pilot observations through the new review accepts 7B and rejects the defective 32B case. The sole CPU job completed; no repaired-model inference has run.
 
 The user limited this project to one Slurm job total. All seven previous project jobs were
 cancelled by exact ID after ownership checks. The prepared model drivers were not deployed.
