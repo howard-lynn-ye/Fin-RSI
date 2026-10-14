@@ -72,7 +72,7 @@ This does not select a strategy or trade. You may use any available method or ma
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-research-readiness-v8'
+INTERACTION_REVISION = '20261013-nested-receipts-v9'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -240,7 +240,20 @@ class Controller(cap.Controller):
             result = self.tools.call(tool, {} if arguments is None else arguments)
             self.calls.append(dict(tool=tool, ok=bool(result.get('ok'))))
             return result
+        receipt_start = len(self.calls)
         result = self.tools.failure_help(tool, super().call(tool, arguments), arguments)
+        if tool == 'run_python':
+            nested = [r for r in self.calls[receipt_start:] if r['tool'] != 'run_python']
+            failed = [r for r in nested if not r.get('ok')]
+            result['nested_tool_summary'] = dict(
+                receipt_count=len(nested), successful_receipts=len(nested) - len(failed),
+                failed_receipts=len(failed), all_failed=bool(nested) and len(failed) == len(nested),
+                failed_tools=sorted({r.get('library_tool') or r['tool'] for r in failed}))
+            if failed:
+                result['nested_tool_note'] = ('Python completion does not imply tool success. '
+                    'These bound calls returned ok=false; inspect their replies before using results. '
+                    'Successful guard findings with passed=false are valid deliveries. '
+                    'Receipt counts include execution evidence, not unique logical calls.')
         if not result.get('ok') and tool == 'run_python':
             message = str(result.get('error', ''))
             if "name 'evidence' is not defined" in message:

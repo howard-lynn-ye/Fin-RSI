@@ -84,8 +84,16 @@ def method_defaults(algorithm_id, task):
     return params
 
 
+def page_integer(value, name):
+    from numbers import Integral
+    if isinstance(value, bool) or not isinstance(value, Integral):
+        raise TypeError(f'{name} must be an integer; no coercion')
+    return int(value)
+
+
 def text_page(text, offset=0, limit=4000, **metadata):
-    offset, limit = int(offset), min(int(limit), OUTPUT_LIMIT)
+    offset = page_integer(offset, 'offset')
+    limit = min(page_integer(limit, 'limit'), OUTPUT_LIMIT)
     if offset < 0 or limit < 1:
         raise ValueError("offset must be >= 0 and limit >= 1")
     def page(n):
@@ -106,7 +114,7 @@ def text_page(text, offset=0, limit=4000, **metadata):
 
 
 def rows_page(rows, offset, limit, key, **metadata):
-    offset, limit = int(offset), int(limit)
+    offset, limit = page_integer(offset, 'offset'), page_integer(limit, 'limit')
     if offset < 0 or not 1 <= limit <= 100:
         raise ValueError("offset must be >= 0 and limit between 1 and 100")
     selected = rows[offset:offset + limit]

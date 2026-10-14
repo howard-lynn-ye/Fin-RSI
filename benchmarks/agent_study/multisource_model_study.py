@@ -281,6 +281,16 @@ def decision_groups(inputs, personal):
 
 def run(root):
     p = verify(root)
+    # Retained failed or stale probes must reject before backend allocation or
+    # creating an inference-started receipt. A failed probe is never retried here.
+    if p.get('interface') in ('v8', 'v9') and p.get('batch') != 'personal':
+        from benchmarks.agent_study import trading_preflight_v8 as preflight
+        if (root / 'decision-preflight.json').exists():
+            preflight.require_campaign_ready(root,
+                require_library_use=p['model'][0] in ('qwen-general-7b', '32b'))
+        elif (root / 'model-access-preflight.json').exists():
+            from benchmarks.agent_study import trading_access_v9 as access
+            access.require(root)
     q = old.load(root / "qualification" / "qualification.json")
     current = {f.name: old.sha(f) for f in Path(__file__).parent.glob("trading_*v6.*")
                if f.suffix in (".py", ".md")}
