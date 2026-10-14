@@ -125,3 +125,29 @@ The original 96G launch scripts are historical records, not valid restart instru
 - Pattern-Key: experiment.decision_only_release_gate
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-13
+
+## [HEAL-20261013-N29] audit nested tool delivery before releasing inference
+
+**Status**: verified (CPU regression; repaired model behavior remains unmeasured)
+**Trigger**: Python completion concealed failed nested research calls
+**Area**: experiment tool contract and qualification
+
+### Failure and diagnosis
+The wrapper returned Python execution success even when every bound tool returned an error,
+and research qualification counted that turn as successful. Existing failed probes were checked
+after backend allocation. Pagination also silently coerced boolean, fractional and string inputs.
+
+### Fix and verification
+Keep raw Python status and model decisions, but expose nested receipts and reject all-failed
+research. Negative Guard findings remain successful deliveries. Reject retained failed probes
+before loading a model; require integer pagination arguments. CPU-only Slurm job 2139315 first
+ran the new regression module against the prior source (12 failing cases), then applied the
+patch: 165 focused tests passed in 194.03s. Index, package and repository validation passed.
+Local source SHA256 values match the tested copy. Reproduction, validation and fingerprints are
+in benchmarks/agent_study/reports/20261013-contract-audit/. The sole job completed; no GPU or
+model inference was used, and no new Return Rate is claimed.
+
+### Metadata
+- Pattern-Key: experiment.nested_tool_delivery_and_early_rejection
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-13

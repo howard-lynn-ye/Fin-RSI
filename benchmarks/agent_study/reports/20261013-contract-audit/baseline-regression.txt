@@ -1,0 +1,225 @@
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+__ test_nested_failure_is_visible_and_successful_recovery_still_counts[False] __
+
+workspace = PosixPath('/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_nested_failure_is_visible0')
+recover = False
+
+    @pytest.mark.skipif(not confinement_available(), reason='requires Linux confinement')
+    @pytest.mark.parametrize('recover', [False, True])
+    def test_nested_failure_is_visible_and_successful_recovery_still_counts(workspace, recover):
+        controller = v9.Controller(workspace/('nested-'+str(recover)), workspace, 'library')
+        code = 'print(describe_algorithm("not-an-algorithm")["ok"])'
+        if recover:
+            code += '\nprint(read_snapshot()["ok"])'
+        replies = iter([response('run_python', {'code': code}), response('hold')])
+        record = v9.decide(lambda _: next(replies), controller, 'fixture')
+        v9.validate_decision(record)
+        result = record['turns'][0]['result']
+        assert result['ok'] and record['decision_action'] == 'hold'
+>       summary = result['nested_tool_summary']
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'nested_tool_summary'
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:23: KeyError
+__ test_nested_failure_is_visible_and_successful_recovery_still_counts[True] ___
+
+workspace = PosixPath('/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_nested_failure_is_visible1')
+recover = True
+
+    @pytest.mark.skipif(not confinement_available(), reason='requires Linux confinement')
+    @pytest.mark.parametrize('recover', [False, True])
+    def test_nested_failure_is_visible_and_successful_recovery_still_counts(workspace, recover):
+        controller = v9.Controller(workspace/('nested-'+str(recover)), workspace, 'library')
+        code = 'print(describe_algorithm("not-an-algorithm")["ok"])'
+        if recover:
+            code += '\nprint(read_snapshot()["ok"])'
+        replies = iter([response('run_python', {'code': code}), response('hold')])
+        record = v9.decide(lambda _: next(replies), controller, 'fixture')
+        v9.validate_decision(record)
+        result = record['turns'][0]['result']
+        assert result['ok'] and record['decision_action'] == 'hold'
+>       summary = result['nested_tool_summary']
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'nested_tool_summary'
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:23: KeyError
+___________ test_negative_guard_finding_is_a_successful_tool_result ____________
+
+workspace = PosixPath('/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_negative_guard_finding_is0')
+
+    @pytest.mark.skipif(not confinement_available(), reason='requires Linux confinement')
+    def test_negative_guard_finding_is_a_successful_tool_result(workspace):
+        controller = v9.Controller(workspace/'negative-guard', workspace, 'library')
+        code = ('r=call_library_tool("check_rf_convention", '
+                '{"returns":[0.01,-0.02,0.005,0.012],"rf":5}); '
+                'assert r["ok"] and not r["result"]["passed"]; print("flag delivered")')
+        result = controller.call('run_python', {'code': code})
+        assert result['ok'] and 'flag delivered' in result['output']
+>       assert result['nested_tool_summary']['successful_receipts'] > 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'nested_tool_summary'
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:41: KeyError
+______ test_paging_does_not_silently_coerce_model_arguments[offset-True] _______
+
+value = True, field = 'offset'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+_______ test_paging_does_not_silently_coerce_model_arguments[offset-1.5] _______
+
+value = 1.5, field = 'offset'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+________ test_paging_does_not_silently_coerce_model_arguments[offset-1] ________
+
+value = '1', field = 'offset'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+______ test_paging_does_not_silently_coerce_model_arguments[offset-None] _______
+
+value = None, field = 'offset'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'integer'
+E         Actual message: "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'"
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: AssertionError
+_______ test_paging_does_not_silently_coerce_model_arguments[limit-True] _______
+
+value = True, field = 'limit'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+_______ test_paging_does_not_silently_coerce_model_arguments[limit-1.5] ________
+
+value = 1.5, field = 'limit'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+________ test_paging_does_not_silently_coerce_model_arguments[limit-1] _________
+
+value = '1', field = 'limit'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (TypeError, ValueError)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: Failed
+_______ test_paging_does_not_silently_coerce_model_arguments[limit-None] _______
+
+value = None, field = 'limit'
+
+    @pytest.mark.parametrize('value', [True, 1.5, '1', None])
+    @pytest.mark.parametrize('field', ['offset', 'limit'])
+    def test_paging_does_not_silently_coerce_model_arguments(value, field):
+>       with pytest.raises((TypeError, ValueError), match='integer'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'integer'
+E         Actual message: "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'"
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:49: AssertionError
+_ test_existing_failed_preflight_rejects_before_loading_model_or_writing_start _
+
+tmp_path = PosixPath('/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_existing_failed_preflight0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f8461dbe540>
+
+    def test_existing_failed_preflight_rejects_before_loading_model_or_writing_start(tmp_path, monkeypatch):
+        pytest.importorskip('bs4', reason='study integration requires the study extra')
+        from benchmarks.agent_study import multisource_model_study as study
+        p = dict(interface='v9', batch='matrix_hf', model=['32b','unused','unused'])
+        monkeypatch.setattr(study, 'verify', lambda _: p)
+        (tmp_path/'decision-preflight.json').write_text('{}')
+        calls = []
+        def reject(root, **kwargs):
+            calls.append(root)
+            raise ValueError('existing pilot failed: reject before backend')
+        monkeypatch.setattr(gate, 'require_campaign_ready', reject)
+        with pytest.raises(ValueError, match='reject before backend'):
+>           study.run(tmp_path)
+
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/tests/test_nested_tool_delivery.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/benchmarks/agent_study/multisource_model_study.py:284: in run
+    q = old.load(root / "qualification" / "qualification.json")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/source/benchmarks/agent_study/trading_study.py:97: in load
+    return json.loads(Path(path).read_text(encoding='utf8'))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib64/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_existing_failed_preflight0/qualification/qualification.json')
+mode = 'r', buffering = -1, encoding = 'utf8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/beacon-projects/radfm/wy891/fin-multisource-models-20261005/library-contract-audit-20261013-candidate29/tmp/pytest-of-wy891/pytest-0/test_existing_failed_preflight0/qualification/qualification.json'
+
+/usr/lib64/python3.12/pathlib.py:1013: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_nested_tool_delivery.py::test_nested_failure_is_visible_and_successful_recovery_still_counts[False]
+FAILED tests/test_nested_tool_delivery.py::test_nested_failure_is_visible_and_successful_recovery_still_counts[True]
+FAILED tests/test_nested_tool_delivery.py::test_negative_guard_finding_is_a_successful_tool_result
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[offset-True]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[offset-1.5]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[offset-1]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[offset-None]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[limit-True]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[limit-1.5]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[limit-1]
+FAILED tests/test_nested_tool_delivery.py::test_paging_does_not_silently_coerce_model_arguments[limit-None]
+FAILED tests/test_nested_tool_delivery.py::test_existing_failed_preflight_rejects_before_loading_model_or_writing_start
+12 failed in 14.31s

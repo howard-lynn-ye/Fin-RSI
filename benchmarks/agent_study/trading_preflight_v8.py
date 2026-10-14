@@ -30,7 +30,11 @@ def observations(record):
 
     research = [t for t in record['turns'] if t['phase'] == 'research'
                 and t.get('tool') not in ('submit', 'hold')]
-    successful = sum(execution_status(t['result'])['turn_ok'] for t in research)
+    successful = sum(execution_status(t['result'])['turn_ok'] and
+                     not t['result'].get('nested_tool_summary', {}).get('all_failed', False)
+                     for t in research)
+    nested_failed = sum(t['result'].get('nested_tool_summary', {}).get('failed_receipts', 0)
+                        for t in research)
     substantive = {'read_skill', 'read_history', 'load_history', 'run_algorithm',
                    'run_guard', 'research_context', 'library_execution'}
     receipts = [r for r in record['tool_calls'] if r.get('ok') and r.get('tool') in substantive]
@@ -38,6 +42,7 @@ def observations(record):
                 decision_completed=record['decision_completed'],
                 research_attempts=len(research), research_successes=successful,
                 research_errors=len(research) - successful,
+                nested_tool_failed_receipts=nested_failed,
                 research_status=('not_attempted' if not research else
                                  'all_attempts_failed' if not successful else
                                  'successful_delivery_observed'),
