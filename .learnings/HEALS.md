@@ -200,3 +200,31 @@ login, job, cancellation or modification to the existing 32B experiment was perf
 - Pattern-Key: beacon.shared_master_owner_changed
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-WT] read verified code from the owned publication worktree
+
+**Status**: verified
+**Trigger**: missing published report and sandbox Git worktree error
+**Area**: local publication workspace
+
+A report read incorrectly used the older primary checkout; Git status in the owned worktree
+also required access outside the writable roots. Reading the exact owned worktree with the
+approved filesystem scope found the report and returned clean Git status. No experiment code
+was changed to work around this local path/access issue.
+
+- Pattern-Key: workspace.owned_checkout_and_git_access
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-LOG] normalize terminal trailing spaces for publication
+
+**Status**: verified
+**Area**: evidence publication
+
+The selected Slurm node fields contained trailing spaces emitted by awk, and staged diff checking
+rejected them. Trimmed only end-of-line spaces, documented the normalization, and reran
+`git diff --cached --check` successfully. Values and ordering are unchanged.
+
+- Pattern-Key: publication.terminal_trailing_spaces
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
