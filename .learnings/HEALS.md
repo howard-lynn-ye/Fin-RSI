@@ -151,3 +151,20 @@ model inference was used, and no new Return Rate is claimed.
 - Pattern-Key: experiment.nested_tool_delivery_and_early_rejection
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-13
+
+## [HEAL-20261015-D31] distinguish Pandas shape failures from tool arguments
+
+**Status**: verified (CPU recovery; model behavior on the patch is unmeasured)
+**Area**: paired agent interface diagnostics
+
+The preserved source29 7B pilot called Series.cov() with no second Series and repeatedly indexed
+the scalar produced by Series.mean(). The TypeError hint incorrectly blamed bound-tool arguments.
+Use shape-specific diagnostics and a neutral raw-matrix inspection example equally in both arms;
+do not execute recovery or choose investments automatically. Slurm 2210699 reproduced 7 cases
+on the old source, then passed 101 tests in 295.82s after the patch. Builds/validation passed and
+local hashes match the tested source. Reports include all 12 previous pilot decisions and failures.
+32B passed the previous pilot and proceeds independently on its unchanged source29 in job2232777.
+
+- Pattern-Key: experiment.python_typeerror_misdiagnosis
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
