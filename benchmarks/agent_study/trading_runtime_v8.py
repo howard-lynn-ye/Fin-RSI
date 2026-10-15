@@ -282,7 +282,7 @@ class Controller(cap.Controller):
                     'quotes.csv is long format: ticker symbols are values in ticker, not columns. '
                     'frame["close"] is a Series; do not index it with "close" again. '
                     'Series.mean() is a scalar; DataFrame.mean() is indexed by column. '
-                    'DataFrame.cov() needs multiple columns; Series.cov(other) needs another Series. '
+                    'DataFrame.cov() computes pairwise column covariance; Series.cov(other) needs another Series. '
                     'Use help_tool(name) for the exact reader contract. Do not repeat unchanged failing code.')
                 result['recovery_call'] = dict(tool='run_python', arguments=dict(code=RAW_MATRIX_EXAMPLE))
                 result['recovery_note'] = ('Optional schema inspection only; not executed automatically. '

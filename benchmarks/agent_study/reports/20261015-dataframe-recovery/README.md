@@ -33,3 +33,8 @@ Positive and negative outcomes are retained. No paid model or RSI loop is enable
 
 The optional RSI integration design is recorded in docs/RSI_INTEGRATION_DESIGN_20261015.md.
 It is a proposal, not a shipped capability or an intervention in this return experiment.
+
+After CPU verification, one diagnostic sentence was corrected to state that DataFrame.cov()
+computes pairwise column covariance (one-column frames are also valid). The CPU fingerprints
+identify the tested snapshot; final committed wording is checked by GitHub CI. No behavior or
+active 32B source changed.
