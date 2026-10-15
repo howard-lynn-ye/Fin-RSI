@@ -41,6 +41,9 @@ quotes.csv columns: date,ticker,open,high,low,close,volume (lowercase, raw price
 It is long format: tickers are VALUES in the ticker column, not column names.
 A raw price matrix is quotes.pivot(index="date", columns="ticker", values="close").sort_index().
 A single ticker is quotes.loc[quotes.ticker == ticker].sort_values("date").
+Do not pct_change the close column across interleaved tickers. A Series.mean() is one scalar;
+DataFrame.mean() gives one value per column. DataFrame.cov() is the multi-column covariance;
+Series.cov(other) compares two Series. Inspect the shape before computing.
 Selecting frame["close"] returns a Series; do not select ["close"] again inside a helper.
 corporate_actions.csv columns: date,ticker,kind,value,note; README.md explains adjustment.
 Read these existing files with pandas.read_csv; do not recreate supplied rows in code.
@@ -72,11 +75,21 @@ This does not select a strategy or trade. You may use any available method or ma
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261013-nested-receipts-v9'
+INTERACTION_REVISION = '20261015-dataframe-recovery-v10'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
 ''' + DECISION_FORMAT
+
+
+
+# Inspection only, identical in both arms. Never evaluates returns or chooses a portfolio.
+RAW_MATRIX_EXAMPLE = '''import json
+import pandas as pd
+quotes = pd.read_csv("quotes.csv")
+prices = quotes.pivot(index="date", columns="ticker", values="close").sort_index()
+print(json.dumps({"type": type(prices).__name__, "shape": list(prices.shape),
+                  "columns": prices.columns.tolist()}))'''
 
 
 def task(day, holdings, deadline):
@@ -148,6 +161,7 @@ class Tools(cap.Tools):
                 'quotes.csv': ['date', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
                 'corporate_actions.csv': ['date', 'ticker', 'kind', 'value', 'note']}
             result['input_convention'] = 'Raw prices, not adj_close; visible corporate actions are separate.'
+            result['raw_matrix_example'] = RAW_MATRIX_EXAMPLE
         elif name == 'load_history':
             result['python_example'] = 'h=load_history(lookback=252)\nprint(h["returns"].tail(3))'
             result['returns'] = 'prices and returns are full adjusted pandas matrices; metadata describes conventions'
@@ -261,13 +275,24 @@ class Controller(cap.Controller):
             elif 'NameError' in message:
                 result['hint'] = ('Each Python call starts fresh. Define imports and variables in this call. '
                                   'Read files or call bound readers; no previous tool-result variables exist.')
-            elif any(x in message for x in ('KeyError', 'AttributeError')):
+            elif ('Series.cov()' in message or
+                  any(x in message for x in ('KeyError', 'AttributeError'))):
                 result['hint'] = ('Inspect the object at the failing line: print(type(obj)); for a DataFrame, '
                     'print(obj.columns.tolist()); for a Series, print(obj.name, obj.index.names). '
                     'quotes.csv is long format: ticker symbols are values in ticker, not columns. '
                     'frame["close"] is a Series; do not index it with "close" again. '
+                    'Series.mean() is a scalar; DataFrame.mean() is indexed by column. '
+                    'DataFrame.cov() needs multiple columns; Series.cov(other) needs another Series. '
                     'Use help_tool(name) for the exact reader contract. Do not repeat unchanged failing code.')
-            elif any(x in message for x in ('TypeError', 'ImportError')):
+                result['recovery_call'] = dict(tool='run_python', arguments=dict(code=RAW_MATRIX_EXAMPLE))
+                result['recovery_note'] = ('Optional schema inspection only; not executed automatically. '
+                    'The matrix contains raw prices, not adjusted returns. Read corporate actions and '
+                    'README.md before return estimation. Choose and implement your own analysis.')
+            elif 'TypeError' in message:
+                result['hint'] = ('Inspect the failing Python expression and its input types. '
+                    'A TypeError alone does not identify a bound-tool argument problem; '
+                    'use help_tool(name) only when the traceback identifies a tool call.')
+            elif 'ImportError' in message:
                 result['hint'] = 'Study tools are already bound; inspect help_tool(name) for exact arguments and return fields.'
         return result
 
