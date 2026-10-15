@@ -101,8 +101,42 @@ process-local; coordinate the combined request budget if you run several process
 
 ## Verify and operate
 
+`python -m fin_skills.collect --database events.sqlite3 health` is a read-only live check.
+It returns exit code 0 only when an instrumented `run` collector holds the local database's
+ownership lock and all enabled watches have recent successful checks. Otherwise it returns 1.
+`collection_status` exposes the same report through Python/tools/MCP. Neither command starts
+a worker or creates a missing database. The existing CLI `status` still returns a watch list.
+
+The report separates `runner.active`, `data_ready`, and `healthy`. A stopped worker can have
+recent data; a running worker can have failed or stale sources. Per-watch freshness expires
+after `max(60, 2 * interval_seconds)` seconds since the last successful check. Backoff and
+Retry-After do not extend this threshold. A later failure or partial batch overrides a recent
+success. Disabled watches do not contribute to readiness, and no enabled watches means idle.
+An empty successful response, including HTTP 304, refreshes the source check: this does not
+mean the source published new content or that coverage is complete. Keep examining each
+record's publication and observation timestamps.
+
+`once` and bounded `run --cycles N` return 1 for source failures, partial batches, stale or
+never-checked enabled watches, and idle configurations. A skipped retry cannot hide a previous
+failure. Bounded runs retain a nonzero exit if any cycle failed, even if a later cycle recovered;
+their final `run_summary` includes `failed_cycles`, current health and the exit code. A fully
+successful bounded run returns 0 without claiming a continuously running service. Ctrl+C
+returns 130. Python `Collector.run()` continues to return the number of completed cycles.
+
+One collector at a time owns a database via `<database>.collector.lock`. The operating system
+releases the lock if the process dies; do not delete the persistent sidecar while collectors
+may be running. Health reports an interrupted worker when a recorded running session has lost
+ownership. This check is for local filesystems on the originating host; copied databases from
+another host and legacy uninstrumented runs report unknown/unobserved, never healthy. A live
+ownership lock proves process ownership, not forward progress; source freshness provides the
+separate progress check. No scheduled service or background health thread is installed.
+
+Current `collection_search` responses retain the per-watch `collection_health` list and add
+`collection_runtime` and `collection_readiness`. All three are omitted (null) when `as_of`
+is explicitly supplied, so current operational status cannot be mistaken for historical data.
+
 ```bash
-python -m pytest tests/test_collect.py -q
+python -m pytest tests/test_collect.py tests/test_collection_health.py -q
 python scripts/check_collection_live.py --house-year 2026 --house-name Pelosi --house-since 2026-08-01
 ```
 

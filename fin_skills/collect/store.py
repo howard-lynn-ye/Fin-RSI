@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from .model import Batch, Watch, utcnow
@@ -38,6 +40,8 @@ class Store:
                 PRIMARY KEY(watch_id, event_id));
             CREATE TABLE IF NOT EXISTS alerts (
                 seq INTEGER PRIMARY KEY REFERENCES events(seq), acknowledged_at TEXT);
+            CREATE TABLE IF NOT EXISTS collector_runtime (
+                singleton INTEGER PRIMARY KEY CHECK(singleton=1), record TEXT NOT NULL);
         """)
 
     def close(self):
@@ -156,6 +160,63 @@ class Store:
             raise ValueError('eligible collection exceeds max_records; narrow watch_id or raise the limit')
         return [dict(json.loads(r['record']), seq=r['seq'], watch_id=r['watch_id']) for r in rows]
 
-    def status(self):
-        return [dict(r) for r in self.db.execute(
-            "SELECT id,last_attempt,last_success,error,next_due,failures FROM watches ORDER BY id")]
+    def status(self, *, now=None):
+        """Poll freshness, not article age. A later error always remains visible."""
+        now = time.time() if now is None else now
+        rows = []
+        for row in self.db.execute(
+                'SELECT id,config,last_attempt,last_success,error,next_due,failures '
+                'FROM watches ORDER BY id'):
+            result = dict(row)
+            config = json.loads(result.pop('config'))
+            enabled, interval = config['enabled'], config['interval_seconds']
+            threshold = max(60.0, 2 * interval)
+            age = None
+            freshness = 'never_succeeded'
+            if result['last_success']:
+                try:
+                    checked = datetime.fromisoformat(result['last_success'])
+                    if checked.tzinfo is None:
+                        raise ValueError('last_success must have a timezone')
+                    age = now - checked.timestamp()
+                    freshness = 'unknown' if age < 0 else (
+                        'fresh' if age <= threshold else 'stale')
+                except (ValueError, OverflowError):
+                    freshness = 'unknown'
+            status = 'ok' if freshness == 'fresh' else freshness
+            if result['error']:
+                status = 'error' if result['failures'] else 'partial'
+            if not enabled:
+                status = freshness = 'disabled'
+            result.update(source=config['source'], enabled=enabled, interval_seconds=interval,
+                          status=status, freshness=freshness, success_age_seconds=age,
+                          stale_after_seconds=threshold,
+                          freshness_basis='last successful source check, not content age')
+            rows.append(result)
+        return rows
+
+    def record_runtime(self, record):
+        with self.db:
+            self.db.execute('INSERT INTO collector_runtime VALUES(1,?) ON CONFLICT(singleton) '
+                            'DO UPDATE SET record=excluded.record',
+                            (json.dumps(record, allow_nan=False),))
+
+    def runtime_record(self):
+        # Legacy databases remain readable without migrating them on a health query.
+        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                               "AND name='collector_runtime'").fetchone():
+            return None
+        row = self.db.execute('SELECT record FROM collector_runtime WHERE singleton=1').fetchone()
+        return json.loads(row[0]) if row else None
+
+    def health(self, *, now=None):
+        from .health import runner_status
+        watches = self.status(now=now)
+        enabled = [w for w in watches if w['enabled']]
+        ready = bool(enabled) and all(w['status'] == 'ok' for w in enabled)
+        runner = runner_status(self)
+        healthy = (ready and runner['status'] == 'running' and runner.get('mode') == 'run')
+        return {'watches': watches, 'runner': runner, 'data_ready': ready, 'healthy': healthy,
+                'status': 'idle' if not enabled else ('healthy' if healthy else 'degraded'),
+                'checked_at': utcnow(),
+                'scope': 'local source polling and collector ownership; not content completeness'}

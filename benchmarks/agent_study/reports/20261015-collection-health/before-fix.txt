@@ -1,0 +1,47 @@
+.F.F
+================================== FAILURES ===================================
+______________ test_cli_reports_source_outcome[error-1-command1] ______________
+
+tmp_path = WindowsPath('C:/Users/howar/AppData/Local/Temp/pytest-of-howar/pytest-1956/test_cli_reports_source_outcom1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E026678510>
+capsys = <_pytest.capture.CaptureFixture object at 0x000001E026679510>
+command = ['run', '--cycles', '1'], outcome = 'error', expected = 1
+
+    @pytest.mark.parametrize('command', [['once'], ['run', '--cycles', '1']])
+    @pytest.mark.parametrize('outcome,expected', [('error', 1), ('partial', 1), ('ok', 0)])
+    def test_cli_reports_source_outcome(tmp_path, monkeypatch, capsys, command, outcome, expected):
+        path = tmp_path / 'events.db'
+        configure(path)
+        backend(monkeypatch, outcome)
+>       assert main(['--database', str(path), *command]) == expected
+E       AssertionError: assert 0 == 1
+E        +  where 0 = main(['--database', 'C:\\Users\\howar\\AppData\\Local\\Temp\\pytest-of-howar\\pytest-1956\\test_cli_reports_source_outcom1\\events.db', 'run', '--cycles', '1'])
+
+C:\Users\howar\.codex\worktrees\structured-cycle-results\fin_skill\tests\test_collection_health.py:36: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"type": "cycle", "watches": [{"watch_id": "news", "status": "error", "error": "fixture unavailable", "retry_in_seconds": 3600}], "new_records": 0, "events": [], "content_is_untrusted": true}
+_____________ test_cli_reports_source_outcome[partial-1-command1] _____________
+
+tmp_path = WindowsPath('C:/Users/howar/AppData/Local/Temp/pytest-of-howar/pytest-1956/test_cli_reports_source_outcom3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E026640950>
+capsys = <_pytest.capture.CaptureFixture object at 0x000001E026640AD0>
+command = ['run', '--cycles', '1'], outcome = 'partial', expected = 1
+
+    @pytest.mark.parametrize('command', [['once'], ['run', '--cycles', '1']])
+    @pytest.mark.parametrize('outcome,expected', [('error', 1), ('partial', 1), ('ok', 0)])
+    def test_cli_reports_source_outcome(tmp_path, monkeypatch, capsys, command, outcome, expected):
+        path = tmp_path / 'events.db'
+        configure(path)
+        backend(monkeypatch, outcome)
+>       assert main(['--database', str(path), *command]) == expected
+E       AssertionError: assert 0 == 1
+E        +  where 0 = main(['--database', 'C:\\Users\\howar\\AppData\\Local\\Temp\\pytest-of-howar\\pytest-1956\\test_cli_reports_source_outcom3\\events.db', 'run', '--cycles', '1'])
+
+C:\Users\howar\.codex\worktrees\structured-cycle-results\fin_skill\tests\test_collection_health.py:36: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"type": "cycle", "watches": [{"watch_id": "news", "status": "partial", "new_records": 0, "warnings": ["fixture incomplete"], "remaining": 0, "next_due": 1792097022.8433287}], "new_records": 0, "events": [], "content_is_untrusted": true}
+=========================== short test summary info ===========================
+FAILED tests/test_collection_health.py::test_cli_reports_source_outcome[error-1-command1]
+FAILED tests/test_collection_health.py::test_cli_reports_source_outcome[partial-1-command1]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+2 failed, 2 passed, 11 deselected in 1.58s
