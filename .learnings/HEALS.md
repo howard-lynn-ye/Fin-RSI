@@ -262,3 +262,37 @@ safe-resume report. The production driver and Beacon deployment were unchanged.
 - Pattern-Key: ci.optional_study_collection
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-COLLECTION-EXIT] preserve source failures through bounded CLI exit
+
+**Status**: verified with local CPU fixtures
+**Area**: public-information collection
+
+Before the patch, two regression cases showed `run --cycles 1` returning 0 for error and
+partial source reports. The CLI now accumulates failed cycles, checks current source readiness,
+and emits a final summary with a nonzero exit for failures, stale or uninitialized data, and
+idle watchlists. Backoff skips preserve prior failures in CLI/tool health. Live ownership is
+reported separately from source freshness. The final targeted suite passed 171 tests, including
+19 new regressions; build/index/package validation passed. Evidence is in
+`benchmarks/agent_study/reports/20261015-collection-health/`.
+
+- Pattern-Key: collection.bounded_run_false_success
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-WINDOWS-CHILD] terminate the actual fixture interpreter
+
+**Status**: verified
+**Area**: process-crash regression test
+
+The first full test run observed a collector still holding its lock after terminating the
+Windows venv launch process. A PID probe confirmed that this venv creates a different actual
+interpreter PID (58228 versus 21616). The fixture now launches `sys._base_executable` on Windows,
+passes the current import paths, and asserts runtime PID equality before terminating its own
+child. The crash/restart case passed independently (1 passed, 18 deselected), then the complete
+171-test acceptance passed. The fixture's former recorded worker PID was absent on cleanup
+inspection; no unrelated process was stopped.
+
+- Pattern-Key: tests.windows_venv_launcher_child_ownership
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15

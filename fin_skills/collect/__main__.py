@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from dataclasses import asdict
 
@@ -18,6 +19,7 @@ def main(argv=None):
     init.add_argument('config', help='JSON file containing a watches array (no credentials)')
     sub.add_parser('watches')
     sub.add_parser('status')
+    sub.add_parser('health', help='read-only live health check; nonzero unless continuously healthy')
     once = sub.add_parser('once')
     once.add_argument('--force', action='store_true')
     run = sub.add_parser('run')
@@ -38,7 +40,7 @@ def main(argv=None):
         emit(sources())
         return 0
     try:
-        with Store(args.database) as store:
+        with Store(args.database, read_only=args.command in ('status', 'health')) as store:
             collector = Collector(store)
             if args.command == 'configure':
                 with open(args.config, encoding='utf-8') as f:
@@ -49,22 +51,36 @@ def main(argv=None):
                 emit([asdict(w) for w in store.watches()])
             elif args.command == 'status':
                 emit(store.status())
+            elif args.command == 'health':
+                report = store.health()
+                emit(report)
+                return int(not report['healthy'])
             elif args.command == 'once':
                 report = collector.once(force=args.force)
-                emit(report)
-                return int(any(w['status'] != 'ok' for w in report['watches']))
+                health = store.health()
+                emit({**report, 'health': health})
+                return int(not health['data_ready'] or
+                           any(w['status'] != 'ok' for w in report['watches']))
             elif args.command == 'events':
                 emit(store.events(watch_id=args.watch, after=args.after, limit=args.limit,
                                   pending=args.pending, latest=args.latest))
             elif args.command == 'run':
+                failed_cycles = 0
                 def on_cycle(report):
+                    nonlocal failed_cycles
+                    failed_cycles += int(any(w['status'] != 'ok' for w in report['watches']))
                     emit({'type': 'cycle', **report})
                     if args.stdout_alerts:
                         collector.deliver(lambda event: emit({'type': 'alert', **event}))
-                collector.run(cycles=args.cycles, on_cycle=on_cycle)
+                completed = collector.run(cycles=args.cycles, on_cycle=on_cycle)
+                health = store.health()
+                exit_code = int(bool(failed_cycles) or not health['data_ready'])
+                emit({'type': 'run_summary', 'cycles': completed, 'failed_cycles': failed_cycles,
+                      'health': health, 'exit_code': exit_code})
+                return exit_code
     except KeyboardInterrupt:
         return 130
-    except (ValueError, OSError, KeyError) as exc:
+    except (ValueError, OSError, KeyError, sqlite3.Error) as exc:
         emit({'error': f'{type(exc).__name__}: {exc}'})
         return 1
     return 0

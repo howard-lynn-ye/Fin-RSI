@@ -8,6 +8,7 @@ from dataclasses import asdict
 from .disclosures import HouseSource, SECSource
 from .feeds import BlueskySource, PageSource, RSSSource
 from .http import HttpClient
+from .health import ownership
 from .model import Watch
 from .news import GDELTSource
 
@@ -43,6 +44,10 @@ class Collector:
         self.store.put_watch(watch)
 
     def once(self, *, force=False, watch_ids=None):
+        with ownership(self.store, 'once'):
+            return self._once(force=force, watch_ids=watch_ids)
+
+    def _once(self, *, force=False, watch_ids=None):
         chosen = set(watch_ids) if watch_ids is not None else None
         watches = self.store.watches()
         if chosen is not None and chosen - {w.id for w in watches}:
@@ -85,12 +90,16 @@ class Collector:
         ``on_cycle`` receives status and new events, but does not acknowledge the outbox.
         Use deliver() for a sink that must retry failed deliveries after a restart.
         """
-        if cycles is not None and (not isinstance(cycles, int) or cycles < 1):
+        if cycles is not None and (type(cycles) is not int or cycles < 1):
             raise ValueError('cycles must be a positive integer or None')
         stop = stop or threading.Event()
+        with ownership(self.store, 'run'):
+            return self._run(stop, cycles, on_cycle)
+
+    def _run(self, stop, cycles, on_cycle):
         completed = 0
         while not stop.is_set():
-            report = self.once()
+            report = self._once()
             if on_cycle:
                 on_cycle(report)
             completed += 1
