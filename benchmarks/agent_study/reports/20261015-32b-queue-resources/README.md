@@ -1,5 +1,8 @@
 # 32B full-cycle queue resource correction
 
+The later [compatible-capacity review](COMPATIBLE_CAPACITY.md) applies the user's updated
+scheduling policy and records a revised queue estimate. The observations below are historical.
+
 At 2026-10-15 18:32:50 UTC, the sole fin-skills job 2232777 was pending Priority with
 one H100, eight CPUs, 64G host memory and a 24-hour limit. Its estimated start was
 2026-10-17 15:04:18 America/New_York. There was no dependency, account-limit reason,
