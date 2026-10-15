@@ -245,3 +245,20 @@ pending job2232777 and its frozen source remain untouched. No model return is cl
 - Pattern-Key: experiment.frozen_pair_partial_score_resume
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-OPTIONAL-STUDY] defer the optional replay import in recovery tests
+
+**Status**: verified locally; new CI run pending
+**Area**: test collection
+
+CI run38796771156 failed during collection because the new recovery tests imported the study's
+optional bs4 dependency even in minimum-dependency and extended-validation jobs. Importing the
+study only inside the integration fixture preserves 23 unconditional core checks; 34 integration
+cases explicitly skip without the study extra. Verification passed both configurations: 57/57
+with the installed study dependencies; 23 passed and 34 skipped with a subprocess import blocker
+simulating missing bs4. The reproduction helper and updated test hash are committed in the
+safe-resume report. The production driver and Beacon deployment were unchanged.
+
+- Pattern-Key: ci.optional_study_collection
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15

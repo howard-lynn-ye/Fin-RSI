@@ -11,13 +11,14 @@ import pandas as pd
 import pytest
 
 from scripts import frozen_cycle_resume as resume
-from benchmarks.agent_study import multisource_model_study as study
 from benchmarks.agent_study import trading_runtime_v8 as v8
 from test_trading_terminal_v8 import Controller, response
 
 
 @pytest.fixture(params=['v8', 'v9'])
 def pair(tmp_path, monkeypatch, request):
+    pytest.importorskip('bs4', reason='accounting fixtures require the optional study extra')
+    from benchmarks.agent_study import multisource_model_study as study
     root, output = tmp_path / 'pair', tmp_path / 'output'
     root.mkdir()
     dates = pd.bdate_range('2025-01-02', periods=6).strftime('%Y-%m-%d')
@@ -93,6 +94,7 @@ def pair(tmp_path, monkeypatch, request):
 
 
 def test_interrupted_inference_preserves_first_decision_and_exact_ledger(pair):
+    from benchmarks.agent_study import multisource_model_study as study
     root, output, protocol, records, calls, fail, recover = pair
     fail['after'] = 1
     with pytest.raises(InterruptedError):
@@ -127,6 +129,7 @@ def test_complete_decisions_finalize_without_model_loading(pair):
 
 
 def test_interrupted_score_keeps_existing_nav_without_rerunning_inference(pair, monkeypatch):
+    from benchmarks.agent_study import multisource_model_study as study
     root, output, protocol, records, calls, fail, recover = pair
     original_score = study.score
     def broken(where):
@@ -149,6 +152,7 @@ def test_interrupted_score_keeps_existing_nav_without_rerunning_inference(pair, 
 
 
 def test_failed_export_can_resume_without_regenerating_decisions(pair):
+    from benchmarks.agent_study import multisource_model_study as study
     root, output, protocol, records, calls, fail, recover = pair
     def broken(_):
         raise InterruptedError('export interrupted')
