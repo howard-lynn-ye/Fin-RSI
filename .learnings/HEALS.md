@@ -168,3 +168,35 @@ local hashes match the tested source. Reports include all 12 previous pilot deci
 - Pattern-Key: experiment.python_typeerror_misdiagnosis
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-RSI] compare persistent configuration after JSON normalization
+
+**Status**: verified
+**Trigger**: first-development regression tests failed when reopening the RSI journal
+**Area**: RSI persistence
+
+The in-memory seed contained tuples while JSON restored lists, so unchanged configuration was
+incorrectly rejected. Canonical JSON comparison fixes the round trip without relaxing model,
+protocol, seed or budget checks. The original run had 26 failures and 12 passes; the corrected
+38 cases passed, then the final expanded suite passed 42/42. See the source-verification report
+and hashes under benchmarks/agent_study/reports/20261015-optional-rsi/.
+
+- Pattern-Key: rsi.journal_json_roundtrip
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-SSH] reuse a newly recovered shared master after ownership changes
+
+**Status**: verified
+**Trigger**: SharedOnly reported no available upstream connection
+**Area**: Beacon monitoring
+
+The prior fin-skills master had ended. Before creating a replacement, the recovery helper
+detected a new existing plink process and stopped. Read-only ownership inspection identified
+NPJ v13's newly verified shared master (parent 71932). Reusing that connection succeeded at
+2026-10-15T17:47:56Z and showed only fin-skills job 2232777, pending Priority. No additional
+login, job, cancellation or modification to the existing 32B experiment was performed.
+
+- Pattern-Key: beacon.shared_master_owner_changed
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15

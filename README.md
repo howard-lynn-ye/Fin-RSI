@@ -220,6 +220,14 @@ circuit parameters. Neither component bundles pretrained weights. See the
 or `collection_search(database, query)` for freshly saved collector records. `retrieve_context`
 remains available for explicit corpus retrieval; `run_model` handles explicitly enabled Jev requests.
 
+### Optional agent playbook improvement
+
+`fin_skills.rsi` lets an agent propose small improvements to tool-use instructions, retrieval
+and experience notes, then accept them only after independent development/validation checks.
+It is disabled by default, uses caller-owned model/evaluator callbacks, records every attempt,
+and supports fixed budgets, freezing and rollback. It does not change existing trading runs.
+See the [RSI module guide](docs/RSI_MODULE.md) for integration, evidence requirements and limits.
+
 ### Mode B: In Claude Code / Coding Agents (Skill Plugins)
 
 ```bash

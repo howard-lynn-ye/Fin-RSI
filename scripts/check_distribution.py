@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 import fin_skills
 from fin_skills.rag import Document, RAGIndex, RAGPipeline
+from fin_skills.rsi import RSILoop
 from fin_skills.model_zoo import create_model, model_catalog
 from fin_skills.algorithms import auto_run, fit, load_model, research, catalog
 from fin_skills.jev import build_macro_regime_question
@@ -45,6 +46,10 @@ assert RAGPipeline(RAGIndex.load('rag.json')).prepare('source')['citations'][0][
 assert RAGIndex.from_skills(['backtest-validation']).chunks
 assert create_model('jev').model_id == 'jev'
 assert {'jev', 'fly_memory'} <= {c['id'] for c in model_catalog()}
+rsi = RSILoop('disabled-rsi', model_id='smoke', protocol_id='smoke-v1',
+              available_at='2026-01-01T00:00:00Z')
+assert rsi.improve(as_of='2026-01-02T00:00:00Z').status == 'disabled'
+assert not Path('disabled-rsi').exists()
 print('INSTALLED_SMOKE_OK', fin_skills.__file__)
 '''
 
