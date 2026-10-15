@@ -1,6 +1,8 @@
 # Optional agent self-improvement with fin-skills
 
-Status: proposed design, not an installed or enabled feature. The active 32B paired return
+Status: the first bounded playbook adapter is implemented in `fin_skills.rsi`, disabled by
+default; see [usage and limits](RSI_MODULE.md). Model/financial benefit remains untested.
+The active 32B paired return
 experiment uses frozen source29 and does not use this design. No additional Slurm job or paid
 model call is authorized by this document. The project remains limited to one active/pending job.
 

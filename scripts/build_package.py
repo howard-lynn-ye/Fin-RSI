@@ -48,9 +48,10 @@ HAND_WRITTEN = {"__init__.py"}          # kept as-is; everything else under fin_
 #   bridges/  adapters to vectorbt, qlib, QuantLib, the optimizers, brokers and reporting
 #   synthesis/ combining information of DIFFERENT kinds into one traceable research view
 #   rag/ offline document retrieval, context assembly and caller-owned generation
+#   rsi/ optional bounded agent playbook improvement and validation
 # A new layer is added here in the SAME commit that creates it, or the next regeneration
 # deletes it. --check enforces this.
-HAND_WRITTEN_DIRS = ("algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "jev/", "mcp/", "model_zoo/", "rag/", "synthesis/", "tools/")
+HAND_WRITTEN_DIRS = ("algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "jev/", "mcp/", "model_zoo/", "rag/", "rsi/", "synthesis/", "tools/")
 
 
 def is_hand_written(rel: str) -> bool:
