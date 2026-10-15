@@ -228,3 +228,20 @@ rejected them. Trimmed only end-of-line spaces, documented the normalization, an
 - Pattern-Key: publication.terminal_trailing_spaces
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261015-RESUME] continue a frozen pair after interrupted scoring
+
+**Status**: verified (CPU fault injection); Slurm recovery not yet exercised
+**Area**: experiment persistence
+
+The original launcher rejects started experiments, and the frozen exclusive JSON writer raises
+FileExistsError when restarting a partially completed score. The v8/v9 fault-injection tests
+reproduce that FileExistsError on the retained NAV. A separate host recovery driver validates
+frozen bindings and chronological decisions, preserves existing bytes, atomically publishes new
+JSON and reuses identical deterministic score files. Its 57 CPU tests passed, including the real
+ledger and independent accounting audit. Deployed files match their recorded hashes; original
+pending job2232777 and its frozen source remain untouched. No model return is claimed by tests.
+
+- Pattern-Key: experiment.frozen_pair_partial_score_resume
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-15
