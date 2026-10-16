@@ -19,7 +19,11 @@ def main(argv=None):
     init.add_argument('config', help='JSON file containing a watches array (no credentials)')
     sub.add_parser('watches')
     sub.add_parser('status')
-    sub.add_parser('health', help='read-only live health check; nonzero unless continuously healthy')
+    sub.add_parser('health', help='read-only check of live polling AND default required coverage')
+    coverage = sub.add_parser('coverage', help='read-only required-information coverage check')
+    coverage.add_argument('--requirements', help='JSON file containing a requirements array')
+    coverage.add_argument('--as-of', help='timezone-aware historical cutoff')
+    coverage.add_argument('--max-records', type=int, default=10000)
     once = sub.add_parser('once')
     once.add_argument('--force', action='store_true')
     run = sub.add_parser('run')
@@ -40,7 +44,7 @@ def main(argv=None):
         emit(sources())
         return 0
     try:
-        with Store(args.database, read_only=args.command in ('status', 'health')) as store:
+        with Store(args.database, read_only=args.command in ('status', 'health', 'coverage')) as store:
             collector = Collector(store)
             if args.command == 'configure':
                 with open(args.config, encoding='utf-8') as f:
@@ -54,7 +58,16 @@ def main(argv=None):
             elif args.command == 'health':
                 report = store.health()
                 emit(report)
-                return int(not report['healthy'])
+                return int(not report['ready'])
+            elif args.command == 'coverage':
+                requirements = None
+                if args.requirements:
+                    with open(args.requirements, encoding='utf-8') as f:
+                        requirements = json.load(f)['requirements']
+                report = store.coverage(requirements=requirements, as_of=args.as_of,
+                                        max_records=args.max_records)
+                emit(report)
+                return int(not report['ready'])
             elif args.command == 'once':
                 report = collector.once(force=args.force)
                 health = store.health()

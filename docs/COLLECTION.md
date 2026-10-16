@@ -56,7 +56,8 @@ with Store('events.sqlite3') as store:
 ```
 
 The shared tools/MCP registry exposes `collection_sources`, `collection_configure`,
-`collect_once`, `collection_events`, `collection_search`, `collection_status`, `collection_acknowledge`,
+`collect_once`, `collection_events`, `collection_search`, `collection_status`, `collection_coverage`,
+`collection_acknowledge`,
 `compare_holdings`, `search_data` and `fetch_market_data`. A tool call performs a bounded
 poll of watches that are due, respecting retry schedules; continuous operation is an explicit
 Python/CLI action. Configure paths on the machine
@@ -103,11 +104,13 @@ process-local; coordinate the combined request budget if you run several process
 
 `python -m fin_skills.collect --database events.sqlite3 health` is a read-only live check.
 It returns exit code 0 only when an instrumented `run` collector holds the local database's
-ownership lock and all enabled watches have recent successful checks. Otherwise it returns 1.
+ownership lock, all enabled watches have recent successful checks, and default required
+information coverage passes. Otherwise it returns 1.
 `collection_status` exposes the same report through Python/tools/MCP. Neither command starts
 a worker or creates a missing database. The existing CLI `status` still returns a watch list.
 
-The report separates `runner.active`, `data_ready`, and `healthy`. A stopped worker can have
+The report separates `runner.active`, `data_ready`, and `healthy` (polling), `coverage_ready`
+(required information), and `ready` (both). A stopped worker can have
 recent data; a running worker can have failed or stale sources. Per-watch freshness expires
 after `max(60, 2 * interval_seconds)` seconds since the last successful check. Backoff and
 Retry-After do not extend this threshold. A later failure or partial batch overrides a recent
@@ -132,8 +135,53 @@ ownership lock proves process ownership, not forward progress; source freshness 
 separate progress check. No scheduled service or background health thread is installed.
 
 Current `collection_search` responses retain the per-watch `collection_health` list and add
-`collection_runtime` and `collection_readiness`. All three are omitted (null) when `as_of`
+`collection_runtime`, `collection_readiness`, and `collection_coverage`. These are null when `as_of`
 is explicitly supplied, so current operational status cannot be mistaken for historical data.
+
+### Required information coverage
+
+`collection_coverage(database, requirements=None, as_of=None)` checks saved evidence without
+fetching, writing or calling a model. CLI equivalents:
+
+```bash
+python -m fin_skills.collect --database events.sqlite3 coverage
+python -m fin_skills.collect --database events.sqlite3 coverage --as-of 2026-01-10T12:00:00Z
+python -m fin_skills.collect --database events.sqlite3 coverage --requirements coverage.json
+```
+
+The default requirements are news (3 days), psychology (30 days), behavior (7 days) and
+official disclosures (90 days), with at least one qualifying record per category. These are
+explicit conservative defaults, not a guarantee that a source must publish that frequently.
+An absence is an information gap, never a neutral sentiment or a zero-position observation.
+`coverage` exits 1 for unmet or unknown coverage; successful `once`/bounded `run` still measure
+source polling, and include the separate coverage report in their health output.
+
+Accepted kinds are `news`; `sentiment_survey`/`sentiment_observation`;
+`positioning_observation`/`fund_flow`/`market_behavior`; and `congressional_transaction`,
+respectively. Generic pages and individual social posts cannot fill the psychology/behavior
+requirements. Non-news records need `data.parse_status` of `structured` or `extracted_reviewable`.
+Psychology/behavior measurements also need nonempty `metric` and `unit` fields and a finite
+numeric `value`. These contracts let a caller supply measured observations; they do not add
+new live survey/position adapters or validate the truth of source-provided measurements.
+
+SEC company-insider and institution records are not government-official disclosures.
+They can satisfy the separately selectable `institutional_disclosures` category (120 days),
+using `insider_transaction`/`institutional_holding`. For example, `coverage.json` may contain:
+
+```json
+{"requirements": [{"category": "news", "watch_ids": ["news-fed", "news-ecb"],
+                   "max_age_seconds": 259200, "min_records": 2}]}
+```
+
+The report always exposes the selected requirements. An empty requirement list is rejected.
+This explicit news-only check does not change the four-category default in `health`. A
+record must have a source URL and known publication time; recent retrieval cannot refresh an
+old publication. Future publications/observations and newer revisions are excluded at `as_of`.
+The report retains publication time, observation time and their lag, without substituting
+transaction dates or reporting periods. Current disabled watches do not satisfy requirements;
+historical queries ignore present-day watch enablement. An oversized snapshot returns unknown
+rather than reporting coverage from a silently truncated subset. Passing means the declared
+minimums were met, not exhaustive category, asset or population coverage.
 
 ```bash
 python -m pytest tests/test_collect.py tests/test_collection_health.py -q

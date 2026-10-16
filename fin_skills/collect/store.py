@@ -209,6 +209,10 @@ class Store:
         row = self.db.execute('SELECT record FROM collector_runtime WHERE singleton=1').fetchone()
         return json.loads(row[0]) if row else None
 
+    def coverage(self, *, requirements=None, as_of=None, max_records=10000):
+        from .coverage import coverage
+        return coverage(self, specifications=requirements, as_of=as_of, max_records=max_records)
+
     def health(self, *, now=None):
         from .health import runner_status
         watches = self.status(now=now)
@@ -216,7 +220,11 @@ class Store:
         ready = bool(enabled) and all(w['status'] == 'ok' for w in enabled)
         runner = runner_status(self)
         healthy = (ready and runner['status'] == 'running' and runner.get('mode') == 'run')
+        coverage = self.coverage()
         return {'watches': watches, 'runner': runner, 'data_ready': ready, 'healthy': healthy,
-                'status': 'idle' if not enabled else ('healthy' if healthy else 'degraded'),
+                'coverage': coverage, 'coverage_ready': coverage['ready'],
+                'ready': healthy and coverage['ready'],
+                'status': 'idle' if not enabled else (
+                    'healthy' if healthy and coverage['ready'] else 'degraded'),
                 'checked_at': utcnow(),
                 'scope': 'local source polling and collector ownership; not content completeness'}

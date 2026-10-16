@@ -81,10 +81,27 @@ inside a callback while the archive is locked.
 
 ## Persistence and trust boundary
 
-The archive is a single-writer directory with fsynced `events.jsonl` and a temporary
-`.writer.lock`. A second writer fails immediately. A crash can leave the lock; only the host
-operator should remove it after verifying the original writer has ended. Malformed or incomplete
-journal records fail closed rather than silently erasing failed attempts. The hash chain detects
+The archive is a single-writer directory with fsynced `events.jsonl` and an OS-held
+`.writer.lock.v2`. A second writer fails immediately. Process exit releases ownership;
+the sidecar stays on disk and must not be deleted. A clean archive reopens after a crash with
+all started calls still charged, and no automatic callback replay or candidate promotion.
+Use local filesystems with working OS advisory locks; cross-host/network-filesystem ownership
+is not established by these checks. Stop all old-version writers before upgrading an archive.
+
+For an incomplete final write, the host can call `loop.recover()`. Ordinary operations still
+reject an unterminated journal. Recovery validates the complete hash chain and fixed run header,
+backs up the exact original bytes, then atomically keeps the valid prefix and appends a recovery
+record. A complete valid final event missing only its newline is retained, including any budget
+reservation. Malformed complete records, changed hashes, or changed model/protocol/policy
+remain errors; recovery never edits those away. Backup files may contain private evidence and
+have the same access/export restrictions as the journal. Recovery does not invoke callbacks,
+refund calls, reset budgets, change an approved version, or unfreeze a run.
+
+Legacy `.writer.lock` files contain only a PID, which cannot reliably establish host/session
+ownership. They remain blocking by default. After the host has verified the original writer
+has ended, `loop.recover(confirmed_legacy_writer_stopped=True)` archives the marker and records
+that confirmation. This is a host operation, not a model-exposed tool. Repeating recovery on a
+clean archive leaves it unchanged. The hash chain detects
 accidental edits; it is not an authenticity signature against an attacker with filesystem access.
 
 Callbacks are trusted host Python code. This package is not an OS sandbox and cannot stop a
@@ -100,7 +117,7 @@ to the evaluated version, split and protocol in the journal.
 
 ## Verification and experiments
 
-`python -m pytest -q tests/test_rsi.py` covers promotion/rejection, independent split coverage,
+`python -m pytest -q tests/test_rsi.py tests/test_rsi_recovery.py` covers promotion/rejection, independent split coverage,
 chronology, disabled/frozen behavior, persisted budgets, rollback, resumption and journal integrity.
 These use deterministic synthetic evaluators and do not claim a model or Return Rate improvement.
 The wheel/sdist smoke check also imports the module and confirms disabled operation is inert.

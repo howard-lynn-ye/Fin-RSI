@@ -11,7 +11,11 @@ import os
 from pathlib import Path
 import re
 from statistics import mean
+import tempfile
 from typing import Callable
+from uuid import uuid4
+
+from .persistence import writer_lock
 
 SURFACES = ("tool_usage", "retrieval", "experience")
 KINDS = ("tool_contract", "analysis", "environment", "financial_outcome", "success")
@@ -189,7 +193,7 @@ class JSONProposer:
 
 
 class _Journal:
-    """Single-writer, fsynced hash chain. Corruption and stale locks fail closed."""
+    """Single-writer, fsynced hash chain with explicit, evidence-preserving tail recovery."""
 
     def __init__(self, directory: Path, header: dict):
         self.directory, self.header = directory, header
@@ -197,29 +201,68 @@ class _Journal:
         self.events: list[dict] = []
 
     @contextmanager
-    def locked(self):
+    def locked(self, *, recover=False, confirmed_legacy_writer_stopped=False):
         self.directory.mkdir(parents=True, exist_ok=True)
-        lock = self.directory / ".writer.lock"
-        with lock.open("x", encoding="utf-8") as stream:
-            stream.write(str(os.getpid()))
-        try:
+        with writer_lock(self.directory):
+            legacy = self.directory / '.writer.lock'
+            if legacy.exists() and not confirmed_legacy_writer_stopped:
+                raise FileExistsError('legacy RSI writer marker exists; verify the original writer '
+                                      'has stopped before explicit recover confirmation')
             self.events = []
+            self.recovery = dict(repaired_tail=False, archived_legacy_lock=False)
             if self.path.exists():
-                for line in self.path.read_text(encoding="utf-8").splitlines():
-                    event = json.loads(line)
-                    digest = event.pop("hash")
-                    if event.get("seq") != len(self.events) or event.get("previous") != (
-                        self.events[-1]["hash"] if self.events else ""
-                    ) or _hash(event) != digest:
-                        raise ValueError("RSI journal integrity failure")
+                original = self.path.read_bytes()
+                lines = original.splitlines(keepends=True)
+                retained = b''
+                for index, line in enumerate(lines):
+                    tail = index == len(lines) - 1 and not line.endswith(b'\n')
+                    try:
+                        event = json.loads(line)
+                    except (ValueError, UnicodeError):
+                        if recover and tail and self.events:
+                            break  # Only an unterminated final fragment may be quarantined.
+                        raise ValueError('RSI journal integrity failure: malformed record') from None
+                    if not isinstance(event, dict):
+                        raise ValueError('RSI journal integrity failure: invalid record')
+                    digest = event.pop('hash', None)
+                    if event.get('seq') != len(self.events) or event.get('previous') != (
+                            self.events[-1]['hash'] if self.events else '') or _hash(event) != digest:
+                        raise ValueError('RSI journal integrity failure')
                     self.events.append(dict(event, hash=digest))
+                    if tail and not recover:
+                        raise ValueError('RSI journal has an unterminated tail; use explicit recover')
+                    retained += line if not tail else line + b'\n'
                 if not self.events or _json(self.events[0]["data"]) != _json(self.header):
                     raise ValueError("RSI seed, policy, model or evaluation protocol changed")
+                if recover and retained != original:
+                    # Preserve the exact original before atomically replacing a verified prefix.
+                    backup = self.directory / ('recovery-' + uuid4().hex + '.jsonl.bin')
+                    with backup.open('xb') as stream:
+                        stream.write(original)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    fd, name = tempfile.mkstemp(prefix='.journal-recovery-', dir=self.directory)
+                    temporary = Path(name)
+                    try:
+                        with os.fdopen(fd, 'wb') as stream:
+                            stream.write(retained)
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                        os.replace(temporary, self.path)
+                    finally:
+                        temporary.unlink(missing_ok=True)
+                    self.recovery.update(repaired_tail=True, backup=backup.name,
+                                         original_sha256=hashlib.sha256(original).hexdigest())
+                    self.append('journal_recovered', self.recovery.copy())
             else:
                 self.append("created", self.header)
+            if legacy.exists():
+                destination = self.directory / ('legacy-writer-' + uuid4().hex + '.lock')
+                os.replace(legacy, destination)
+                self.recovery.update(archived_legacy_lock=True, legacy_backup=destination.name)
+                self.append('legacy_writer_recovered', dict(backup=destination.name,
+                    confirmation='host confirmed the original writer stopped; no PID inference'))
             yield self
-        finally:
-            lock.unlink()
 
     def append(self, kind: str, data: dict):
         event = dict(seq=len(self.events), previous=self.events[-1]["hash"] if self.events else "",
@@ -272,6 +315,27 @@ class RSILoop:
             len(entry.text) > self.policy.max_entry_chars for entry in book.entries
         ) or len(book.render()) > self.policy.max_playbook_chars:
             raise ValueError("playbook exceeds fixed entry/context budget")
+
+    def recover(self, *, confirmed_legacy_writer_stopped: bool = False) -> dict:
+        """Host-only repair. No callbacks, automatic replay, budget refunds or promotion.
+
+        Clean archives resume automatically after a crash. This explicit operation also
+        quarantines an unterminated journal tail, retaining every valid hashed event.
+        Legacy PID-only markers require host confirmation because their machine/session
+        cannot be inferred safely. Stop old-version writers before upgrading an archive.
+        """
+        if type(confirmed_legacy_writer_stopped) is not bool:
+            raise ValueError('legacy writer confirmation must be boolean')
+        if not self.policy.enabled:
+            return {'status': 'disabled'}
+        with self._journal.locked(recover=True,
+                confirmed_legacy_writer_stopped=confirmed_legacy_writer_stopped) as journal:
+            active, _, frozen, _ = self._state()
+            return dict(status='recovered' if any(journal.recovery.get(k) for k in
+                        ('repaired_tail', 'archived_legacy_lock')) else 'ready',
+                        **journal.recovery, active_version=active.version, frozen=frozen,
+                        proposals_started=self._count('proposal_started'),
+                        evaluations_started=self._count('evaluation_started'))
 
     def _state(self):
         active, since, frozen = self.seed, self.available_at, False

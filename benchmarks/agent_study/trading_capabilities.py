@@ -27,7 +27,7 @@ OFFLINE = frozenset((
 EXTERNAL = frozenset((
     'collection_configure', 'collect_once', 'collection_events', 'collection_status',
     'collection_acknowledge', 'compare_holdings', 'search_data', 'fetch_market_data',
-    'search_news', 'collection_search',
+    'search_news', 'collection_search', 'collection_coverage',
 ))
 REVIEWED_GUARDS = frozenset('''adjustment_check ashare_rules assert_causal board_lot_feasibility
 brinson_attribution cash_drag contamination_probe continuous_contract cost_curve cost_plausibility

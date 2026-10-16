@@ -213,8 +213,9 @@ approved filesystem scope found the report and returned clean Git status. No exp
 was changed to work around this local path/access issue.
 
 - Pattern-Key: workspace.owned_checkout_and_git_access
-- Recurrence-Count: 1
-- First-Seen / Last-Seen: 2026-10-15
+- Recurrence-Count: 2
+- First-Seen: 2026-10-15
+- Last-Seen: 2026-10-16
 
 ## [HEAL-20261015-LOG] normalize terminal trailing spaces for publication
 
@@ -296,3 +297,24 @@ inspection; no unrelated process was stopped.
 - Pattern-Key: tests.windows_venv_launcher_child_ownership
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-15
+
+## [HEAL-20261016-COVERAGE-INTEGRATION] register the coverage tool and serialize regeneration
+
+**Status**: verified with local CPU fixtures and repository validation
+**Area**: tool integration and source verification
+
+Integration tests found that the new collection_coverage tool lacked an explicit historical
+sandbox classification. Two other failures came from running package-data consumers while
+build_package was replacing generated files. Added the new mutable-database tool to EXTERNAL,
+completed package generation, then reran integration checks: 22 passed, 2 Linux-only skips.
+Validation also caught the README's old 66-tool count; updating it to the registered 67 tools
+restored the required build/index/package validation. The independent 246-test acceptance had
+already passed. Logs and source hashes are under
+`benchmarks/agent_study/reports/20261016-coverage-rsi-recovery/`.
+
+Build generation and its consumer tests must run sequentially. Do not interpret missing files
+during regeneration as a production defect. No frozen 32B source or Beacon job changed.
+
+- Pattern-Key: collection.coverage_registration_and_generated_test_order
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-16
