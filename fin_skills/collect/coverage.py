@@ -12,7 +12,8 @@ from .model import utc, utcnow
 # Page transport and individual social posts do not establish a measured series.
 PROFILES = {
     'news': (('news',), 3 * 86400, False),
-    'psychology': (('sentiment_survey', 'sentiment_observation'), 30 * 86400, True),
+    # Month-start references remain current through the next month's preliminary release.
+    'psychology': (('sentiment_survey', 'sentiment_observation'), 45 * 86400, True),
     # Weekly CFTC snapshots describe Tuesday positions, often released Friday. A reference
     # date can already be ten days old before the next weekly release; it is not publication.
     'behavior': (('positioning_observation', 'fund_flow', 'market_behavior'), 14 * 86400, True),
@@ -32,6 +33,7 @@ def evidence_time(row):
         return datetime.fromisoformat(utc(row['published_at'])), 'published_at'
     contracts = {
         ('aaii', 'sentiment_survey'): ('www.aaii.com', 'survey_week_ending'),
+        ('umich', 'sentiment_survey'): ('www.sca.isr.umich.edu', 'survey_month'),
         ('cftc', 'positioning_observation'): ('publicreporting.cftc.gov', 'report_date'),
         ('house', 'congressional_transaction'): ('disclosures-clerk.house.gov', 'filing_date'),
     }

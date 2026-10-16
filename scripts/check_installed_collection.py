@@ -53,7 +53,7 @@ def main():
              interval_seconds=args.poll_seconds),
         dict(id='ecb-news', source='rss', target='https://www.ecb.europa.eu/rss/press.html',
              interval_seconds=args.poll_seconds),
-        dict(id='survey-aaii', source='aaii', target='sentiment',
+        dict(id='survey-michigan', source='umich', target='consumer_sentiment',
              interval_seconds=args.poll_seconds),
         dict(id='positions-cftc', source='cftc', target='13874A',
              interval_seconds=args.poll_seconds, options={'weeks': 4}),
@@ -152,7 +152,7 @@ def main():
                             'collection_events', 'collection_coverage', 'summarize_news'],
         'limits': [
             'Inventory is discovery, not execution of every library capability.',
-            'AAII survey and CFTC positions are structured observations, not real-time trades.',
+            'Michigan consumer sentiment and CFTC positions are structured observations, not real-time trades.',
             'Unknown publication times remain unknown; availability begins at actual observation.',
             'A successful fetch does not prove complete news/social/disclosure coverage.',
             'No new source publication during this short test would leave update-detection unobserved.',

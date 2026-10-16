@@ -9,7 +9,7 @@ import pytest
 
 from fin_skills.collect import Collector, FetchError, HttpClient, Response, Store, Watch
 from fin_skills.collect.disclosures import HouseSource
-from fin_skills.collect.signals import AAII_URL, AAIISource, CFTCSource, aaii_readings
+from fin_skills.collect.signals import AAII_URL, AAIISource, CFTCSource, MichiganSource, aaii_readings
 
 NOW = '2026-10-16T12:00:00+00:00'
 HTML = '''<html><body><h2>This week's results</h2><p>Week ending October 14, 2026</p>
@@ -179,9 +179,66 @@ def test_house_current_year_newest_first_and_unparsed_retry(monkeypatch):
 def test_four_kind_profile_and_registered_sources(tmp_path):
     from fin_skills.collect import sources
     from fin_skills.tools import call_tool
-    assert {'rss', 'aaii', 'cftc', 'house'} <= {s['name'] for s in sources()}
+    assert {'rss', 'aaii', 'umich', 'cftc', 'house'} <= {s['name'] for s in sources()}
     assert {'aaii', 'cftc'} <= {s['name'] for s in call_tool('collection_sources', {})['sources']}
     report = call_tool('collection_configure', {'database': str(tmp_path / 'tools.db'), 'watches': [
         {'id': 'a', 'source': 'aaii', 'target': 'sentiment'},
+        {'id': 'u', 'source': 'umich', 'target': 'consumer_sentiment'},
         {'id': 'c', 'source': 'cftc', 'target': '13874A'}]})
     assert report['started'] is False
+
+
+CSV = (',,,THE INDEX OF CONSUMER SENTIMENT\r\r\nDATE OF SURVEY,,,,INDEX\r\r\n'
+       'September,2026,,,50.0\r\r\nOctober (P),2026,,,49.0\r\r\n')
+
+
+def michigan_client(payload):
+    return http(lambda url, *_: Response(404, b'') if url.endswith('robots.txt') else
+                Response(200, payload.encode(), {'content-type': 'application/octet-stream'}))
+
+
+def test_michigan_csv_preliminary_final_revision_and_first_observation(tmp_path, monkeypatch):
+    monkeypatch.setattr('fin_skills.collect.signals.utcnow', lambda: NOW)
+    from fin_skills.collect import Batch
+    w = Watch('u', 'umich', 'consumer_sentiment')
+    before = MichiganSource(michigan_client(CSV)).fetch(w, {})
+    assert len(before.events) == 2 and before.events[0].data['value'] == 49
+    assert before.events[0].data['release_stage'] == 'preliminary'
+    assert before.events[0].published_at is None
+    with Store(tmp_path / 'events.db') as store:
+        store.put_watch(w)
+        store.save(w, before, next_due=0)
+        past = store.coverage(requirements=[{'category': 'psychology'}], as_of=NOW)
+        assert past['ready'] and not past['publication_time_complete']
+        assert past['categories'][0]['examples'][0]['freshness_basis'] == 'survey_month'
+        monkeypatch.setattr('fin_skills.collect.signals.utcnow', lambda: '2026-10-23T12:00:00+00:00')
+        after = MichiganSource(michigan_client(CSV.replace('October (P)', 'October').replace('49.0','48.5'))).fetch(w, {})
+        assert after.events[0].id == before.events[0].id
+        assert after.events[0].data['release_stage'] == 'final'
+        assert len(store.save(w, after, next_due=0)) == 1
+        assert store.coverage(requirements=[{'category': 'psychology'}], as_of=NOW) == past
+
+
+@pytest.mark.parametrize('payload', ['login required', ',,,THE INDEX OF CONSUMER SENTIMENT',
+    CSV.replace('49.0', 'NaN'), CSV.replace('October (P),2026', 'October (P),2030'),
+    CSV + 'October (P),2026,,,49.0'])
+def test_michigan_invalid_or_future_data_fails_closed(payload, monkeypatch):
+    monkeypatch.setattr('fin_skills.collect.signals.utcnow', lambda: NOW)
+    with pytest.raises(ValueError):
+        MichiganSource(michigan_client(payload)).fetch(Watch('u','umich','consumer_sentiment'), {})
+
+
+def test_aaii_http_200_challenge_keeps_prior_data_and_reports_failed_source(tmp_path):
+    payload = [HTML]
+    def sender(url, *_):
+        return Response(200, (b'User-agent: *\nAllow: /' if url.endswith('robots.txt')
+                              else payload[0].encode()), {'content-type': 'text/html'})
+    with Store(tmp_path / 'events.db') as store:
+        c = Collector(store, client=http(sender), clock=lambda: 0)
+        c.add(Watch('a', 'aaii', 'sentiment'))
+        assert c.once()['new_records'] == 3
+        payload[0] = '<html><p>Pardon Our Interruption</p><p>automated access challenge</p></html>'
+        failed = c.once(force=True)
+        assert failed['watches'][0]['status'] == 'error'
+        assert failed['watches'][0]['retry_in_seconds'] == 86400
+        assert len(store.events()) == 3 and not store.health()['data_ready']

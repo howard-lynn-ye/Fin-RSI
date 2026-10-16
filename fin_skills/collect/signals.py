@@ -1,15 +1,20 @@
 """Free public survey and positioning observations; no inferred release timestamps."""
 from __future__ import annotations
 
+import csv
+import math
 import re
 from datetime import date, datetime
 from urllib.parse import urlencode
+from urllib.robotparser import RobotFileParser
 
 from .feeds import PageSource
+from .http import FetchError
 from .model import Batch, Event, Watch, utcnow
 
 AAII_URL = 'https://www.aaii.com/sentimentsurvey'
 CFTC_API = 'https://publicreporting.cftc.gov/resource/gpe5-46if.json'
+UMICH_URL = 'https://www.sca.isr.umich.edu/files/tbcics.csv'
 
 
 class _AAIIClient:
@@ -58,6 +63,9 @@ class AAIISource:
         batch = self.pages.fetch(Watch(watch.id, 'page', AAII_URL,
                                  watch.interval_seconds, {'max_pages': 1}), {})
         page = batch.events[0]
+        if 'Pardon Our Interruption' in page.data['text']:
+            raise FetchError('AAII returned an automated-access challenge; no bypass attempted',
+                             retry_after=86400)
         day, readings = aaii_readings(page.data['text'], page.observed_at)
         events = [Event(f'{day}:{metric}', 'aaii', 'sentiment_survey',
             f'AAII {metric}: {value} percent (week ending {day})', AAII_URL,
@@ -130,3 +138,64 @@ class CFTCSource:
                          expected_cadence='weekly; report date is positions-as-of, not release time',
                          snapshot_window_weeks=weeks)))
         return Batch(events, {'latest_report_date': max(seen), 'snapshot_window_weeks': weeks})
+
+
+class MichiganSource:
+    """The university's public current-table CSV; distinct from investor sentiment."""
+    def __init__(self, client):
+        self.client = client
+
+    def fetch(self, watch, state):
+        if watch.target != 'consumer_sentiment' or set(watch.options) - {'months'}:
+            raise ValueError('Michigan target must be consumer_sentiment; options: months')
+        months = watch.options.get('months', 3)
+        if type(months) is not int or not 1 <= months <= 13:
+            raise ValueError('Michigan months must be 1..13')
+        robot = RobotFileParser()
+        try:
+            response = self.client.get('https://www.sca.isr.umich.edu/robots.txt')
+            robot.parse(response.body.decode('utf-8').splitlines())
+        except FetchError as exc:
+            if exc.status not in (404, 410):
+                raise
+            robot.parse([])
+        if not robot.can_fetch(self.client.user_agent, UMICH_URL):
+            raise FetchError('robots.txt disallows the public Michigan CSV')
+        delay = robot.crawl_delay(self.client.user_agent) or robot.crawl_delay('*')
+        if delay:
+            if delay > 30:
+                raise FetchError('Michigan source requires a slower schedule', retry_after=delay)
+            self.client.sleep(delay)
+        response = self.client.get(UMICH_URL)
+        content = response.body.decode('utf-8-sig')
+        if 'INDEX OF CONSUMER SENTIMENT' not in content:
+            raise ValueError('Michigan CSV title missing; source layout changed')
+        observed, found = utcnow(), {}
+        for row in csv.reader(content.splitlines()):
+            if len(row) < 2 or not re.fullmatch(r'\d{4}', row[1].strip()):
+                continue  # labelled table headers and empty rows
+            if len(row) < 5 or not re.fullmatch(r'[A-Za-z]+(?: \(P\))?', row[0].strip()):
+                raise ValueError('Michigan survey row layout changed')
+            label = row[0].strip()
+            day = reference_day(datetime.strptime(label.replace(' (P)', '') + ' ' + row[1],
+                                '%B %Y').date().isoformat(), observed)
+            value = float(row[4])
+            if not math.isfinite(value) or value < 0 or day in found:
+                raise ValueError('Michigan invalid index or duplicate survey month')
+            found[day] = (value, 'preliminary' if label.endswith('(P)') else 'final')
+        if not found:
+            raise ValueError('Michigan CSV contains no structured survey readings')
+        events = []
+        for day in sorted(found, reverse=True)[:months]:
+            value, stage = found[day]
+            events.append(Event(f'{day}:consumer_sentiment_index', 'umich', 'sentiment_survey',
+                f'Michigan consumer sentiment: {value} index points ({day[:7]}, {stage})',
+                UMICH_URL, observed, None, 'University of Michigan Surveys of Consumers', '',
+                dict(metric='consumer_sentiment_index', value=value, unit='index_points',
+                     survey_month=day, release_stage=stage, parse_status='structured',
+                     availability_basis='first_observed', published_time_unknown=True,
+                     content_is_untrusted=True,
+                     population='US consumers; not the AAII investor survey',
+                     expected_cadence='monthly with preliminary/final releases; month is not release time',
+                     snapshot_window_months=months)))
+        return Batch(events, {'latest_survey_month': max(found), 'snapshot_window_months': months})

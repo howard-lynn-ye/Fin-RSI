@@ -11,9 +11,10 @@ from .http import HttpClient
 from .health import ownership
 from .model import Watch
 from .news import GDELTSource
-from .signals import AAIISource, CFTCSource
+from .signals import AAIISource, CFTCSource, MichiganSource
 
 SOURCES = {
+    'umich': (MichiganSource, 'Michigan consumer sentiment public CSV; target=consumer_sentiment; months=1..13'),
     'aaii': (AAIISource, 'AAII current weekly investor survey; target=sentiment; free public readings'),
     'cftc': (CFTCSource, 'CFTC TFF futures-only positions; target=contract code, options=weeks; public API'),
     'gdelt': (GDELTSource, 'GDELT DOC news search; target=query, options=timespan/max_records; metadata only'),

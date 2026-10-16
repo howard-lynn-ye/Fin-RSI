@@ -5,7 +5,8 @@ in [Market state, news and strategy](MARKET_STRATEGY.md). `gdelt` watches add bo
 discovery; `collect_news` provides Fed/ECB RSS presets and isolated source health reports.
 
 `fin_skills.collect` downloads public records into a local SQLite database. It includes RSS
-and Atom feeds, AAII investor sentiment, CFTC TFF positioning, static pages with bounded
+and Atom feeds, Michigan consumer sentiment, optional AAII investor sentiment, CFTC TFF positioning,
+static pages with bounded
 same-origin crawling, SEC Form 4/13F filings, US House PTR PDFs and public Bluesky author posts.
 Imports do not start networking or a daemon.
 
@@ -33,10 +34,13 @@ target and options are immutable; create a new ID to change them. Its interval a
 flag can be changed with `configure`.
 
 For the four required information categories, use `examples/collection-live.json`. It watches
-Federal Reserve news, AAII bullish/neutral/bearish survey shares, CFTC S&P 500 futures positions
+Federal Reserve news, Michigan consumer sentiment, CFTC S&P 500 futures positions
 by trader group, and Nancy Pelosi's recent House disclosures. These are explicit example
 populations/markets, not coverage of every investor, official or country. All four sources
-require no API key or paid subscription; House PDFs require the `collect` extra.
+require no API key or paid subscription; House PDFs require the `collect` extra. Michigan
+measures US consumer psychology, not the AAII investor population. AAII remains an optional
+separate adapter: its second live request received an automated-access challenge. That response
+remains an error with a 24-hour retry delay; the collector does not bypass it.
 
 ```bash
 python -m fin_skills.collect --database live.sqlite3 configure examples/collection-live.json
@@ -48,11 +52,12 @@ python -m fin_skills.collect --database live.sqlite3 run
 Keep the last command running under the host's service supervisor for continuous updates.
 Installation alone does not run a service. Agent callers can configure the same watches with
 `collection_configure` and invoke `collect_once` when due. `collection_search` reads newly saved
-records on each query. Default example polling is 5 minutes for news, 1 hour for AAII/CFTC and
+records on each query. Default example polling is 5 minutes for news, 1 hour for Michigan/CFTC and
 30 minutes for House filings; a short polling interval does not accelerate the source's release.
 
 | Source | Configuration | Measured content and timing |
 |---|---|---|
+| `umich` | target `consumer_sentiment`; `months=1..13` (default 3) | Public university CSV: index points, survey month and preliminary/final status; revisions retain the observation ID. |
 | `aaii` | target `sentiment`; no options | Latest public weekly survey shares, percent, survey week ending; exact release time remains unknown. Robots rules and a ten-second request floor are respected. |
 | `cftc` | target contract code, e.g. `13874A`; `weeks=1..52` (default 4) | TFF futures-only long, short and net contracts for five groups; open interest and contract units retained. Weekly report date is positions-as-of, not publication. |
 | `house` | target surname; `year` integer or `current`; optional `first_name`, `lookback_days`, `newest_first`, `max_filings` | Newly discovered PTR filings and reviewable transaction rows. `current` follows UTC calendar-year rollover; use an explicit additional prior-year watch for late publications to an older year's index. |
@@ -183,7 +188,7 @@ python -m fin_skills.collect --database events.sqlite3 coverage --as-of 2026-01-
 python -m fin_skills.collect --database events.sqlite3 coverage --requirements coverage.json
 ```
 
-The default requirements are news (3 days), psychology (30 days), behavior (14 days) and
+The default requirements are news (3 days), psychology (45 days), behavior (14 days) and
 official disclosures (90 days), with at least one qualifying record per category. These are
 explicit conservative defaults, not a guarantee that a source must publish that frequently.
 An absence is an information gap, never a neutral sentiment or a zero-position observation.
@@ -210,7 +215,7 @@ using `insider_transaction`/`institutional_holding`. For example, `coverage.json
 The report always exposes the selected requirements. An empty requirement list is rejected.
 This explicit news-only check does not change the four-category default in `health`. A
 record must have a source URL and known publication time, or be an explicitly marked observation
-from the supported AAII/CFTC/House public adapter and matching source host. For the latter,
+from the supported AAII/Michigan/CFTC/House public adapter and matching source host. For the latter,
 `published_at` stays null, availability begins at actual `observed_at`, and age is conservatively
 measured from the survey week, positions report date or filing date. These reference dates are
 never treated as public availability. A newly fetched old report stays stale. Unknown-time
@@ -218,6 +223,8 @@ generic records remain ineligible. `publication_time_complete` and per-category
 `observed_time_records` expose the limitation; observation lag stays null when release time is
 unknown. The 14-day behavioral age bound accommodates weekly Tuesday CFTC positions normally
 released on Friday (the prior snapshot can be ten days old before the next release).
+The 45-day psychology age bound allows a month-start reference to remain current until the
+following month's preliminary release; callers can set stricter source-specific requirements.
 Future publications/observations and newer revisions are excluded at `as_of`.
 Current disabled watches do not satisfy requirements;
 historical queries ignore present-day watch enablement. An oversized snapshot returns unknown
@@ -241,14 +248,14 @@ reopens the database, and waits for a scheduled news poll. It records source err
 publication/observation dates; raw records remain in the output directory. SEC is skipped
 when the caller has not configured `SEC_IDENTITY`.
 
-The installed check exercises structured AAII/CFTC observations, news and House disclosures,
+The installed check exercises structured Michigan/CFTC observations, news and House disclosures,
 requires the four coverage categories, and waits for all configured required watches to repoll.
 A short successful poll cannot establish exhaustive coverage or prove that a new publication
 was detected if the source did not publish anything during the test.
 `receipt.json` separates tool discovery from tools actually exercised and reports partial
 source failures as `needs_review`. It contains no trading performance measurement.
 
-Source contracts checked on 2026-10-16: [AAII public survey](https://www.aaii.com/sentimentsurvey),
+Source contracts checked on 2026-10-16: [Michigan public tables](https://www.sca.isr.umich.edu/tables.html), [AAII public survey](https://www.aaii.com/sentimentsurvey),
 [CFTC public API guide](https://publicreporting.cftc.gov/stories/s/COT-Help/p2fg-u73y/),
 [TFF public API](https://publicreporting.cftc.gov/resource/gpe5-46if.json), and
 [House disclosure portal](https://disclosures-clerk.house.gov/FinancialDisclosure).

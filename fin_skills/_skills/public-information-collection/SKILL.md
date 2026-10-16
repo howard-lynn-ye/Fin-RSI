@@ -1,7 +1,7 @@
 ---
 name: public-information-collection
 description: >-
-  Collect public news, AAII sentiment, CFTC positioning and disclosures with fin_skills.collect.
+  Collect public news, AAII/Michigan sentiment, CFTC positioning and disclosures with fin_skills.collect.
   TRIGGER - RSS or Atom ingestion, static-page crawler, persistent watchlist, polling,
   real information collection, investor survey, COT positioning, congressional trade tracker, SEC Form 4 XML, 13F holdings
   changes, public influencer posts, 爬虫, 实时采集, 名人交易跟踪.
@@ -28,6 +28,7 @@ Use `fin_skills.collect` for retrieval, storage and repeated collection.
 | Source name | Target | Returned records | Required configuration |
 |---|---|---|---|
 | `rss` | public RSS/Atom URL | headlines, supplied descriptions, source dates | URL |
+| `umich` | `consumer_sentiment` | consumer index points, month, preliminary/final status | public CSV; `months=1..13`, default 3 |
 | `aaii` | `sentiment` | current weekly bullish/neutral/bearish shares, percent | free public panel; no options |
 | `cftc` | six-character contract code, e.g. `13874A` | TFF futures-only positions by trader group, contracts | recent `weeks=1..52`, default 4 |
 | `page` | public static HTML URL | readable text; bounded same-origin links | `max_pages`, default one page |
@@ -73,8 +74,8 @@ and configure again. Credentials are read from the process environment, never st
 options. The examples are configurations, not a shared API key or bundled market dataset.
 
 For news, psychology, behavior and official disclosures together, configure
-`examples/collection-live.json` instead. Its free example scope is Fed news, AAII survey
-respondents, CFTC S&P 500 futures groups and Pelosi House filings. Change the watched market
+`examples/collection-live.json` instead. Its free example scope is Fed news, Michigan consumer
+sentiment, CFTC S&P 500 futures groups and Pelosi House filings. Change the watched market
 and people to match the user's task. Run `collection_coverage` before relying on the dataset;
 the tool reports missing/stale categories and which records have only first-observed timing.
 Keep `collector.run()` active for repeated updates, or call `collect_once` on the host schedule.
@@ -85,7 +86,8 @@ The source's weekly/filing release lag remains even with frequent polling.
 - `published_at` is a timestamp the source actually supplies. A filing date without a timezone
   and time of day cannot populate it. `observed_at` records when this collector saw the revision.
   Transaction dates and quarter-end dates remain separate fields inside `data`.
-- AAII survey weeks, CFTC positions-as-of dates and House filing dates are not release times.
+- AAII survey weeks, Michigan survey months, CFTC positions-as-of dates and House filing dates
+  are not release times.
   These adapters mark unknown release time explicitly. Their data is available only after
   actual observation; coverage measures age from the reference date without backdating access.
   CFTC refreshes revisions within the selected window, not all historical vintages.
@@ -145,3 +147,7 @@ restarts, revisions, blocked requests and amount parsing. The
 [live smoke script](../../../../scripts/check_collection_live.py) uses explicit network reads.
 A passing offline test does not certify current source
 availability or complete parsing of every historical PDF layout.
+
+AAII can return an automated-access challenge even with HTTP 200; retain the error and use
+the configured backoff, without bypassing it. Michigan is a separate consumer population,
+not an interchangeable AAII investor reading. The default live profile uses Michigan.
