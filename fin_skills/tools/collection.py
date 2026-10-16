@@ -141,11 +141,15 @@ def definitions():
     string = {'type': 'string'}
     database = {'type': 'string', 'description': 'Local SQLite path; never a URL. Created by configure.'}
     watch = {'type': 'object', 'properties': {
-        'id': string, 'source': {'type': 'string', 'enum': ['rss', 'page', 'sec', 'house', 'bluesky', 'gdelt']},
-        'target': {'type': 'string', 'description': 'Feed/page URL, SEC CIK, House surname, or Bluesky handle'},
+        'id': string, 'source': {'type': 'string', 'enum': ['rss', 'page', 'sec', 'house', 'bluesky', 'gdelt',
+                                                         'aaii', 'cftc', 'umich']},
+        'target': {'type': 'string', 'description': 'Feed/page URL, SEC CIK, House surname, Bluesky handle, '
+                   'AAII sentiment, Michigan consumer_sentiment, or CFTC contract code (e.g. 13874A)'},
         'interval_seconds': {'type': 'number', 'minimum': 1},
         'enabled': {'type': 'boolean'},
-        'options': {'type': 'object', 'description': 'house: year, first_name, since. sec: forms, since, until, '
+        'options': {'type': 'object', 'description': 'house: year (integer or current), first_name, since '
+                   'or lookback_days, newest_first, max_filings. aaii: none. cftc: weeks (1..52). '
+                   'umich: months (1..13). sec: forms, since, until, '
                    'max_filings, include_archives, owner_name, value_units. page: max_pages. '
                    'bluesky: max_pages. gdelt: timespan, max_records; target is the search query. '
                    'No passwords, tokens or API keys.', 'additionalProperties': True}},
@@ -173,7 +177,9 @@ def definitions():
           'limit': {'type': 'integer', 'minimum': 1, 'maximum': 1000},
           'latest': {'type': 'boolean'}, 'pending': {'type': 'boolean'}}, ['database']),
         ('collection_coverage', 'Check required news, psychology, behavior and official-disclosure coverage. '
-         'Missing, stale, unpublished and unstructured records cannot pass. No fetching or model calls. '
+         'Missing, stale and unstructured records cannot pass. Public AAII/Michigan/CFTC/House observations '
+         'with unknown release time use labeled first-observation availability and reference-date age. '
+         'No fetching or model calls. '
          'Defaults are conservative category thresholds, not a claim of exhaustive coverage.',
          {'database': database, 'as_of': string,
           'max_records': {'type': 'integer', 'minimum': 1, 'maximum': 10000},

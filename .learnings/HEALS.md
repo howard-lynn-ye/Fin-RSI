@@ -318,3 +318,39 @@ during regeneration as a production defect. No frozen 32B source or Beacon job c
 - Pattern-Key: collection.coverage_registration_and_generated_test_order
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-16
+
+## [HEAL-20261016-ISOLATED-BUILD] use the declared build backend in isolation
+
+**Status**: verified
+**Area**: installed-wheel verification
+
+The no-isolation build failed because the shared local environment had setuptools 65.5.0
+instead of the declared >=68 and no wheel package. Re-running the wheel build with default
+build isolation installed the declared backend into a temporary environment and succeeded.
+The wheel then installed in a dedicated environment; source/wheel/installed bytes matched,
+and the actual source polling/coverage acceptance passed. No shared environment was upgraded.
+Evidence: `benchmarks/agent_study/reports/20261016-live-information-sources/`.
+
+- Pattern-Key: build.declared_backend_isolation
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-16
+
+
+## [HEAL-20261016-AAII-CHALLENGE] expose blocked survey transport and verify a public CSV source
+
+**Status**: verified for default-profile recovery; AAII live access remains restricted
+**Area**: scheduled public-source collection
+
+The first installed-wheel run fetched AAII readings successfully, but the next scheduled poll
+returned an HTTP-200 automated-access challenge. The receipt correctly failed even though
+previously collected category data remained present. One diagnostic read confirmed the challenge;
+no bypass or repeated retries were attempted. The adapter now explicitly reports it with a
+24-hour retry delay and preserves prior readings. The default profile uses the university's
+explicit public consumer-sentiment CSV, with a separately labeled population and units.
+A regression reproduces challenge/failure/backoff; another verifies preliminary-to-final
+revisions without retroactive historical visibility. The corrected installed run is recorded
+alongside the original failed receipt in the live-information-sources report.
+
+- Pattern-Key: collection.aaii_http200_automated_access_challenge
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-16
