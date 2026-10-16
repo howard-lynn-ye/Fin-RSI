@@ -1,9 +1,9 @@
 ---
 name: public-information-collection
 description: >-
-  Collect public news and disclosures with the importable fin_skills.collect runtime.
+  Collect public news, AAII sentiment, CFTC positioning and disclosures with fin_skills.collect.
   TRIGGER - RSS or Atom ingestion, static-page crawler, persistent watchlist, polling,
-  real information collection, congressional trade tracker, SEC Form 4 XML, 13F holdings
+  real information collection, investor survey, COT positioning, congressional trade tracker, SEC Form 4 XML, 13F holdings
   changes, public influencer posts, 爬虫, 实时采集, 名人交易跟踪.
   SKIP for interpreting disclosure lag (congressional-trading-disclosures,
   insider-form-4, institutional-13f), social backtest bias (social-and-influencer-feeds),
@@ -13,7 +13,7 @@ license: MIT
 compatibility: Python 3.10+; fin-skills package; pypdf extra for House PDF extraction.
 metadata:
   version: 0.1.0
-  verified_on: 2026-09-14
+  verified_on: 2026-10-16
 allowed-tools: Read Bash WebFetch
 ---
 
@@ -28,9 +28,11 @@ Use `fin_skills.collect` for retrieval, storage and repeated collection.
 | Source name | Target | Returned records | Required configuration |
 |---|---|---|---|
 | `rss` | public RSS/Atom URL | headlines, supplied descriptions, source dates | URL |
+| `aaii` | `sentiment` | current weekly bullish/neutral/bearish shares, percent | free public panel; no options |
+| `cftc` | six-character contract code, e.g. `13874A` | TFF futures-only positions by trader group, contracts | recent `weeks=1..52`, default 4 |
 | `page` | public static HTML URL | readable text; bounded same-origin links | `max_pages`, default one page |
 | `sec` | reporting-owner, issuer or manager CIK | Form 4 transactions; 13F holdings; filing metadata | `SEC_IDENTITY` with caller's contact email |
-| `house` | exact representative surname | PTR index, source PDF text, readable transaction rows | explicit `year`; optional `first_name`; `pypdf` |
+| `house` | exact representative surname | PTR index, source PDF text, readable transaction rows | `year` integer or `current`; optional `first_name`; `pypdf` |
 | `bluesky` | public handle or DID | original public author posts | optional pagination bound |
 
 These are polling collectors: they can observe newly published information at the configured
@@ -70,11 +72,23 @@ The example SEC watch is disabled until the caller supplies `SEC_IDENTITY`; set 
 and configure again. Credentials are read from the process environment, never stored in watch
 options. The examples are configurations, not a shared API key or bundled market dataset.
 
+For news, psychology, behavior and official disclosures together, configure
+`examples/collection-live.json` instead. Its free example scope is Fed news, AAII survey
+respondents, CFTC S&P 500 futures groups and Pelosi House filings. Change the watched market
+and people to match the user's task. Run `collection_coverage` before relying on the dataset;
+the tool reports missing/stale categories and which records have only first-observed timing.
+Keep `collector.run()` active for repeated updates, or call `collect_once` on the host schedule.
+The source's weekly/filing release lag remains even with frequent polling.
+
 ## Dates, completeness and interpretation
 
 - `published_at` is a timestamp the source actually supplies. A filing date without a timezone
   and time of day cannot populate it. `observed_at` records when this collector saw the revision.
   Transaction dates and quarter-end dates remain separate fields inside `data`.
+- AAII survey weeks, CFTC positions-as-of dates and House filing dates are not release times.
+  These adapters mark unknown release time explicitly. Their data is available only after
+  actual observation; coverage measures age from the reference date without backdating access.
+  CFTC refreshes revisions within the selected window, not all historical vintages.
 - Form 4 retains transaction codes, derivative/non-derivative status, owners, reported amounts
   and footnotes. An acquisition is not necessarily an open-market purchase. Read
   [insider-form-4](../insider-form-4/SKILL.md) before turning a record into a signal.

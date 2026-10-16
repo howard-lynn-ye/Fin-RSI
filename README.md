@@ -181,7 +181,7 @@ fin_skills.find("survivorship", "universe")    # Search skills mentioning both t
 
 ### Public news, crawlers and disclosure tracking
 
-The library now includes real retrieval through `fin_skills.collect`: RSS/Atom, bounded static-page crawling, SEC Form 4 and 13F, House PTR PDFs, and public Bluesky posts. SQLite retains watch state, deduplicated revisions and pending alerts. Use the [collection guide](docs/COLLECTION.md) for Python, CLI and MCP commands. Continuous polling must be started explicitly; public filings carry disclosure delays.
+The library now includes real retrieval through `fin_skills.collect`: RSS/Atom, structured AAII sentiment and CFTC positioning, bounded static-page crawling, SEC Form 4 and 13F, House PTR PDFs, and public Bluesky posts. SQLite retains watch state, deduplicated revisions and pending alerts. Use the [collection guide](docs/COLLECTION.md) for Python, CLI and MCP commands. Continuous polling must be started explicitly; public filings carry disclosure delays.
 
 ### Algorithm selection and execution
 
@@ -345,7 +345,7 @@ Full reproducible benchmark output: [`benchmarks/RESULTS.md`](benchmarks/RESULTS
 | `fin-alt-data` | [`congressional-trading-disclosures`](plugins/fin-alt-data/skills/congressional-trading-disclosures/SKILL.md) | Build a congressional-trading signal on the disclosure date instead of the transaction date, and price what the amount brackets cost you. | 0 | 1 |
 | `fin-alt-data` | [`insider-form-4`](plugins/fin-alt-data/skills/insider-form-4/SKILL.md) | Filter Form 4 to open-market purchases by transaction code, then key the signal to the first session that can trade the acceptance timestamp. | 0 | 1 |
 | `fin-alt-data` | [`institutional-13f`](plugins/fin-alt-data/skills/institutional-13f/SKILL.md) | Clone or study 13F holdings without the quarter-end look-ahead, and report the full age distribution of the positions instead of the 45-day deadline. | 0 | 1 |
-| `fin-alt-data` | [`public-information-collection`](plugins/fin-alt-data/skills/public-information-collection/SKILL.md) | Collect public news and disclosures with the importable fin_skills.collect runtime. | 0 | 0 |
+| `fin-alt-data` | [`public-information-collection`](plugins/fin-alt-data/skills/public-information-collection/SKILL.md) | Collect public news, AAII sentiment, CFTC positioning and disclosures with fin_skills.collect. | 0 | 0 |
 | `fin-alt-data` | [`social-and-influencer-feeds`](plugins/fin-alt-data/skills/social-and-influencer-feeds/SKILL.md) | What social data you can legally and practically get in 2026, and what the part you can get does to a backtest. | 0 | 1 |
 | `fin-asia` | [`asean-markets`](plugins/fin-asia/skills/asean-markets/SKILL.md) | TRIGGER - ASEAN, SGX, Singapore, Bursa Malaysia, SET Thailand, Thai foreign board or NVDR, IDX Indonesia, PSE Philippines, HOSE HNX UPCoM Vietnam, foreign ownership room, Southeast | 0 | 1 |
 | `fin-asia` | [`asia-pacific-markets`](plugins/fin-asia/skills/asia-pacific-markets/SKILL.md) | TRIGGER - choose an Asia-Pacific data or trading stack outside mainland China, compare Asian venues, multi-market calendars, regional survivorship and currency alignment. | 0 | 0 |

@@ -11,13 +11,16 @@ from .http import HttpClient
 from .health import ownership
 from .model import Watch
 from .news import GDELTSource
+from .signals import AAIISource, CFTCSource
 
 SOURCES = {
+    'aaii': (AAIISource, 'AAII current weekly investor survey; target=sentiment; free public readings'),
+    'cftc': (CFTCSource, 'CFTC TFF futures-only positions; target=contract code, options=weeks; public API'),
     'gdelt': (GDELTSource, 'GDELT DOC news search; target=query, options=timespan/max_records; metadata only'),
     'rss': (RSSSource, 'RSS/Atom news feeds; conditional GET; public source timestamps'),
     'page': (PageSource, 'Static public HTML and bounded same-origin crawling; robots.txt respected'),
     'sec': (SECSource, 'Form 4 transaction XML and 13F holdings by CIK; SEC_IDENTITY required'),
-    'house': (HouseSource, 'US House PTR index and PDF transactions; explicit year, pypdf required'),
+    'house': (HouseSource, 'US House PTR index/PDF transactions; year=integer or current; pypdf required'),
     'bluesky': (BlueskySource, 'Public author posts through Bluesky API; posts are not trade evidence'),
 }
 

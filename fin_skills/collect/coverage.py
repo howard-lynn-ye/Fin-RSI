@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import date, datetime, timezone
+from urllib.parse import urlsplit
 
 from .model import utc, utcnow
 
@@ -12,11 +13,41 @@ from .model import utc, utcnow
 PROFILES = {
     'news': (('news',), 3 * 86400, False),
     'psychology': (('sentiment_survey', 'sentiment_observation'), 30 * 86400, True),
-    'behavior': (('positioning_observation', 'fund_flow', 'market_behavior'), 7 * 86400, True),
+    # Weekly CFTC snapshots describe Tuesday positions, often released Friday. A reference
+    # date can already be ten days old before the next weekly release; it is not publication.
+    'behavior': (('positioning_observation', 'fund_flow', 'market_behavior'), 14 * 86400, True),
     'official_disclosures': (('congressional_transaction',), 90 * 86400, True),
     'institutional_disclosures': (('institutional_holding', 'insider_transaction'), 120 * 86400, True),
 }
 DEFAULT_CATEGORIES = ('news', 'psychology', 'behavior', 'official_disclosures')
+
+
+def evidence_time(row):
+    """Known publication, or explicitly observed public data from a supported adapter.
+
+    Reference dates conservatively measure age; they never establish historical availability.
+    The Store's observation cutoff still applies to each revision. Arbitrary undated rows fail.
+    """
+    if row.get('published_at'):
+        return datetime.fromisoformat(utc(row['published_at'])), 'published_at'
+    contracts = {
+        ('aaii', 'sentiment_survey'): ('www.aaii.com', 'survey_week_ending'),
+        ('cftc', 'positioning_observation'): ('publicreporting.cftc.gov', 'report_date'),
+        ('house', 'congressional_transaction'): ('disclosures-clerk.house.gov', 'filing_date'),
+    }
+    contract = contracts.get((row['source'], row['kind']))
+    data = row.get('data', {})
+    if (not contract or data.get('availability_basis') != 'first_observed' or
+            urlsplit(row['url']).hostname != contract[0]):
+        return None, None
+    try:
+        day = date.fromisoformat(data[contract[1]])
+        observed = datetime.fromisoformat(utc(row['observed_at']))
+        if day > observed.date():
+            return None, None
+        return datetime.combine(day, datetime.min.time(), timezone.utc), contract[1]
+    except (KeyError, ValueError, TypeError):
+        return None, None
 
 
 def requirements(specifications=None):
@@ -79,12 +110,12 @@ def coverage(store, *, specifications=None, as_of=None, max_records=10000):
             if not row.get('url'):
                 excluded['missing_provenance'] += 1
                 continue
-            if not row.get('published_at'):
+            reference, freshness_basis = evidence_time(row)
+            if reference is None:
                 excluded['missing_publication'] += 1
                 continue
-            published = datetime.fromisoformat(utc(row['published_at']))
             observed = datetime.fromisoformat(utc(row['observed_at']))
-            age = (stamp - published).total_seconds()
+            age = (stamp - reference).total_seconds()
             if age > rule['max_age_seconds']:
                 excluded['stale'] += 1
                 continue
@@ -103,19 +134,27 @@ def coverage(store, *, specifications=None, as_of=None, max_records=10000):
             eligible.append(dict(watch_id=row['watch_id'], event_id=row['id'], seq=row['seq'],
                                  kind=row['kind'], source=row['source'], url=row['url'],
                                  published_at=row['published_at'], observed_at=row['observed_at'],
-                                 age_seconds=age,
-                                 observation_lag_seconds=(observed - published).total_seconds()))
+                                 age_seconds=age, freshness_basis=freshness_basis,
+                                 reference_date=reference.date().isoformat(),
+                                 availability_basis=('observed_and_published' if row['published_at']
+                                                     else 'first_observed'),
+                                 observation_lag_seconds=((observed - reference).total_seconds()
+                                                         if row['published_at'] else None)))
         ready = len(eligible) >= rule['min_records']
+        observed_only = sum(e['published_at'] is None for e in eligible)
         results.append(dict(**rule, ready=ready, status='covered' if ready else (
             'missing' if not matches else 'incomplete'), matched_records=len(matches),
-            eligible_records=len(eligible), excluded=excluded,
-            examples=sorted(eligible, key=lambda r: r['published_at'], reverse=True)[:3]))
+            eligible_records=len(eligible), observed_time_records=observed_only,
+            publication_time_complete=bool(eligible) and not observed_only, excluded=excluded,
+            examples=sorted(eligible, key=lambda r: r['age_seconds'])[:3]))
     ready = all(item['ready'] for item in results)
     return dict(ready=ready, status='covered' if ready else 'incomplete', as_of=cutoff,
                 categories=results, records_examined=len(rows),
+                publication_time_complete=all(r['publication_time_complete'] for r in results),
                 missing_categories=[r['category'] for r in results if not r['ready']],
-                scope='declared category/kind, publication age and provenance checks; '
+                scope='declared category/kind, evidence age and provenance checks; '
                       'not exhaustive coverage, semantic validation or investment advice',
-                availability='both observed_at and published_at must be at or before as_of; '
-                             'unknown publication cannot satisfy a requirement',
+                availability='observed_at and any known published_at must be at or before as_of; '
+                             'supported public adapters may use first observation, explicitly labeled; '
+                             'reporting/survey/filing dates measure age, never historical availability',
                 current_watch_filter=current)

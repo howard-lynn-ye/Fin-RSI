@@ -53,16 +53,14 @@ def main():
              interval_seconds=args.poll_seconds),
         dict(id='ecb-news', source='rss', target='https://www.ecb.europa.eu/rss/press.html',
              interval_seconds=args.poll_seconds),
-        dict(id='company-news', source='gdelt', target='NVIDIA',
-             interval_seconds=900, options={'timespan': '1d', 'max_records': 25}),
-        dict(id='survey-source-page', source='page', target='https://pressroom.aboutschwab.com/',
-             interval_seconds=1800, options={'max_pages': 1}),
-        dict(id='position-source-page', source='page',
-             target='https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm',
-             interval_seconds=1800, options={'max_pages': 1}),
-        dict(id='house-disclosures', source='house', target='Pelosi', interval_seconds=1800,
-             options={'year': year, 'first_name': 'Nancy', 'since': f'{year}-08-01',
-                      'max_filings': 2}),
+        dict(id='survey-aaii', source='aaii', target='sentiment',
+             interval_seconds=args.poll_seconds),
+        dict(id='positions-cftc', source='cftc', target='13874A',
+             interval_seconds=args.poll_seconds, options={'weeks': 4}),
+        dict(id='house-disclosures', source='house', target='Pelosi',
+             interval_seconds=args.poll_seconds,
+             options={'year': 'current', 'first_name': 'Nancy', 'lookback_days': 90,
+                      'newest_first': True, 'max_filings': 2}),
     ]
     skipped = []
     if os.environ.get('SEC_IDENTITY'):
@@ -90,6 +88,8 @@ def main():
 
     # Reopen SQLite and resume without forcing polls past per-source retry deadlines.
     cycles = []
+    repolled_ids = set()
+    required_ids = {w['id'] for w in watches if w['source'] != 'sec'}
     stop = threading.Event()
     deadline = threading.Timer(max(150, args.poll_seconds * 2 + 30), stop.set)
     deadline.daemon = True
@@ -101,7 +101,8 @@ def main():
             def on_cycle(report):
                 cycles.append({'at': utcnow(), 'new_records': report['new_records'],
                                'watches': report['watches']})
-                if any(w['watch_id'] in ('fed-news', 'ecb-news') for w in report['watches']):
+                repolled_ids.update(w['watch_id'] for w in report['watches'])
+                if required_ids <= repolled_ids:
                     stop.set()
             Collector(store).run(stop=stop, on_cycle=on_cycle)
             after = store.db.execute('SELECT count(*) FROM events').fetchone()[0]
@@ -117,6 +118,7 @@ def main():
         deadline.cancel()
     assert after >= before
     health = call_tool('collection_status', {'database': database})['watches']
+    coverage = call_tool('collection_coverage', {'database': database})
     current = call_tool('collection_events', {'database': database, 'latest': True, 'limit': 1000})
     digest = call_tool('summarize_news', {'events': rows[:1000], 'as_of': utcnow()})
     summaries = []
@@ -131,32 +133,36 @@ def main():
                           'latest_observation': max(observed) if observed else None,
                           'unknown_publication_dates': sum(not r.get('published_at') for r in records),
                           **status})
-    repolled = any(w['watch_id'] in ('fed-news', 'ecb-news')
-                   for c in cycles for w in c['watches'])
+    repolled = required_ids <= repolled_ids
     receipt = {
         'started_at': started, 'finished_at': utcnow(), 'commit': args.commit,
         'package_path': str(package_path), 'isolated_installed_wheel': True,
         'checks': {'configure_does_not_fetch': configured['started'] is False,
                    'restart_preserved_records': before == first_count,
                    'continuous_poll_reached_due_watch': repolled,
+                   'four_required_categories_covered': coverage['ready'],
                    'records_preserved_after_poll': after >= before,
                    'events_marked_untrusted': current['content_is_untrusted']},
         'sources': summaries, 'cycles': cycles, 'skipped': skipped,
+        'coverage': coverage, 'repolled_watch_ids': sorted(repolled_ids),
         'first_records': first_count, 'final_records': after,
         'news_digest': {k: digest[k] for k in ('status', 'unique_articles', 'excluded')},
         'tool_inventory': [s['name'] for s in list_tools()],
         'exercised_tools': ['collection_configure', 'collect_once', 'collection_status',
-                            'collection_events', 'summarize_news'],
+                            'collection_events', 'collection_coverage', 'summarize_news'],
         'limits': [
             'Inventory is discovery, not execution of every library capability.',
-            'Survey and position pages test collection transport only; no structured sentiment/COT series claimed.',
+            'AAII survey and CFTC positions are structured observations, not real-time trades.',
+            'Unknown publication times remain unknown; availability begins at actual observation.',
             'A successful fetch does not prove complete news/social/disclosure coverage.',
             'No new source publication during this short test would leave update-detection unobserved.',
             'No Return Rate measured in this library acceptance check.',
         ],
     }
     receipt['status'] = ('passed_with_limits' if all(receipt['checks'].values()) and
-                         all(s['last_success'] and not s['error'] for s in summaries)
+                         all(s['status'] == 'ok' for s in summaries) and
+                         all(w['status'] == 'ok' for w in first['watches']) and
+                         all(w['status'] == 'ok' for c in cycles for w in c['watches'])
                          else 'needs_review')
     write(out / 'receipt.json', receipt)
     print(json.dumps({k: v for k, v in receipt.items() if k != 'tool_inventory'}), flush=True)

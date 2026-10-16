@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -174,8 +174,19 @@ class HouseSource:
 
     def fetch(self, watch, state):
         year = watch.options.get('year')
-        if not isinstance(year, int) or not 2008 <= year <= 2100:
-            raise ValueError('House watch requires an explicit filing year (2008..2100)')
+        if year == 'current':
+            year = datetime.now(timezone.utc).year
+        if type(year) is not int or not 2008 <= year <= 2100:
+            raise ValueError('House watch requires year 2008..2100 or current')
+        since = watch.options.get('since', '')
+        lookback = watch.options.get('lookback_days')
+        if lookback is not None:
+            if type(lookback) is not int or not 1 <= lookback <= 366 or since:
+                raise ValueError('lookback_days must be 1..366 and cannot be combined with since')
+            since = (datetime.now(timezone.utc).date() - timedelta(days=lookback)).isoformat()
+        newest = watch.options.get('newest_first', False)
+        if type(newest) is not bool:
+            raise ValueError('newest_first must be boolean')
         response = self.client.get(f'https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.ZIP')
         with ZipFile(BytesIO(response.body)) as archive:
             names = [i for i in archive.infolist() if i.filename.lower() == f'{year}fd.xml']
@@ -198,7 +209,7 @@ class HouseSource:
             if not doc_id.isdigit():
                 raise ValueError('invalid House document id')
             filing_date = _iso_date(text(member, 'FilingDate'))
-            if doc_id in seen or filing_date < watch.options.get('since', ''):
+            if doc_id in seen or filing_date < since:
                 continue
             rows.append((filing_date, doc_id, member))
         maximum = int(watch.options.get('max_filings', 10))
@@ -206,7 +217,8 @@ class HouseSource:
             raise ValueError('max_filings must be 1..100')
         eligible = [r for r in rows if retry.get(r[1], {}).get('at', 0) <= time.time()]
         for filing_date, doc_id, member in sorted(eligible, key=lambda r: (
-                retry.get(r[1], {}).get('attempts', 0), r[0], r[1]))[:maximum]:
+                retry.get(r[1], {}).get('attempts', 0),
+                -date_order(r[0]) if newest else date_order(r[0]), r[1]))[:maximum]:
             actor = ' '.join((text(member, 'First'), text(member, 'Last')))
             url = f'https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{year}/{doc_id}.pdf'
             observed = utcnow()
@@ -232,17 +244,27 @@ class HouseSource:
                     'parsed_records': len(transactions), 'source_text': content, 'parse_error': parse_error,
                     'content_is_untrusted': True,
                     'use_restrictions_url': 'https://disclosures-clerk.house.gov/FinancialDisclosure/ViewSearch',
-                    'published_time_unknown': True}
+                    'published_time_unknown': True, 'availability_basis': 'first_observed'}
             events.append(Event(doc_id, 'house', 'congressional_filing', f'{actor}: periodic transaction report',
                                 url, observed, None, actor, '', data))
             for i, row in enumerate(transactions):
                 events.append(Event(f'{doc_id}:transaction:{i}', 'house', 'congressional_transaction',
                                     f'{actor}: {row["transaction_type"]} {row["asset"]}', url,
                                     observed, None, actor, row['symbol'], {**row, 'doc_id': doc_id,
-                                    'filing_date': filing_date, 'published_time_unknown': True}))
+                                    'filing_date': filing_date, 'published_time_unknown': True,
+                                    'availability_basis': 'first_observed', 'content_is_untrusted': True,
+                                    'use_restrictions_url': data['use_restrictions_url']}))
             if not transactions:
                 warnings.append(f'{doc_id}: no readable transaction rows; original text retained for review')
+                attempts = retry.get(doc_id, {}).get('attempts', 0) + 1
+                retry[doc_id] = {'attempts': attempts, 'at': time.time() + min(
+                    watch.interval_seconds * 2 ** min(attempts, 8), 86400)}
+                continue
             seen.add(doc_id)
             retry.pop(doc_id, None)
         return Batch(events, {'seen': sorted(seen), 'retry': retry,
                               'remaining': len({r[1] for r in rows} - seen)}, warnings, retry_after)
+
+
+def date_order(value):
+    return datetime.strptime(value, '%Y-%m-%d').date().toordinal()
