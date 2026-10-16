@@ -43,6 +43,12 @@ def collection_status(database):
         return store.health()
 
 
+def collection_coverage(database, requirements=None, as_of=None, max_records=10000):
+    from fin_skills.collect import Store
+    with Store(database, read_only=True) as store:
+        return store.coverage(requirements=requirements, as_of=as_of, max_records=max_records)
+
+
 def collection_search(database, query, as_of=None, watch_id=None, top_k=3,
                       max_context_chars=4000, max_records=10000):
     """Read the current database snapshot on every query; no stale side index or fetch."""
@@ -59,7 +65,9 @@ def collection_search(database, query, as_of=None, watch_id=None, top_k=3,
     result.update(collection_records=len(rows),
                   collection_health=health['watches'] if health is not None else None,
                   collection_runtime=health['runner'] if health is not None else None,
-                  collection_readiness=({k: health[k] for k in ('data_ready', 'healthy', 'status')}
+                  collection_coverage=health['coverage'] if health is not None else None,
+                  collection_readiness=({k: health[k] for k in
+                                        ('data_ready', 'healthy', 'coverage_ready', 'ready', 'status')}
                                         if health is not None else None),
                   index_mode='fresh snapshot per query; no network call or background service')
     return result
@@ -124,6 +132,7 @@ def summarize_news(events, as_of, keywords=(), max_age_hours=72, risk_terms=None
 
 
 FUNCTIONS = {f.__name__: f for f in (collection_sources, collection_configure, collect_once, collection_search,
+             collection_coverage,
              collection_events, collection_status, collection_acknowledge, compare_holdings,
              search_data, fetch_market_data, search_news, summarize_news)}
 
@@ -163,7 +172,21 @@ def definitions():
          {'database': database, 'watch_id': string, 'after': {'type': 'integer', 'minimum': 0},
           'limit': {'type': 'integer', 'minimum': 1, 'maximum': 1000},
           'latest': {'type': 'boolean'}, 'pending': {'type': 'boolean'}}, ['database']),
-        ('collection_status', 'Read-only live collector ownership and per-source polling freshness. '
+        ('collection_coverage', 'Check required news, psychology, behavior and official-disclosure coverage. '
+         'Missing, stale, unpublished and unstructured records cannot pass. No fetching or model calls. '
+         'Defaults are conservative category thresholds, not a claim of exhaustive coverage.',
+         {'database': database, 'as_of': string,
+          'max_records': {'type': 'integer', 'minimum': 1, 'maximum': 10000},
+          'requirements': {'type': 'array', 'minItems': 1, 'maxItems': 5, 'items': {
+              'type': 'object', 'properties': {
+                  'category': {'type': 'string', 'enum': ['news', 'psychology', 'behavior',
+                      'official_disclosures', 'institutional_disclosures']},
+                  'watch_ids': {'type': 'array', 'minItems': 1, 'items': string, 'uniqueItems': True},
+                  'max_age_seconds': {'type': 'number', 'exclusiveMinimum': 0},
+                  'min_records': {'type': 'integer', 'minimum': 1, 'maximum': 10000}},
+              'required': ['category'], 'additionalProperties': False}}}, ['database']),
+        ('collection_status', 'Read-only live collector ownership, polling freshness and required data coverage. '
+         'ready requires both healthy polling and coverage_ready; healthy alone measures polling. '
          'A stopped collector, stale success, partial batch or latest failure is not healthy. '
          'Polling freshness does not prove fresh content or complete coverage.',
          {'database': database}, ['database']),
