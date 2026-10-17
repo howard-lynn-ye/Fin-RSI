@@ -37,7 +37,7 @@ automatic requeue. No job from another window was changed or cancelled.
 | 2232777 | one H200 | none | Pending predecessor cancelled at zero runtime, with no cycle decisions. |
 | 2316162 | two untyped | two L40S | Started in 10 seconds; exited after 46 seconds because staged tests could not import their sibling helper. No model inference. |
 | 2316360 | two untyped | two RTX 6000 Ada | Started in 10 seconds; 66 tests and build/spec checks passed. Exact BF16 peer-copy validation failed before weights were loaded. |
-| 2317005 | two untyped | two L40S | Started in 27 seconds; explicit host-staged transfer repair under qualification. |
+| 2317005 | two untyped | two L40S | Started in 27 seconds; 36 exact transfers and 32,768-token generation passed; real tool/decision preflight running. |
 
 The test import failure was fixed by running tests inside their complete source
 `tests/` directory and including that directory on the import path. All 66 checks
@@ -81,3 +81,15 @@ paired cycle completes; absent returns must not be reported as zero.
 References: [Slurm backfill](https://slurm.schedmd.com/sched_config.html),
 [Slurm preemption](https://slurm.schedmd.com/preempt.html),
 [Accelerate device dispatch](https://huggingface.co/docs/accelerate/package_reference/big_modeling).
+
+## Observed hardware acceptance
+
+At 2026-10-17T02:25:11Z, job 2317005 had loaded the complete BF16 model on two L40S
+GPUs and passed all 36 exact host-staged transfer checks plus 32,768-token generation.
+The full receipt is in hardware-qualification.json. This validates the observed L40S
+allocation; other allocations still must pass the same gates. Real tool/decision
+preflight and full-cycle financial outcomes remain separate acceptance stages.
+
+GitHub CI was not readable through the dedicated connector because it required an
+account connection. CI success is not asserted; Beacon test/build/hardware checks
+above are the verification evidence. No CI CLI fallback was used.

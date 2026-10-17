@@ -373,7 +373,7 @@ validation. This establishes startup recovery only, not model or financial succe
 
 ## [HEAL-20261016-PEER-TRANSFER] qualify host-staged transfers before decisions
 
-**Status**: pending-verify on real dual-GPU generation
+**Status**: verified on L40S for host-staged transfers and full-context generation
 **Area**: model execution
 
 The RTX 6000 Ada allocation failed an exact BF16 copy from GPU 0 to GPU 1 before
@@ -386,3 +386,8 @@ no failed transfer is tolerated or replaced with invented numeric values.
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-16
 - Evidence: benchmarks/agent_study/reports/20261016-flexible-32b/
+
+Verification update: job 2317005 passed all 36 exact host-staged copy cases and
+32,768-token generation with the complete CUDA BF16 model on two L40S GPUs.
+The 68 selected tests and both build validations also passed. This does not assert
+that direct RTX peer copies were repaired, or that the financial cycle completed.
