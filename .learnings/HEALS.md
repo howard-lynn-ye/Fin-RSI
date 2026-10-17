@@ -411,3 +411,23 @@ was changed.
 - Pattern-Key: powershell.ripgrep_glob_path
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-17
+
+## [HEAL-20261017-VALIDATION-BUNDLE] deploy complete canonical source for remote checks
+
+**Status**: verified (deployment identity and build checks)
+**Area**: Slurm source validation
+
+A reused build-only snapshot omitted current tests (job 2365476), then strict
+comparison found an older plugin document (2365644) and a CRLF-only generated
+index difference (2365687). No model was run in these failed validation stages.
+The source package now includes selected tests and their helper imports. The
+upstream skill document was synced and the catalog/package regenerated. The
+index was compared with canonical Git/LF generated content; no hash check was
+disabled. Job 2365768 matched all 602 expected source files, passed the required
+build/spec checks, and verified all 88 original evidence snapshot bindings.
+The subsequent regression-test result is recorded separately in the report.
+
+- Pattern-Key: deployment.partial_source_snapshot
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-17
+- Evidence: benchmarks/agent_study/reports/20261017-research-reliability/
