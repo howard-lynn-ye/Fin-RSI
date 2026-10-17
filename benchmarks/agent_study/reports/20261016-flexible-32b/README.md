@@ -93,3 +93,10 @@ preflight and full-cycle financial outcomes remain separate acceptance stages.
 GitHub CI was not readable through the dedicated connector because it required an
 account connection. CI success is not asserted; Beacon test/build/hardware checks
 above are the verification evidence. No CI CLI fallback was used.
+
+## Completed cycle, October 17
+
+The paired cycle subsequently completed with 44/44 decisions per arm and zero
+failed final decisions. See the [full-cycle results and complete ledgers](../20261017-32b-full-cycle/README.md)
+for audited Return Rates: 38.003847% with the library and 18.976928% without it.
+The earlier status above is retained as a dated startup record.
