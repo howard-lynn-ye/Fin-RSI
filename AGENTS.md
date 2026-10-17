@@ -1,3 +1,51 @@
+<!-- beacon-window-ownership-policy:2026-10-16:start -->
+## Beacon: one RUNNING job per window; earliest compatible capacity
+
+User clarification, October 16, 2026, applies to Codex, Claude and all projects.
+The user explicitly answered: "最多一个运行中作业，允许串行依赖排队".
+Thus each owning chat/window may have **at most one RUNNING Beacon job**;
+serial dependent PENDING jobs are allowed. This supersedes the earlier
+"one nonterminal job" interpretation, including pending jobs in that cap.
+The account may run multiple independently authorized window tasks concurrently,
+subject to actual live account/association/partition/QoS limits and task budgets.
+This is not an account-wide or repository-wide one-job limit.
+
+- Record the owner chat/window identifier and its submitted Slurm IDs. Use
+  `squeue --all --states=all` and filter by owned IDs for the window guard;
+  inspect account totals separately for actual Slurm quotas. Other windows'
+  jobs do not consume this window's one-running-job allowance. Never cancel
+  or change another window's jobs or connections.
+- Serialize the owned stages with dependencies (for example, `afterok`) so
+  pending stages cannot run concurrently. Do not start a new allocation while
+  the preceding owned job is configuring, running, suspended or completing.
+  A single experiment can have several submitted stage IDs. Subagents/helpers
+  share their parent window's allowance; do not create windows, arrays or
+  duplicate experiments to evade this rule. Check old outputs before any retry.
+- For ALL authorized Beacon GPU submissions, use the earliest capacity that
+  supports the COMPLETE task. Prefer untyped `--gres=gpu:N` when the eligible
+  pool fits; otherwise use only demonstrated minimum capability constraints.
+  Let Slurm choose nodes. Preserve required weights, precision, context, inputs
+  and every acceptance stage. Check GPU/CPU/RAM/topology/storage/walltime needs.
+- Backfill is an automatic Slurm scheduler mechanism, not an `sbatch` switch
+  that bypasses priority. Request realistic resources and walltime with finishing
+  margin. An idle GPU alone is insufficient when memory, CPUs, reservations,
+  task compatibility or eligibility block it. `sbatch --test-only` start times
+  are estimates, not guarantees; do not wait for a model preference alone.
+- Always consider eligible scavenger opportunity capacity alongside ordinary
+  partitions. Use it when the complete task is eligible, preemption is acceptable
+  under its authorization, and required checkpoint/resume behavior is verified.
+  Record a concrete reason when a different compatible path is preferable.
+  Scavenger is not guaranteed faster, immediate or free. Do not silently enable
+  requeue, expand retry budgets, blanket-migrate projects or submit queue copies.
+- Preserve healthy jobs, immutable evidence, budgets, pauses and experiment
+  release gates. This scheduling clarification grants no new experiments,
+  spending, retries, timers or migrations. The shared SSH cap remains six across
+  projects, separate from job/GPU counts. Reread the connection guide and live
+  resource policy before access/submission. Existing sessions must reread this
+  update: file synchronization does not broadcast to running agents or modify
+  Slurm jobs/submission-guard code.
+<!-- beacon-window-ownership-policy:2026-10-16:end -->
+
 # AGENTS.md
 
 Instructions for coding agents working in this repository.

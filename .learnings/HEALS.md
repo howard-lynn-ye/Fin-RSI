@@ -354,3 +354,40 @@ alongside the original failed receipt in the live-information-sources report.
 - Pattern-Key: collection.aaii_http200_automated_access_challenge
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-16
+
+## [HEAL-20261016-STAGED-TEST-IMPORT] preserve sibling test imports on deployment
+
+**Status**: verified
+**Area**: Slurm startup validation
+
+The first flexible allocation exited during collection because a staged research
+fixture imported a helper from the source tests directory. Run the selected tests
+from the complete source tests directory and put that directory on PYTHONPATH.
+The corrected allocation passed 66 checks in 22.83 seconds, then index/package/spec
+validation. This establishes startup recovery only, not model or financial success.
+
+- Pattern-Key: deployment.sibling_test_import_path
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-16
+- Evidence: benchmarks/agent_study/reports/20261016-flexible-32b/
+
+## [HEAL-20261016-PEER-TRANSFER] qualify host-staged transfers before decisions
+
+**Status**: verified on L40S for host-staged transfers and full-context generation
+**Area**: model execution
+
+The RTX 6000 Ada allocation failed an exact BF16 copy from GPU 0 to GPU 1 before
+model loading. The guard correctly rejected it. Added an explicit blocking CPU
+staging route, a generation-scoped Accelerate hook, and nested-input/restore tests.
+The new allocation must pass the same exact-copy, full-context and real-tool gates;
+no failed transfer is tolerated or replaced with invented numeric values.
+
+- Pattern-Key: inference.cross_device_transfer_corruption
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-16
+- Evidence: benchmarks/agent_study/reports/20261016-flexible-32b/
+
+Verification update: job 2317005 passed all 36 exact host-staged copy cases and
+32,768-token generation with the complete CUDA BF16 model on two L40S GPUs.
+The 68 selected tests and both build validations also passed. This does not assert
+that direct RTX peer copies were repaired, or that the financial cycle completed.
