@@ -83,3 +83,5 @@ python publish_results.py SOURCE PAIRS ORIGINAL_PUBLIC NEW_OUTPUT
 Place the successful `build-validation.txt` beside the script. The audit checks
 existing receipts read-only, compares its export with the original, and refuses to
 overwrite an output directory. It never generates new model decisions.
+
+Follow-up: [return attribution, market baselines and research-call audit](../20261017-research-reliability/README.md). The original results and ledgers above are unchanged.
