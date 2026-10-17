@@ -115,4 +115,4 @@ capacity with no automatic requeue. GPUs are untyped, not pinned to H200 or a no
 Only derived experiment artifacts are public. Private source/news text, market
 archives, credentials and machine-specific cache configuration stay off GitHub.
 
-Validation: 132 related regressions passed in job 2365768; the subsequent split-stage driver passed 11 checks in job 2366235. Both required build sequences passed. Job 2366254 was submitted for the first v11 7B pair and was pending with reason Priority at submission. There is no completed v11 return yet.
+Validation: 132 related regressions passed in job 2365768; the subsequent split-stage driver passed 11 checks in job 2366235. Both required build sequences passed. Job 2366254 started the first v11 7B pair on one L40S through Backfill, 13 seconds after submission. At 19:36 UTC it had completed 4/44 library decisions; the raw arm had not started. Granite seed 11 and 7B seed 23 are queued with serial afterok dependencies. There is no completed v11 return yet.

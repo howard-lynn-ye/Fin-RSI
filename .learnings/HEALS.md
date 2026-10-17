@@ -90,10 +90,19 @@ relevant tests passed with bs4 (39 passed) and with bs4 deliberately unavailable
 one optional module skipped). All generation/validation scripts also passed. The active
 candidate24 runtime and GPU jobs were not modified by this test-only correction.
 
+### October 17 recurrence
+The new serial-driver selection tests repeated this dependency-scope mistake: minimum CI
+job 117482929459 failed four cases on missing bs4 while 4173 other tests passed. Declare
+pytest.importorskip('bs4') only inside the two study-integration test functions; keep the
+seven dependency-free serial-driver cases active in minimum installs. The separate free-model
+roster checks remain dependency-free. Minimum CI job 117485361979 passed at commit a3d5760;
+the installed-study paths had also passed in Beacon jobs 2365768 and 2366235. The production
+runner and frozen source of the active v11 experiment were not changed by this test fix.
+
 ### Metadata
 - Pattern-Key: ci.optional_study_dependency_scope
-- Recurrence-Count: 1
-- First-Seen / Last-Seen: 2026-10-13
+- Recurrence-Count: 2
+- First-Seen / Last-Seen: 2026-10-13 / 2026-10-17
 
 ## [HEAL-20261013-G26] decision completion is insufficient to release a campaign
 
