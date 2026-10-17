@@ -21,6 +21,7 @@ def test_complete_summary_preserves_bad_returns_and_requires_model_identity():
 
 
 def test_public_open_weight_selection_keeps_exact_identity():
+    pytest.importorskip('bs4', reason='model selection uses the optional study stack')
     batch, spec, row = selection('granite-8b')
     assert batch == 'matrix_hf' and row['transport'] == 'hf'
     assert spec[1] == 'ibm-granite/granite-3.3-8b-instruct'
@@ -29,6 +30,7 @@ def test_public_open_weight_selection_keeps_exact_identity():
 
 @pytest.mark.parametrize('family', ['claude-opus-5.5', 'nonexistent', 'llama31-8b'])
 def test_unenabled_or_native_families_cannot_enter_free_runner(family):
+    pytest.importorskip('bs4', reason='model selection uses the optional study stack')
     with pytest.raises((ValueError, KeyError, StopIteration)):
         selection(family)
 
