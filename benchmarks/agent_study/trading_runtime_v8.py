@@ -36,7 +36,9 @@ valuation date, NOT a data-query end date. For current data, omit read_market st
 both default to the visible history. A supplied date must not exceed the observation cutoff.
 Long-only, no leverage; unallocated money is cash earning zero. Orders execute next-session close.
 Exact research tool signatures are listed below. Use help_tool(name) for details.
-Python has numpy/pandas/scipy and bound tools; each call starts fresh. Files are read-only;
+Python prebinds np=numpy, pd=pandas, sco=scipy.optimize, json and the listed tools in BOTH arms.
+Each call starts fresh; reply/snapshot/rows from an earlier response are NOT Python variables.
+Call the reader and assign its result in this program. Files are read-only;
 quotes.csv columns: date,ticker,open,high,low,close,volume (lowercase, raw prices).
 It is long format: tickers are VALUES in the ticker column, not column names.
 A raw price matrix is quotes.pivot(index="date", columns="ticker", values="close").sort_index().
@@ -44,6 +46,13 @@ A single ticker is quotes.loc[quotes.ticker == ticker].sort_values("date").
 Do not pct_change the close column across interleaved tickers. A Series.mean() is one scalar;
 DataFrame.mean() gives one value per column. DataFrame.cov() is the multi-column covariance;
 Series.cov(other) compares two Series. Inspect the shape before computing.
+Keep ticker labels aligned: pivot may reorder columns. Label numeric outputs with the actual
+matrix columns, not an unrelated ticker list. Optimizer bounds, x0 and matrix must have equal size.
+CASH is an account balance earning zero, not a ticker in price/return files or load_history.
+Calculate traded-asset statistics using the matrix columns; account for cash separately.
+You still choose the cash amount and must include CASH in your final allocation.
+CSV dates and load_history indexes are ISO date strings; convert both sides with pd.to_datetime
+before comparing to datetime objects. Use pd.concat, not removed DataFrame.append.
 Selecting frame["close"] returns a Series; do not select ["close"] again inside a helper.
 corporate_actions.csv columns: date,ticker,kind,value,note; README.md explains adjustment.
 Read these existing files with pandas.read_csv; do not recreate supplied rows in code.
@@ -75,7 +84,7 @@ This does not select a strategy or trade. You may use any available method or ma
 '''
 OBJECTIVE = 'maximize cumulative net Return Rate from initial capital by the deadline'
 INITIAL_CAPITAL = 100_000.0
-INTERACTION_REVISION = '20261015-dataframe-recovery-v10'
+INTERACTION_REVISION = '20261017-research-environment-v11'
 RESEARCH_RESPONSES = old.MAX_TURNS - 2
 FINAL_DECISION = '''FINAL DECISION: choose your own investments to maximize cumulative net Return Rate by the deadline.
 Use the supplied information and prior tool results. No additional research is available.
@@ -129,6 +138,14 @@ def system_prompt(arm, turn_index=0, *, tools_type=None):
 class Tools(cap.Tools):
     COMMON = cap.Tools.COMMON + ('help_tool',)
 
+    def python_bindings(self):
+        # Same scientific environment in both arms. No data, persistent variables,
+        # strategy, synthetic cash prices or automatic correction is inserted.
+        import numpy as np
+        import pandas as pd
+        import scipy.optimize as sco
+        return dict(super().python_bindings(), np=np, pd=pd, sco=sco, json=json)
+
     def help_tool(self, name):
         available = set(self.COMMON) | {'run_python', 'submit', 'hold'}
         if self.arm == 'library':
@@ -155,6 +172,9 @@ class Tools(cap.Tools):
             result['python_example'] = ('import json\nevidence=json.load(open("evidence.json"))\n'
                                         'print([(r["id"],r["category"]) for r in evidence["records"]])')
             result['note'] = 'Variables do not persist. Load inputs, calculate and optionally submit in one call.'
+            result['prebound_modules'] = dict(np='numpy', pd='pandas', sco='scipy.optimize', json='json')
+            result['cash_contract'] = ('CASH is a zero-interest account balance, not a market-data column. '
+                'Use actual matrix columns for asset statistics; choose cash separately in your allocation.')
             result['file_inspection_example'] = ('import pandas as pd\n'
                 'quotes=pd.read_csv("quotes.csv")\nprint(quotes.columns.tolist())')
             result['input_files'] = {
@@ -165,6 +185,8 @@ class Tools(cap.Tools):
         elif name == 'load_history':
             result['python_example'] = 'h=load_history(lookback=252)\nprint(h["returns"].tail(3))'
             result['returns'] = 'prices and returns are full adjusted pandas matrices; metadata describes conventions'
+            result['index_type'] = 'ISO date strings; convert explicitly before datetime comparisons'
+            result['columns'] = 'traded tickers only; CASH is not a price or return series'
         elif name == 'list_algorithms':
             from fin_skills.algorithms import TASKS
             from fin_skills.algorithms.core import ALIASES
@@ -272,8 +294,22 @@ class Controller(cap.Controller):
             message = str(result.get('error', ''))
             if "name 'evidence' is not defined" in message:
                 result['hint'] = 'Load it in this call: import json; evidence=json.load(open("evidence.json"))'
+            elif message == "KeyError: 'CASH'":
+                result['hint'] = self.tools.help_tool('run_python')['cash_contract']
+            elif "DataFrame' object has no attribute 'append'" in message:
+                result['hint'] = ('DataFrame.append was removed. Use pd.concat([frame, other_frame]); '
+                                  'construct any new row as a DataFrame. No data was appended automatically.')
+            elif (message.startswith('TypeError:') and 'datetime' in message and "'str'" in message):
+                result['hint'] = ('Date strings and datetime objects cannot be compared directly. '
+                    'Convert the date Series/index AND the cutoff using pd.to_datetime, or compare '
+                    'consistent ISO date strings. Do not change the observation cutoff.')
+            elif 'number of bounds is not compatible' in message:
+                result['hint'] = ('Inspect len(x0), len(bounds) and the covariance matrix shape. '
+                    'Align all asset inputs to the same actual matrix columns. CASH is separate. '
+                    'Do not zip optimized values with a different ticker order.')
             elif 'NameError' in message:
                 result['hint'] = ('Each Python call starts fresh. Define imports and variables in this call. '
+                                  'np, pd, sco and json are prebound in both arms. '
                                   'Read files or call bound readers; no previous tool-result variables exist.')
             elif ('Series.cov()' in message or
                   any(x in message for x in ('KeyError', 'AttributeError'))):
