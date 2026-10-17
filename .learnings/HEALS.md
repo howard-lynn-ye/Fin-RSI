@@ -213,9 +213,9 @@ approved filesystem scope found the report and returned clean Git status. No exp
 was changed to work around this local path/access issue.
 
 - Pattern-Key: workspace.owned_checkout_and_git_access
-- Recurrence-Count: 2
+- Recurrence-Count: 3
 - First-Seen: 2026-10-15
-- Last-Seen: 2026-10-16
+- Last-Seen: 2026-10-17
 
 ## [HEAL-20261015-LOG] normalize terminal trailing spaces for publication
 
@@ -391,3 +391,23 @@ Verification update: job 2317005 passed all 36 exact host-staged copy cases and
 32,768-token generation with the complete CUDA BF16 model on two L40S GPUs.
 The 68 selected tests and both build validations also passed. This does not assert
 that direct RTX peer copies were repaired, or that the financial cycle completed.
+
+Verification update, 2026-10-17: the complete 32B pair finished with exit 0,
+44/44 decisions per arm and zero failed final decisions. Independent accounting
+passed for both returns. See benchmarks/agent_study/reports/20261017-32b-full-cycle for the immutable
+receipts and complete derived ledger. This confirms full-cycle L40S execution;
+it still does not validate direct RTX peer transfers.
+
+## [HEAL-20261017-RG] use ripgrep globs instead of shell-expanded Windows paths
+
+**Status**: verified
+**Area**: source inspection
+
+A search passed a wildcard filename as a positional argument on Windows and
+returned OS error 123. Searching the parent directory with `rg -g` instead found
+the intended ledger definitions and trade append sites, exit 0. No code or run
+was changed.
+
+- Pattern-Key: powershell.ripgrep_glob_path
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-10-17
