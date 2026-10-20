@@ -160,8 +160,16 @@ def pdf_text(body):
         reader = PdfReader(BytesIO(body))
         if len(reader.pages) > 100:
             raise ValueError("disclosure PDF exceeds 100-page extraction limit")
-        return '\n'.join(page.extract_text(extraction_mode='layout') or ''
-                         for page in reader.pages).replace('\x00', '')
+        pages = []
+        for page in reader.pages:
+            content = (page.extract_text(extraction_mode='layout') or '').replace('\x00', '')
+            # Some searchable disclosure PDFs have no text in layout mode even
+            # though plain extraction works. Keep that text for review; the row
+            # parser still requires readable transaction/date/amount columns.
+            if not content.strip():
+                content = (page.extract_text() or '').replace('\x00', '')
+            pages.append(content)
+        return '\n'.join(pages)
     except PdfReadError as exc:
         raise ValueError('source PDF could not be parsed') from exc
 

@@ -1,0 +1,82 @@
+\section{Frozen factorial trading experiment}
+\label{sec:factorial}
+\paragraph{Models and paired conditions.}
+We evaluate Qwen2.5-Coder 7B and 14B at the immutable revisions recorded in the protocol,
+with sampling seeds 11, 23, and 37. For each model, seed, and basket, the agent receives
+base access, knowledge access (K), numerical-tool access (T), or both (K+T). Each decision
+allows at most eight turns and 1,024 generated tokens per turn at temperature 0.1.
+Condition order is seeded. Each cell has 44 scheduled decisions, giving
+$2\times2\times3\times4\times44=\FTDecisions$ decisions. No success or profit threshold
+selects the analysis population.
+
+\paragraph{Assets, data, and timing.}
+The original basket contains SPY, QQQ, EFA, EEM, TLT, IEF, GLD, DBC, NVDA, AVGO, ORLY,
+and FAST. These assets and their period were already used in development. The transfer
+basket was declared before downloading its outcomes: XLB, XLC, XLE, XLF, XLI, XLK, XLP,
+XLRE, XLU, XLV, XLY, and SHY. It changes the instruments while retaining the calendar
+and substantial exposure overlap. Both use the January 3, 2025--September 25, 2026
+scoring window, with 434 sessions and available warmup history.
+
+All cells receive the same total-return price index constructed from the frozen quotes
+and corporate actions, restricted to the decision date. The prompt states that the
+prices are already adjusted. Targets execute after the next session's close-to-close
+return; rebalancing opportunities occur every ten sessions. Missing or invalid submissions
+retain drifted holdings. Portfolios are long-only, cash earns zero, and proportional
+cost is 5 bps per traded side. The ledger includes the first trade's fee and initial
+capital. Fixed strategy references use the same timing and cost conventions.
+
+\paragraph{Availability and accounting checks.}
+Before full inference, CPU qualification checked access restrictions, future-read denial,
+adjusted-price parity, algorithm execution, and valid submissions. A single development
+date per model and condition tested transport; a non-submission was retained rather
+than converted into a quality gate. Protocols, sources, data hashes, and the analysis
+plan were frozen before the full run. We subsequently verified all decision receipts
+and independently recomputed every cell's net-asset-value path with a dollar-holdings
+ledger. This verification adds no model decisions or selection rules.
+
+\paragraph{Endpoints.}
+The predeclared primary endpoint is cumulative net return from initial capital. The agent
+prompt asks for net risk-adjusted return; Sharpe and drawdown are secondary reported
+measures rather than substitutes chosen after observing results. For a model, basket,
+and seed, let $B,K,T,F$ denote cumulative returns in the four cells. Paired effects are
+$F-B$, the knowledge marginal effect $[(K-B)+(F-T)]/2$, the tools marginal effect
+$[(T-B)+(F-K)]/2$, and interaction $F-K-T+B$, in percentage points. We average these
+within model and basket over the three declared seeds.
+
+Risk, exposure, turnover, submissions, successful document reads, numerical calls,
+exact output adoption, failed turns, tokens, and generation time are secondary outcomes.
+We also reprice the same fixed decisions at 0, 10, and 25 bps without simulating a
+behavioral response. Circular calendar-block resampling uses lengths 10, 20, and 40,
+with 2,000 draws each; indices are shared across all cells and seeds within each group.
+The resulting 95\% intervals describe dependence sensitivity on this path.
+
+\input{factorial_results_table}
+
+\section{Trading results and observed use}
+\paragraph{Mixed return differences.}
+Table~\ref{tab:factorial-main} reports every group mean. Relative to base, full access
+changes original-basket returns by \FTOriginalSevenDifference{} points for 7B and
+\FTOriginalFourteenDifference{} for 14B. The transfer differences are
+\FTTransferSevenDifference{} and \FTTransferFourteenDifference{} points. Every full-access
+group falls below the equal-weight rebalancing reference
+(Table~\ref{tab:factorial-baselines}). Both positive and negative seed-level differences
+occur within every model--basket group (Table~\ref{tab:factorial-seeds}). All reported
+calendar-block intervals span zero (Table~\ref{tab:factorial-intervals}); no general
+performance advantage is established.
+
+\paragraph{Access rarely becomes use.}
+Across the complete batch, \FTSkillReads{} successful skill-document reads and
+\FTAlgorithmDecisions{} decisions with successful numerical calls were observed
+(Table~\ref{tab:factorial-use}). In particular, algorithm use concentrates in the transfer
+7B full-access cell; no tools-only cell makes a successful numerical call. Exact matching
+between submitted weights and a tool output is reported separately from calling it.
+The zero-read result makes interpreting K as consumed financial knowledge untenable.
+The return contrasts estimate offered access, including changes to prompts and behavior.
+
+\paragraph{Failures, exposure, and costs.}
+Submission denominators include all scheduled decisions, and failed turns remain in the
+record. A missed rebalance can leave a profitable or losing position in place, so returns
+do not directly measure interface competence. Tables~\ref{tab:factorial-risk}
+and~\ref{tab:factorial-cost} report exposure, drawdown, turnover, token use, generation time,
+and transaction-cost sensitivity. Appendix~\ref{app:factorial} and the aggregate evidence
+retain all seed-level results; none are selected for successful tool use or positive return.

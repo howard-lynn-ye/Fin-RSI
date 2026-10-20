@@ -10,8 +10,14 @@ from .model import Batch, Watch, utcnow
 
 
 class Store:
-    def __init__(self, path):
+    def __init__(self, path, *, read_only=False):
         self.path = str(path)
+        if read_only:
+            existing = Path(path).expanduser().resolve(strict=True)
+            self.path = str(existing)
+            self.db = sqlite3.connect(existing.as_uri() + '?mode=ro', uri=True, timeout=20)
+            self.db.row_factory = sqlite3.Row
+            return
         if self.path != ":memory:":
             Path(self.path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
             self.path = str(Path(self.path).expanduser().resolve())
@@ -124,6 +130,31 @@ class Store:
         with self.db:
             self.db.executemany("UPDATE alerts SET acknowledged_at=? WHERE seq=?",
                                 [(utcnow(), int(s)) for s in sequences])
+
+    def retrieval_events(self, *, as_of, watch_id=None, max_records=10000):
+        """Latest eligible revision per event, including old revisions for past queries.
+
+        Event normalizes stored dates to UTC ISO strings. A fixed microsecond cutoff
+        preserves sub-second ordering without SQLite's rounded Julian-day conversion.
+        Refuse an oversized snapshot rather than silently searching only its first page.
+        """
+        from fin_skills.rag.documents import timestamp
+        if type(max_records) is not int or not 1 <= max_records <= 10000:
+            raise ValueError('max_records must be 1..10000')
+        cutoff = timestamp(as_of, 'as_of').isoformat(timespec='microseconds')
+        conditions = ('observed_at <= ? AND (json_extract(record, \'$.published_at\') IS NULL '
+                      'OR json_extract(record, \'$.published_at\') <= ?)')
+        params = [cutoff, cutoff]
+        if watch_id is not None:
+            conditions += ' AND watch_id=?'
+            params.append(watch_id)
+        rows = self.db.execute(
+            'SELECT seq,watch_id,record FROM events WHERE seq IN '
+            '(SELECT max(seq) FROM events WHERE ' + conditions +
+            ' GROUP BY watch_id,event_id) ORDER BY seq LIMIT ?', [*params, max_records + 1]).fetchall()
+        if len(rows) > max_records:
+            raise ValueError('eligible collection exceeds max_records; narrow watch_id or raise the limit')
+        return [dict(json.loads(r['record']), seq=r['seq'], watch_id=r['watch_id']) for r in rows]
 
     def status(self):
         return [dict(r) for r in self.db.execute(

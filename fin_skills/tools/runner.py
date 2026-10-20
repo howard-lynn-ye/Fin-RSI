@@ -407,14 +407,14 @@ _TOOLS: list[dict[str, Any]] | None = None
 def list_tools() -> list[dict[str, Any]]:
     """Every tool, transport-neutral: {'name', 'description', 'input_schema'[, 'guard']}.
 
-    Sorted with the catalogue tools first (they are what an agent needs to orient), then
-    the per-guard tools alphabetically. `export.py` reshapes these for MCP, the Anthropic
+    Retrieval entry points precede catalogue and execution tools; per-guard tools follow
+    alphabetically. `export.py` reshapes these for MCP, the Anthropic
     Messages API and the OpenAI APIs; nothing else in the codebase writes a tool definition.
     """
     global _TOOLS
     if _TOOLS is None:
-        tools = (_catalogue_tools() + collection_definitions() + algorithm_definitions()
-                 + model_definitions() + knowledge_definitions() + rag_definitions())
+        tools = (rag_definitions() + _catalogue_tools() + collection_definitions() + algorithm_definitions()
+                 + model_definitions() + knowledge_definitions())
         for name in sorted(exported()):
             spec = exported()[name]
             tools.append({"name": spec.tool, "description": spec.description,

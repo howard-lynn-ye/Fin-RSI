@@ -1,10 +1,45 @@
 # 内置 RAG 与模型流水线
 
-更新：2026-09-22。公开入口为 `fin_skills.rag` 和 `fin_skills.model_zoo`。
+更新：2026-10-06。公开入口为 `fin_skills.rag`、`fin_skills.tools` 和 `fin_skills.model_zoo`。
 
 库中现在有可执行的 RAG 组件：接收文档、分块、检索、可选重排、组装带来源的上下文，
 再调用用户提供的文本生成函数。原来的 `fin_skills.find()` 仍用于简单的技能文本搜索。
 生成模型和 embedding 模型由调用方选择，导入或构建默认检索索引不会联网。
+
+## Agent 的统一入口
+
+```python
+from fin_skills.tools import call_tool
+
+result = call_tool("research_context", {"query": "adjusted returns and trading costs"})
+print(result["knowledge"])       # 技能与参考文档片段，附来源
+print(result["tool_contracts"])  # 相关工具的完整参数 schema
+```
+
+`research_context` 在 JSON/MCP 工具列表前部。一次查询返回库内知识、工具接口以及可选的
+`documents` 证据；它不替模型选策略或执行工具。`call_template` 中的必填参数是占位符，
+必须按 `input_schema` 填入真实值后才能调用。两个内容区各自编号引用，引用时需注明所属区。
+
+`as_of` 只过滤证据区。知识区和工具接口始终描述当前安装版本，不应当作历史时点的知识。
+默认检索为 BM25，未自动安装向量模型。`max_context_chars` 限制知识与证据的合计正文，
+不包含引用元数据和工具 schema；接入端仍需处理完整回复的长度。
+
+对持续采集的新闻和披露，可查询已配置的数据库：
+
+```python
+result = call_tool("collection_search", {
+    "database": "events.sqlite3",
+    "query": "inflation interest rates",
+})
+print(result["evidence"])
+```
+
+每次查询只读打开数据库，重新索引当前可用记录，因此采集器保存的新记录会在下一次查询中
+可见，无需手工刷新索引。查询本身不抓取资料、不启动后台进程；采集器仍须按
+[采集指南](COLLECTION.md)运行。显式传入 `as_of` 时选择截止时点可用的历史修订，
+以观察时间和公开时间中较晚者为准，不把交易日当成公开日。原始公开时间未知时保持未知。
+当前运行健康状态只在省略 `as_of` 时返回，不混入历史查询。超过 `max_records`
+会明确报错，可用 `watch_id` 缩小范围；不会默默只搜索第一页。
 
 ## 直接使用库内知识
 

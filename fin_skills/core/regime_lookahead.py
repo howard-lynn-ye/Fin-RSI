@@ -36,6 +36,7 @@ Run:  python regime_lookahead.py        (numpy / pandas / statsmodels; fixed see
 """
 from __future__ import annotations
 
+import inspect
 import time
 import warnings
 
@@ -131,15 +132,45 @@ def _model(y: np.ndarray):
     return MarkovRegression(y, k_regimes=2, trend="c", switching_variance=True)
 
 
+def _seeded_fit(y, reps, seed, **kwargs):
+    """Seed search on both statsmodels 0.14 (global RNG) and 0.15 (explicit rng).
+
+    The legacy route restores caller state even on failure. This sequential demo
+    must not run legacy fits concurrently in threads sharing numpy's global RNG.
+    """
+    model = _model(y)
+    if 'rng' in inspect.signature(model.fit).parameters:
+        return model.fit(search_reps=reps, rng=np.random.default_rng(seed), disp=False, **kwargs)
+    state = np.random.get_state()
+    try:
+        np.random.seed(seed)
+        return model.fit(search_reps=reps, disp=False, **kwargs)
+    finally:
+        np.random.set_state(state)
+
+
 def fit_ms(y: np.ndarray, starts=STARTS):
-    """Fit from several starts, keep the highest log-likelihood. Returns (result, llf per start)."""
-    fits = []
+    """Keep the best finite fit; a failed start is NaN in the returned likelihood list."""
+    fits, llfs, failures = [], [], []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for reps, rs in starts:
-            fits.append(_model(y).fit(search_reps=reps, rng=np.random.default_rng(rs), disp=False))
-    llfs = [float(f.llf) for f in fits]
-    return fits[int(np.argmax(llfs))], llfs
+            try:
+                fit = _seeded_fit(y, reps, rs)
+                if not np.isfinite(fit.llf) or not np.isfinite(fit.params).all():
+                    raise FloatingPointError('nonfinite likelihood or parameters')
+                fits.append(fit)
+                llfs.append(float(fit.llf))
+            except (np.linalg.LinAlgError, FloatingPointError) as exc:
+                fits.append(None)
+                llfs.append(float('nan'))
+                failures.append(f'search_reps={reps}, seed={rs}: {exc}')
+    if not llfs or not np.isfinite(llfs).any():
+        raise RuntimeError('all Markov-switching starts failed: ' + '; '.join(failures))
+    if failures:
+        warnings.warn('Markov-switching start failed; likelihood is NaN: ' + '; '.join(failures),
+                      RuntimeWarning, stacklevel=2)
+    return fits[int(np.nanargmax(llfs))], llfs
 
 
 def calm_index(res) -> int:
@@ -330,10 +361,10 @@ def fit_pathologies(r: np.ndarray, s: np.ndarray, main_llfs: list[float],
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         default = _model(r).fit(search_reps=0, disp=False)
-        search = _model(r).fit(search_reps=5, rng=np.random.default_rng(1), disp=False)
+        search = _seeded_fit(r, 5, 1)
         flat = _model(r).fit(start_params=np.array([0.5, 0.5, 0.0, 0.0, r.var(), r.var()]),
                              disp=False)
-        swapped = _model(r).fit(search_reps=20, rng=np.random.default_rng(7), disp=False)
+        swapped = _seeded_fit(r, 20, 7)
 
     def s2(res):
         names = list(res.model.param_names)
@@ -376,7 +407,7 @@ def fit_pathologies(r: np.ndarray, s: np.ndarray, main_llfs: list[float],
     t0 = time.time()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        pr = _model(logp).fit(search_reps=5, rng=np.random.default_rng(1), disp=False)
+        pr = _seeded_fit(logp, 5, 1)
     lab = np.asarray(pr.smoothed_marginal_probabilities).argmax(axis=1)
     acc_true = max((lab == s).mean(), (lab != s).mean())
     above = (logp > np.median(logp)).astype(int)

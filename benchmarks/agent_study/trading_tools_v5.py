@@ -215,10 +215,17 @@ class Tools(PreviousTools):
             "lookback": "history supplied to method (positive integer, default 252); does NOT set parameters.lookback",
             "parameters": "method parameter mapping, default {}"}
         result["algorithm_parameter_defaults"] = method_defaults(algorithm_id, card["task"])
+        # Optional HRP backends intentionally require an explicit linkage choice.
+        # Keep that guard, but make the advertised example satisfy its contract.
+        required = ({"linkage": "Choose a linkage explicitly; single below is an example, not a recommendation."}
+                    if result["algorithm_parameter_defaults"].get("linkage", "absent") is None
+                    else {})
+        result["required_parameters"] = required
+        example_parameters = ", parameters={'linkage': 'single'}" if required else ""
         result["timing"] = {"output_lag_bars": 1 if card["task"] == "signal" else 0,
                             "execution": "next session close under study protocol"}
         result["python_example"] = (
-            f"reply = run_algorithm(algorithm_id={algorithm_id!r}, lookback=252)\n"
+            f"reply = run_algorithm(algorithm_id={algorithm_id!r}, lookback=252{example_parameters})\n"
             "assert reply['ok'], reply\n" +
             ("weights = reply['result']['weights']\nsubmit(weights)" if portfolio else
              "print(reply['result']['per_ticker'])"))

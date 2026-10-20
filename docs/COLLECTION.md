@@ -56,11 +56,25 @@ with Store('events.sqlite3') as store:
 ```
 
 The shared tools/MCP registry exposes `collection_sources`, `collection_configure`,
-`collect_once`, `collection_events`, `collection_status`, `collection_acknowledge`,
+`collect_once`, `collection_events`, `collection_search`, `collection_status`, `collection_acknowledge`,
 `compare_holdings`, `search_data` and `fetch_market_data`. A tool call performs a bounded
 poll of watches that are due, respecting retry schedules; continuous operation is an explicit
 Python/CLI action. Configure paths on the machine
 running the MCP server. Treat downloaded content as untrusted data.
+
+`collection_search(database, query)` retrieves cited evidence alongside packaged knowledge and
+tool contracts. It opens an existing database read-only and rebuilds a bounded BM25 snapshot on
+each query, so newly saved events require no separate index refresh. It does not fetch sources
+or start polling. Run the collector separately to keep the underlying data current.
+
+For an explicit timezone-aware `as_of`, retrieval selects the latest revision available at that
+time, even if a newer revision has since arrived. Availability is the later of `observed_at` and
+`published_at`; unknown publication time stays unknown and uses observation time for eligibility.
+Neither a transaction date nor a filing's reporting period is substituted for availability.
+Current collection health is omitted for historical queries. Current installed skill knowledge
+and tool schemas are labeled separately and are not a reconstructed historical corpus.
+The default corpus cap is 10,000 events; exceeding `max_records` raises an error instead of
+silently dropping records. Narrow `watch_id` when needed. See [the RAG guide](RAG_PIPELINE.md).
 
 ## What "tracking a trade" means here
 
@@ -74,7 +88,11 @@ running the MCP server. Treat downloaded content as untrusted data.
 
 `observed_at`, `published_at`, `transaction_date` and `period_end` remain separate. Unknown
 publication times stay unknown. Source PDFs without recognizable rows generate an `unparsed`
-filing alert with source text, not invented transactions. Current 13F forms report dollar
+filing alert with source text, not invented transactions. If layout extraction is empty,
+the parser tries plain text before classifying a page as unreadable. This is not OCR;
+image-only documents still require review. Already-seen filings are not automatically
+reparsed after an upgrade; use a new watch ID to recheck them while retaining prior records.
+Current 13F forms report dollar
 values; legacy units need an explicit `value_units` choice, so the default is `as_filed`.
 
 The page crawler respects robots.txt, limits page count, rejects private targets and requires
@@ -91,6 +109,20 @@ python scripts/check_collection_live.py --house-year 2026 --house-name Pelosi --
 The first command uses injected official-format responses and needs no network. The second
 uses real public sources with a temporary database. Add `--sec-cik 1067983` only after setting
 your identity. A passing fixture test does not establish current source availability.
+
+For a persistent acceptance receipt, build a wheel, install it with the `collect` extra into
+a fresh virtual environment, and run `scripts/check_installed_collection.py` using that
+environment's Python with `-I`, from outside the checkout. Pass a new `--output` directory
+and the wheel's source `--commit`. This check exercises the registered collection tools,
+reopens the database, and waits for a scheduled news poll. It records source errors and
+publication/observation dates; raw records remain in the output directory. SEC is skipped
+when the caller has not configured `SEC_IDENTITY`.
+
+The check treats the Schwab and CFTC pages as transport checks, not structured sentiment or
+position feeds. A short successful poll cannot establish exhaustive coverage or prove that
+a new publication was detected if the source did not publish anything during the test.
+`receipt.json` separates tool discovery from tools actually exercised and reports partial
+source failures as `needs_review`. It contains no trading performance measurement.
 
 Check `status` for errors, partial results, remaining filings and next retry times. HTTP
 Retry-After reaches the scheduler; failed filings retain individual retries so one old

@@ -291,6 +291,31 @@ def test_house_amount_wrapping_spouse_and_unknown_ticker():
     assert house_transactions('scanned unreadable document') == []
 
 
+def test_house_pdf_preserves_plain_text_when_layout_extraction_is_empty(monkeypatch):
+    pypdf = pytest.importorskip('pypdf')
+    from fin_skills.collect.parsers import pdf_text
+
+    row = ('SP Example Holdings (EXM) [ST] P 09/01/2026 09/02/2026 '
+           '$1,001 - $15,000')
+    calls = []
+
+    class Page:
+        def __init__(self, layout, plain):
+            self.layout, self.plain = layout, plain
+
+        def extract_text(self, **kwargs):
+            calls.append(kwargs)
+            return self.layout if kwargs.get('extraction_mode') == 'layout' else self.plain
+
+    pages = [Page('\x00  \n', row), Page('layout text', 'unused'), Page('', '')]
+    monkeypatch.setattr(pypdf, 'PdfReader', lambda _: type('Reader', (), {'pages': pages})())
+    content = pdf_text(b'fixture')
+    assert content == row + '\nlayout text\n'
+    assert len(house_transactions(content)) == 1
+    assert calls == [{'extraction_mode': 'layout'}, {}, {'extraction_mode': 'layout'},
+                     {'extraction_mode': 'layout'}, {}]
+
+
 @pytest.mark.parametrize('broken', [False, True])
 def test_house_year_index_and_missing_text_emit_unparsed_not_fake_trade(monkeypatch, broken):
     raw = b'<FinancialDisclosure><Member><Last>Example</Last><First>Person</First><FilingType>P</FilingType>' \

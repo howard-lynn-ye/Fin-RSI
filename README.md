@@ -67,7 +67,7 @@ The AI-for-finance ecosystem is saturated at two extremes—**API wrappers** (ho
 
 **`fin-skills` solves this at two levels:**
 1. **Source-Verified Knowledge Base (`plugins/*/skills/`)**: Every claim is dated (`verified_on`) and tagged with primary-source provenance (✅ verified in source code / exchange rulebook · ⚠️ secondhand · ❓ unverified).
-2. **Executable Audit Engine (`fin_skills.api`)**: Reading a skill changes what an LLM *says*; running an executable guard changes what its pipeline is *allowed to report*. We package **40 guards that return a `GuardResult`** behind a unified `Bundle` container and `check()` API, plus **66 tools an agent can call over JSON** via MCP or OpenAI/Anthropic tool schemas.
+2. **Executable Audit Engine (`fin_skills.api`)**: Reading a skill changes what an LLM *says*; running an executable guard changes what its pipeline is *allowed to report*. We package **41 guards that return a `GuardResult`** behind a unified `Bundle` container and `check()` API, plus **69 tools an agent can call over JSON** via MCP or OpenAI/Anthropic tool schemas.
 
 ---
 
@@ -347,7 +347,7 @@ Full reproducible benchmark output: [`benchmarks/RESULTS.md`](benchmarks/RESULTS
 | `fin-china` | [`china-trading-stack`](plugins/fin-china/skills/china-trading-stack/SKILL.md) | Backtest and execute Chinese-market strategies under the rules a Western engine gets wrong. | 3 | 11 |
 | `fin-china` | [`cross-board-supply-chain-rsi`](plugins/fin-china/skills/cross-board-supply-chain-rsi/SKILL.md) | [fin-china] Route cross-board price-limit microstructure sign bifurcations (10% Main Board reversal vs 20% STAR 688 and ChiNext 300 high-threshold continuation) and synthesize leav | 0 | 1 |
 | `fin-china` | [`kol-credibility-registry`](plugins/fin-china/skills/kol-credibility-registry/SKILL.md) | [fin-china] Score and calibrate financial KOL credibility across Xueqiu and StockTwits using Bayesian win-rate updating, Brier scores, and contrarian inversion. | 0 | 2 |
-| `fin-china` | [`signal-reconciler`](plugins/fin-china/skills/signal-reconciler/SKILL.md) | [fin-china] Resolve conflicting bullish and bearish signals across macro, fundamental, technical, and social sentiment sources using entropy-weighted evidence combination. | 0 | 1 |
+| `fin-china` | [`signal-reconciler`](plugins/fin-china/skills/signal-reconciler/SKILL.md) | [fin-china] Inspect a heuristic conflict resolver for supplied policy, flow, valuation, news, and sentiment scores. | 0 | 1 |
 | `fin-core` | [`backtest-overfitting`](plugins/fin-core/skills/backtest-overfitting/SKILL.md) | Decide whether an edge that passed every mechanical check is still just the best of N tries. | 0 | 1 |
 | `fin-core` | [`backtest-validation`](plugins/fin-core/skills/backtest-validation/SKILL.md) | Decide whether a result survives the number of things you tried. | 3 | 3 |
 | `fin-core` | [`backtesting-engines`](plugins/fin-core/skills/backtesting-engines/SKILL.md) | Choose a backtesting engine and know what it silently models wrong. | 6 | 0 |
