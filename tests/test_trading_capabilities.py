@@ -44,6 +44,11 @@ def workspace(tmp_path):
     return tmp_path
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    'Awaiting the Owner review decision (Fin-RSI v2 consolidation PLAN §6 item 5, 2026-10-20): '
+    "v2's 5 guard tools check_cross_board_spillover, check_lob_liquidity_gate, check_macro_fx_beta_gate, "
+    'check_panel_balance and check_stock_jev_gate are not in REVIEWED_GUARDS, so they stay unreviewed '
+    '(fail closed) in the study tool policy until that decision.'))
 def test_entire_tool_registry_is_classified_and_discoverable(workspace):
     tools = cap.Tools(workspace, 'library')
     cards = pages(tools, 'list_library_tools', {}, 'tools')
