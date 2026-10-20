@@ -51,7 +51,7 @@ def decode_response(tokenizer, tokens, prompt, stop_token_ids=()):
 
 
 class TransformersChat:
-    def __init__(self, model, revision, *, max_tokens=2048, seed=0):
+    def __init__(self, model, revision, *, max_tokens=2048, seed=0, sampling=None):
         import torch
         from transformers import AutoModelForCausalLM
         if not torch.cuda.is_available():
@@ -63,6 +63,8 @@ class TransformersChat:
             attn_implementation="sdpa")
         self.model.eval()
         self.max_tokens, self.seed, self.calls = max_tokens, seed, 0
+        self.max_time = None
+        self.sampling = dict(sampling or {})  # optional overrides, e.g. Qwen3 thinking settings
         self.context_limit = context_limit(self.model.config, self.tokenizer)
         stops = self.model.generation_config.eos_token_id
         self.stop_token_ids = tuple(stops if isinstance(stops, (list, tuple)) else
@@ -78,10 +80,16 @@ class TransformersChat:
         if count + self.max_tokens > self.context_limit:
             raise ValueError("context budget exceeded; no silent truncation")
         started = time.monotonic()
+        generation_limits = {"max_new_tokens": self.max_tokens,
+                             "do_sample": True, "temperature": .1, "top_p": 1.0,
+                             "pad_token_id": self.tokenizer.eos_token_id}
+        # Transformers checks max_time between decoding steps. The caller also enforces
+        # the measured wall cap after return and rejects any overrun from admission.
+        if self.max_time is not None:
+            generation_limits["max_time"] = float(self.max_time)
+        generation_limits.update(self.sampling)
         with torch.inference_mode():
-            result = self.model.generate(**inputs, max_new_tokens=self.max_tokens,
-                                         do_sample=True, temperature=.1, top_p=1.0,
-                                         pad_token_id=self.tokenizer.eos_token_id)
+            result = self.model.generate(**inputs, **generation_limits)
         tokens = result[0, count:]
         prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         stopped = any(int(token) in self.stop_token_ids for token in tokens)
