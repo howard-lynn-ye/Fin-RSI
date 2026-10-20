@@ -174,18 +174,7 @@ def test_exec_line_is_pinned():
 @pytest.mark.slow
 def test_replay_with_every_flag_at_its_default(tmp_path):
     import test_fin_rsi_run as run_test
-    if not (run_test.DATA / run_test.ROWS).exists() or not run_test.PYTHON.exists():
-        pytest.skip('needs the Beacon Fin-RSI result files and environment')
-    out = tmp_path / 'defaults'
-    env = dict(os.environ, PYTHONPATH=str(run_test.REPO), PYTHONNOUSERSITE='1',
-               PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='1')
-    subprocess.run([str(run_test.PYTHON), str(run_test.RUNNER), '--rows', run_test.ROWS,
-                    '--condition', 'C_unchanged', '--model', 'general14b=x', '--model', 'general32b=x',
-                    '--interface', 'tolerant', '--backend', 'replay:' + run_test.ATTEMPT,
-                    '--system-variant', 'sealed', '--task-variant', 'sealed', '--skill-search', 'substring',
-                    '--decision-channel', '', '--sampling', 'default', '--flag-arms', '',
-                    '--out', str(out)],
-                   cwd=run_test.DATA, env=env, check=True, capture_output=True, text=True, timeout=1800)
-    got = {p.name: run_test.projection_digest(json.loads((p / 'decision.json').read_text()))
-           for p in sorted((out / 'rows').iterdir())}
+    got = run_test.replay('tolerant', tmp_path / 'defaults', '--system-variant', 'sealed', '--task-variant', 'sealed',
+                          '--skill-search', 'substring', '--decision-channel', '', '--sampling', 'default',
+                          '--flag-arms', '')
     assert got == run_test.FROZEN['tolerant']
