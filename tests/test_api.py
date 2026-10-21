@@ -504,38 +504,10 @@ def build_lob_liquidity_gate() -> dict:
 
 
 def build_stock_jev_gate() -> dict:
-    from fin_skills.jev.stock_jev import (
-        AnalyticalStockJEV,
-        build_disqualification_question,
-        build_macro_regime_question,
-    )
-    engine = AnalyticalStockJEV()
-    questions = {
-        **build_macro_regime_question(),
-        **build_disqualification_question("SH600036"),
-    }
-    clean_res = engine.predict({"vol_shock_20d": 0.2, "macro_fx_shock": 0.1}, questions=questions)
-    defect_res = {
-        "model": "defect-jev",
-        "usage": {"input_tokens": 10, "output_tokens": 5},
-        "answers": {
-            "regime_gate": {
-                "type": "choice",
-                "choice": "BULL_MOMENTUM",
-                "confidence": 0.9,
-                "probabilities": {
-                    "BULL_MOMENTUM": 0.5,
-                    "CHOP_MEAN_REVERSION": 0.2,
-                    "HIGH_VOL_SHOCK": 0.1,
-                    "LIQUIDITY_CONTRACTION": 0.1,
-                },
-            }
-        },
-    }
-    return {
-        "clean": dict(decision_result=clean_res),
-        "defect": dict(decision_result=defect_res),
-    }
+    from tests.test_stock_jev import example
+    questions, response = example()
+    clean = dict(decision_result=response, questions=questions)
+    return {"clean": clean, "defect": dict(clean, max_disqualification_rate=0.1)}
 
 
 _BUILDERS: dict[str, Callable[[], dict]] = {
