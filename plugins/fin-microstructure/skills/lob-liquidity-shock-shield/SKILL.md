@@ -1,40 +1,61 @@
 ---
 name: lob-liquidity-shock-shield
 description: >-
-  [fin-microstructure] Compute a 20-day order-book volatility-of-volatility liquidity absorption shield and estimate L2 queue-position slippage, limit-lockout penalty, and A-share short-borrow fee schedules. TRIGGER - lob_liquidity_shock_shield, compute_lob_liquidity_shock_shield, estimate_intraday_lob_execution_cost, audit_lob_liquidity_causality, check_lob_liquidity_gate, volatility of volatility liquidity absorption shield, 20-day Garman-Klass range vol-of-vol stability, L2 queue position participation slippage and short borrow fee schedule, 限价订单簿波动率之波动率流动性吸收护盾与L2队列冲击融券费率建模. SKIP for Cont-Stoikov-Talreja birth-death queue arrival rates (limit-order-book-models), for Lee-Ready tick classification and Kyle lambda estimation (intraday-microstructure), for Almgren-Chriss parent order scheduling (execution-algorithms), and for A-share board sign bifurcation (cross-board-supply-chain-rsi).
+  Calculate a daily cross-sectional liquidity instability proxy from observed volatility,
+  returns, volume, Amihud illiquidity and margin data. TRIGGER -
+  compute_lob_liquidity_shock_shield, audit_lob_liquidity_causality, check_lob_liquidity_gate,
+  rolling liquidity dispersion, liquidity proxy warmup or temporal invariance.
+  SKIP for passive order fill probabilities (limit-order-book-models), measured execution
+  costs (execution-cost-analysis), or parent-order scheduling (execution-algorithms).
 license: MIT
-compatibility: Python 3.10+, numpy, pandas
+compatibility: Python 3.10+ with numpy and pandas; no market connection required.
 metadata:
-  verified_on: "2026-10-02"
+  verified_on: "2026-10-12"
+allowed-tools: "Bash(python:*)"
 ---
 
-# 20-Day LOB Volatility-of-Volatility Liquidity Shield & L2 Execution Cost Engine (`lob-liquidity-shock-shield`)
+# Daily liquidity instability proxy
 
-## Why 1-Day Liquidity Snapshots Miss Order-Book Replenishment Fragility
+Adapted from Shwai He's `v2` implementation. This computes a research feature from daily
+observations. The historical function name contains LOB; the inputs do not reconstruct
+an order book and the score is not a fill probability, execution cost or calibrated alpha.
 
-Single-day range volatility ($\text{GK}_{i,t}$) or single-day Amihud illiquidity ($\text{Amihud}_{i,t}$) conflates transient news volume with structural limit-order-book (`LOB`) depletion. Following Chordia, Subrahmanyam & Anshuman (2001) and Lou & Shu (2017), **second-moment liquidity instability (volatility-of-volatility and illiquidity dispersion over a 20-day rolling window)** captures whether passive market makers replenish depth consistently or withdraw during stress:
+✅ Code verification, 2026-10-12: run `python scripts/lob_liquidity_shock_shield.py` from
+this skill directory. Numerical and temporal regression checks live in
+`tests/test_microstructure_lob_liquidity_shock_shield.py` at the repository root.
 
-$$S_{i,t}^{\text{LOB}} = \text{CS-ZScore}_t\!\Bigl(-0.32\,R_t(\sigma_{20\text{d}}(r_i)) - 0.24\,R_t(\sigma_{20\text{d}}(\text{GK}_i)) - 0.20\,R_t(\mu_{20\text{d}}(\text{GK}_i)) - 0.10\,R_t(\sigma_{20\text{d}}(\log V_i)) - 0.06\,R_t(\sigma_{20\text{d}}(\text{Amihud}_i)) - 0.08\,R_t(Z_{30\text{d}}(\text{Margin}_i))\Bigr)$$
+## Input and time contract
 
-## L2 Queue-Position Slippage, Limit-Lockout Penalty & Short-Borrow Schedule
+Each row requires `date`, `symbol`, `garman_klass_volatility`, `ret_1d`, `volume`,
+`margin_balance_z30` and `amihud_illiquidity`. Dates must parse as timestamps, with unique
+symbol/timestamp pairs. Numeric observations must be finite. Volatility, volume and
+illiquidity must be nonnegative. Missing features raise instead of receiving invented values.
 
-`scripts/lob_liquidity_shock_shield.py` (`fin_skills.microstructure.lob_liquidity_shock_shield`) also provides `estimate_intraday_lob_execution_cost(...)` for live/paper trading (`14:30 CST` execution window):
+The script accepts explicit volatility/return aliases listed in `_FEATURES`; these are
+different proxies, not numerically equivalent measurements. `volume` must be observed
+volume, not a turnover z-score. The margin input must already be standardized causally.
 
-1. **Passive Queue Fill Probability & Adverse Selection**:
-   $$P_{\text{fill}}(q, \pi) = \exp\!\bigl(-1.25\,q\,(1 + 4\pi) - 0.85\,\max(0, \rho_{\text{lim}} - 0.65)\bigr)$$
-2. **Square-Root Participation Impact + Price-Limit Lockout Penalty**:
-   $$\text{Slippage}_{\text{1-way, bps}} = \text{QueueImpact}_{\text{bps}} + 10^4\,\eta_{\text{board}}\,\sigma_{\text{GK}}\sqrt{\frac{Q}{\text{ADV}}} + 3200\,\max(0, \rho_{\text{lim}} - 0.72)^2$$
-3. **A-Share Tiered Short-Borrow (`融券`) Fee Schedule**:
-   - `2.50%` p.a. (`Broad_Index_ETF`), `4.50%` p.a. (`10%` Main Board), `6.50%` p.a. (`20%` STAR/ChiNext), plus `+2.00%` p.a. crowding surcharge when $Z_{\text{margin}} > 1.0$.
+Rolling windows count observations per symbol. Warmup outputs remain NaN; score only rows
+with sufficient history. Rankings use the eligible assets at the same timestamp. Constant
+cross-sections receive zero. Output preserves the caller's row order and index labels.
 
-## Executable API & Guard Verification
+🚨 All inputs at a timestamp must already be observable before using its score. A score
+using the day's closing data cannot support a trade earlier that afternoon. The function
+does not lag scores or verify when a vendor published the data.
 
-```bash
-python3 -c "from fin_skills.microstructure.lob_liquidity_shock_shield import _demo; raise SystemExit(_demo())"
-```
+## Calculation and audit
 
-## Cross-References
+`compute_lob_liquidity_shock_shield` combines ranks of rolling return dispersion,
+volatility dispersion and mean, log-volume dispersion, illiquidity dispersion, and the
+margin input. Fixed research weights and clipping are visible in the script; they are
+heuristic choices without a claimed out-of-sample benefit.
 
-- `limit-order-book-models` — Cont-Stoikov-Talreja birth-death queue arrival rates and passive fill probabilities.
-- `intraday-microstructure` — Tick-level Lee-Ready classification, Kyle's lambda, and VPIN.
-- `cross-board-supply-chain-rsi` — Leave-one-out (`j != i`) A-share peer spillover and `10%` vs `20%` board sign bifurcation.
+`audit_lob_liquidity_causality` perturbs all consumed features after one cutoff and checks
+earlier outputs. A supplied `signal_col` must match the built-in formula, including warmup
+NaNs. Correlation alone is insufficient. The audit also rejects insufficient history and
+degenerate cross-sectional dispersion. Its passing result covers these numerical checks,
+not arbitrary feature-producing code, publication timing, or profitability.
+
+For a different signal formula, use `assert_causal` from
+`../../../fin-core/skills/research-integrity-guards/SKILL.md` with the actual producer.
+For order-book queue models, see `../limit-order-book-models/SKILL.md`.
