@@ -284,7 +284,10 @@ def audit_cross_board_spillover_causality(
     date_col: str = "date",
     include_self_in_peer: bool = False,
 ) -> Dict[str, Any]:
-    """Executable guard verifying leave-one-out spillover causality (`A_ii = 0`) and board coverage."""
+    """Report board coverage and fixed flags; NOT a causality check.
+
+    Not a causality check: zero_self_leakage is True whenever include_self_in_peer is False and the spillover is finite (leave-one-out construction is not tested), and the board-sign check compares the fixed symbol-prefix sign mapping with itself unless the caller supplies micro_reversal_sign. A-share symbols only; other symbols fall into one HK_US bucket.
+    """
     if not isinstance(df, pd.DataFrame) or df.empty:
         raise TypeError("df must be a non-empty DataFrame")
 

@@ -47,7 +47,7 @@ The reference implementation in `scripts/cross_board_supply_chain_rsi.py` (expor
 
 - `classify_board_microstructure_regime(symbol)`: Returns `BoardMicrostructureSpec` with `board_name`, `board_type_id`, `price_limit_pct`, `settlement_rule`, `investor_threshold_rmb`, `micro_reversal_sign`, and `supply_chain_cluster`.
 - `compute_cross_board_supply_chain_features(df)`: Appends `supply_chain_leader_spillover`, `smart_vs_retail_divergence`, `cross_board_limit_bifurcation`, `intraday_candle_asymmetry`, and `garp_valuation_quality`.
-- `audit_cross_board_spillover_causality(df)`: Executable guard verifying leave-one-out causality and cross-board sign bifurcation.
+- `audit_cross_board_spillover_causality(df)`: Reports board coverage and fixed sign/finite-spillover flags. Not a causality check: its leakage verdict follows `include_self_in_peer`, not the data, and the sign check compares the fixed board mapping with itself.
 
 ## Related Skills
 
