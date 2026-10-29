@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fin_skills.core.assert_causal import assert_causal, scan_indicators, warmup_bars
+from fin_skills.core.assert_causal import (assert_causal, assert_lagged, scan_indicators,
+                                          warmup_bars)
 
 
 @pytest.fixture
@@ -80,3 +81,52 @@ def test_warmup_bars_first_prefix_for_causal_none_for_lookahead(ohlc):
     # (50 bars) already qualifies; a centred window never agrees on its last 10 values
     assert warmup_bars(lambda d: d.close.rolling(20).mean(), ohlc) == 50
     assert warmup_bars(lambda d: d.close.rolling(20, center=True).mean(), ohlc) is None
+
+
+# ------------------------------------------------------------------ execution lag
+def _cross(d):
+    return (d.close.rolling(5).mean() > d.close.rolling(20).mean()).astype(float)
+
+
+@pytest.fixture
+def panel() -> pd.DataFrame:
+    rng = np.random.default_rng(11)
+    idx = pd.bdate_range("2025-01-01", periods=300)
+    return pd.DataFrame(100 * np.exp(np.cumsum(rng.normal(0, 0.01, (300, 4)), axis=0)),
+                        index=idx, columns=list("ABCD"))
+
+
+def test_same_close_position_passes_feature_test_and_fails_lag_test(ohlc):
+    # the decision uses close[t], which is known at t: causal as a feature, not as a position
+    assert assert_causal(_cross, ohlc, k=250) is None
+    with pytest.raises(AssertionError, match="EXECUTION LAG in cross"):
+        assert_lagged(_cross, ohlc, k=250, name="cross")
+
+
+def test_a_position_shifted_one_bar_passes(ohlc):
+    assert assert_lagged(lambda d: _cross(d).shift(1), ohlc, k=250) is None
+
+
+def test_lag_two_requires_two_bars(ohlc):
+    one_bar = lambda d: _cross(d).shift(1)
+    with pytest.raises(AssertionError, match="at least 2 bar"):
+        assert_lagged(one_bar, ohlc, k=250, lag=2)
+    assert assert_lagged(lambda d: _cross(d).shift(2), ohlc, k=250, lag=2) is None
+
+
+def test_cross_sectional_rank_on_same_bar_is_caught_by_the_random_perturbation(panel):
+    # ranks of the same-bar return survive multiplying every asset by 2, so only the
+    # independent per-cell factors expose the dependence on bar t
+    def top2_same_bar(p):
+        r = p.pct_change()
+        return (r.rank(axis=1, ascending=False) <= 2).astype(float) / 2
+    with pytest.raises(AssertionError, match="random factors"):
+        assert_lagged(top2_same_bar, panel, k=150)
+    assert assert_lagged(lambda p: top2_same_bar(p).shift(1), panel, k=150) is None
+
+
+def test_lag_check_rejects_bad_k_and_lag(ohlc):
+    with pytest.raises(ValueError, match="lag"):
+        assert_lagged(_cross, ohlc, k=250, lag=0)
+    with pytest.raises(ValueError, match="k must"):
+        assert_lagged(_cross, ohlc, k=len(ohlc))

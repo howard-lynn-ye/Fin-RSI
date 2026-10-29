@@ -54,6 +54,17 @@ def build_assert_causal() -> dict:
             "defect": dict(fn=lambda d: d.close.shift(-1), df=df, k=250, name="shift_minus_1")}
 
 
+def build_execution_lag() -> dict:
+    df = _bars()
+
+    def cross(d: pd.DataFrame) -> pd.Series:
+        return (d.close.rolling(5).mean() > d.close.rolling(20).mean()).astype(float)
+
+    return {"clean": dict(fn=lambda d: cross(d).shift(1), df=df, k=250, name="cross_lagged"),
+            # decided on the same close it trades over: passes assert_causal, fails here
+            "defect": dict(fn=cross, df=df, k=250, name="cross_same_close")}
+
+
 def build_safe_asof() -> dict:
     ts = pd.Timestamp
     signals = pd.DataFrame({"time": [ts("2024-01-02 09:30:01")], "symbol": ["AAA"], "signal": [1]})
