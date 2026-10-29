@@ -1,0 +1,110 @@
+{
+  "version": "codegen-enforced-v2",
+  "base_version": "codegen-enforced-v1",
+  "created_utc": "2026-10-29T18:05:07.538697+00:00",
+  "tasks": [
+    "diagonal_risk_parity",
+    "cross_sectional_momentum",
+    "ma_crossover",
+    "vol_target_momentum"
+  ],
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "models": [
+    [
+      "7b",
+      "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "c03e6d358207e414f1eca0bb1891e29f1db0e242"
+    ],
+    [
+      "14b",
+      "Qwen/Qwen2.5-Coder-14B-Instruct",
+      "aedcc2d42b622764e023cf882b6652e646b95671"
+    ]
+  ],
+  "arms": [
+    "raw_exec",
+    "raw_guards",
+    "library_guards"
+  ],
+  "planned": 72,
+  "attempts": 3,
+  "max_tokens": 2048,
+  "temperature": 0.1,
+  "top_p": 1.0,
+  "parser": "first-complete-fence-v1",
+  "lag_ks": [
+    40,
+    72
+  ],
+  "tolerance": 1e-08,
+  "strict_lag_ks": [
+    32,
+    64
+  ],
+  "controller_worker": "benchmarks.agent_study.codegen_controller_worker_v2",
+  "grading_worker": "benchmarks.agent_study.codegen_worker_v2",
+  "rule_cards": {
+    "diagonal_risk_parity": [
+      "execution_lag",
+      "feature_causality",
+      "split_once",
+      "same_convention",
+      "warmup",
+      "first_return"
+    ],
+    "cross_sectional_momentum": [
+      "execution_lag",
+      "feature_causality",
+      "split_once",
+      "same_convention",
+      "warmup",
+      "first_return"
+    ],
+    "ma_crossover": [
+      "execution_lag",
+      "feature_causality",
+      "split_once",
+      "same_convention",
+      "warmup"
+    ],
+    "vol_target_momentum": [
+      "execution_lag",
+      "feature_causality",
+      "split_once",
+      "same_convention",
+      "warmup",
+      "first_return"
+    ]
+  },
+  "library_interface": "from fin_skills.algorithms import positions, adjust_prices, run, catalog. positions(algorithm_id, prices, split_factors, *, window=None, parameters=None, lag=1) returns the whole position table: a DataFrame with the same index and columns as prices. It adjusts the prices once (prices*split_factors; the factors are cumulative), computes the position on row t from adjusted closes through row t-1 only, and fills warm-up rows with 0. Portfolio algorithms (inverse_volatility, cross_sectional_momentum) receive simple returns of the adjusted closes; window=N limits each decision to the last N returns. Signal algorithms (ma_crossover, vol_target_momentum) run on each asset and are scaled by 1/number of assets. parameters is a dict passed to the algorithm; pass every value the rule needs that differs from a default. Defaults: cross_sectional_momentum lookback=60, top_k=3 (each chosen asset gets 1/top_k); ma_crossover fast=5, slow=20; vol_target_momentum lookback=20, target_vol=0.10, periods_per_year=252, max_exposure=1.0; inverse_volatility takes none. adjust_prices(prices, split_factors) returns the adjusted closes. run(algorithm_id, data, **parameters) is the lower-level call for ONE decision or ONE asset: data is a dict keyed by the input name, {\"asset_returns\": DataFrame of simple returns with no missing rows} for portfolio algorithms, returning one allocation, or {\"prices\": Series of one asset's adjusted closes} for signal algorithms, returning already one-bar-lagged exposures. Guards: from fin_skills.api import get; get(\"execution_lag\").run(fn=callable, df=DataFrame, k=integer) checks that positions through row k do not move when rows >= k change; get(\"assert_causal\").run(fn=callable, df=DataFrame, k=integer) checks features; get(\"adjustment_check\").run(close=Series, actions=[(date, ratio)]) checks a split convention. result.passed is a bool. Guards detect defects; they do not repair data.",
+  "input_sha256": "b2959ed56b15135f837fdc88cf444549f7017ec45c9b8732500436716813d75d",
+  "primary_endpoint": "valid deliverable: accepted by the arm controller and valid under the E4 grading equations and probes (execution, 1e-8 agreement, timing probes k=32,64 including the same session, split invariance)",
+  "secondary": [
+    "grader validity of the final attempt regardless of acceptance",
+    "grader validity of the first attempt",
+    "acceptance",
+    "attempts used",
+    "traced library calls",
+    "strict execution-lag audit of the final program (execution_lag guard, per-asset perturbation, k=32,64; post hoc only)",
+    "tokens",
+    "generation and controller seconds"
+  ],
+  "changes_from_v1": [
+    "library arm: interface text with the real signatures and data keys, and the positions()/adjust_prices() panel layer documented",
+    "library arm: rule cards for the task in the system prompt; failed checks get the cause and rule from fin_skills.api.rules.explain",
+    "controller and grading tracers use run(algorithm_id, data, **parameters); positions() is traced as a library call",
+    "raw arms: prompts, checks and feedback byte-identical to v1",
+    "optional rules_guards arm (rule cards and explained feedback, no library)"
+  ],
+  "limits": [
+    "Same E4 tasks, seeds, models and grading equations; E4 and v1 failures informed the repairs, so this is not an independent holdout.",
+    "Controller checks overlap grader properties (timing, split); only the grader checks numerical agreement with hidden references, with other perturbations.",
+    "The library arm changes documentation, rules, enforced library use and checks together; raw_guards isolates the checks and rules_guards, if run, the rules.",
+    "Synthetic author-designed rules; three seeds on four fixed rules are not twelve independent problems; two sizes of one model family.",
+    "No financial-return or profitability endpoint; one shared GPU allocation."
+  ]
+}

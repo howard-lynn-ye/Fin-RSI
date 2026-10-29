@@ -1,9 +1,12 @@
-# Enforced library study v2 (prepared 2026-10-29, NOT submitted)
+# Enforced library study v2 (frozen and submitted 2026-10-29, Beacon job 2906547)
 
-Rerun of `../20260929-codegen-enforced/` with the repaired library surface. Nothing in this
-directory has run on Beacon. Submission needs the user's explicit confirmation, and follows
-AGENTS.md: at most one fin-skills Slurm job, CPU verification first, no retries without
-checking the earlier outputs.
+Rerun of `../20260929-codegen-enforced/` with the repaired library surface. The user asked
+for the run on 2026-10-29. Frozen before inference: `inputs.json` (72 episodes),
+`protocol.json`, `job.sh`, `SHA256SUMS`, `manifest.json` (source commit and hashes);
+`local-qualification.json` is the qualification of the extracted bundle on a local Linux
+VM (seed 991, no model, pandas 2.2.3); the job repeats it on Beacon before inference.
+`submission.json` records the single submission. Results are added only after the
+complete batch is fetched and hash-verified.
 
 Harness: `benchmarks/agent_study/codegen_enforced_v2.py`, with
 `codegen_controller_worker_v2.py` (controller) and `codegen_worker_v2.py` (grader). The v1
