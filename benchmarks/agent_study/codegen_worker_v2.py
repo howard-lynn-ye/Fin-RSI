@@ -1,9 +1,12 @@
-"""Grading worker for codegen-enforced-v2: the E4 grading worker with one fix.
+"""Grading worker for codegen-enforced-v2: the E4 grading worker with two changes.
 
-Identical to codegen_worker (frozen with E4 and codegen-enforced-v1) except that the call
-tracer has the library's own signature, run(algorithm_id, data, **parameters). The v1 tracer
-named its arguments name, data, so a correct keyword call run(algorithm_id=..., data=...)
-raised TypeError inside the tracer and the grader scored a correct program as a crash.
+Identical to codegen_worker (frozen with E4 and codegen-enforced-v1) except that
+  * the call tracer has the library's own signature, run(algorithm_id, data, **parameters).
+    The v1 tracer named its arguments name, data, so a correct keyword call
+    run(algorithm_id=..., data=...) raised TypeError inside the tracer and the grader scored
+    a correct program as a crash;
+  * printed output is capped and address space is limited to 16 GiB, as in the v2
+    controller worker, so one runaway program cannot exhaust the job's memory.
 """
 import importlib.util
 import json
@@ -61,7 +64,10 @@ def main():
     shared = os.environ.get('FIN_STUDY_SHARED_RUNTIME')
     if shared:
         readonly.append(Path(shared))
-    confinement = confine(box, readonly)
+    from benchmarks.agent_study.codegen_controller_worker_v2 import CappedText, cap_resources
+    limits = cap_resources()
+    confinement = dict(confine(box, readonly), **limits)
+    sys.stdout, sys.stderr = CappedText(), CappedText()
     started = time.perf_counter()
     result = {'executed': False, 'trace': trace, 'confinement': confinement}
     try:
@@ -85,6 +91,7 @@ def main():
         result['error'] = {'type': type(exc).__name__, 'message': str(exc),
                            'traceback': traceback.format_exc()}
     result.setdefault('solve_seconds', time.perf_counter() - started)
+    sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
     (box / 'result.json').write_text(json.dumps(result, allow_nan=False))
 
 

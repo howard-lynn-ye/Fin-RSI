@@ -2,7 +2,9 @@
 
 Same four rules, three data seeds, two Qwen2.5-Coder models, three attempts, controller checks
 and grading equations as codegen-enforced-v1 (frozen in codegen_enforced.py). The raw arms'
-prompts, checks and feedback are byte-identical to v1. What changes is the library surface:
+prompts are byte-identical to v1 and their controller decisions are v1's; feedback text is v1's
+up to file paths, timings and the worker's file name in traceback tails. What changes is the
+library surface:
 
   * library interface: the call signatures are the real ones (v1 wrote data_dictionary for
     run's data argument) with the data dictionary keys named, and the panel layer
@@ -15,6 +17,9 @@ prompts, checks and feedback are byte-identical to v1. What changes is the libra
     traced and executed (v1's tracers raised TypeError on it, in the controller and in the
     grader), and positions() counts as a library call.
   * the library requirement accepts either fin_skills.algorithms.positions or run.
+  * in every arm the controller gives solve() fresh copies of its inputs (v1 reused one
+    object, so a program that modified its arguments could fail its own checks), and printed
+    output and address space are capped in the workers.
 
 Optional arm rules_guards (not in the default set): raw implementation plus the same rule
 cards and explained feedback without library calls, to separate the rules from the library.
@@ -73,9 +78,11 @@ INTERFACE = (
     'with 0. Portfolio algorithms (inverse_volatility, cross_sectional_momentum) receive simple '
     'returns of the adjusted closes; window=N limits each decision to the last N returns. '
     'Signal algorithms (ma_crossover, vol_target_momentum) run on each asset and are scaled by '
-    '1/number of assets. parameters is a dict passed to the algorithm: cross_sectional_momentum '
-    'lookback=60, top_k=2; ma_crossover fast=5, slow=20; vol_target_momentum lookback=20, '
-    'target_vol=0.10, periods_per_year=252, max_exposure=1.0; inverse_volatility takes none. '
+    '1/number of assets. parameters is a dict passed to the algorithm; pass every value the rule '
+    'needs that differs from a default. Defaults: cross_sectional_momentum lookback=60, top_k=3 '
+    '(each chosen asset gets 1/top_k); ma_crossover fast=5, slow=20; vol_target_momentum '
+    'lookback=20, target_vol=0.10, periods_per_year=252, max_exposure=1.0; inverse_volatility '
+    'takes none. '
     'adjust_prices(prices, split_factors) returns the adjusted closes. '
     'run(algorithm_id, data, **parameters) is the lower-level call for ONE decision or ONE '
     'asset: data is a dict keyed by the input name, {"asset_returns": DataFrame of simple '
@@ -137,8 +144,9 @@ def controller_execute(code, data, root, checks, strict_lag_ks=()):
         (box/'submission.py').write_text(code)
         (box/'input.json').write_text(json.dumps(dict(data, checks=checks, lag_ks=LAG_KS,
                                                       strict_lag_ks=list(strict_lag_ks))))
+        timeout = 180 if strict_lag_ks else 120
         try:
-            process = _run_worker(CONTROLLER, box, 180 if strict_lag_ks else 120)
+            process = _run_worker(CONTROLLER, box, timeout)
             if (box/'result.json').exists():
                 result = json.loads((box/'result.json').read_text())
             else:
@@ -147,7 +155,8 @@ def controller_execute(code, data, root, checks, strict_lag_ks=()):
                     traceback=process.stderr[-3000:]))
         except subprocess.TimeoutExpired:
             result = dict(executed=False, library_calls=0,
-                          error=dict(type='TimeoutExpired', message='time limit', traceback=''))
+                          error=dict(type='TimeoutExpired', message=f'{timeout} s limit',
+                                     traceback=''))
     result['controller_seconds'] = time.perf_counter() - started
     return result
 
@@ -236,11 +245,38 @@ def grade(code, data, task, root):
 
 
 def strict_lag(code, data, root):
-    """Secondary audit: execution_lag guard with per-asset perturbations, k=32 and 64."""
+    """Secondary audit: execution_lag guard with per-asset perturbations, k=32 and 64.
+
+    status: pass (every probe ran clean and passed), fail (a probe found a position that moved
+    while the program ran clean), unverified (the program ran but a probe raised, warned or
+    timed out) or not_run (the program itself did not run).
+    """
     out = controller_execute(code, data, root, checks=True, strict_lag_ks=STRICT_LAG_KS)
     probes = (out.get('checks') or {}).get('strict_lag', [])
-    passed = (bool(probes) and all(p.get('passed') and not p.get('warnings') for p in probes))
-    return dict(executed=bool(out.get('executed')), passed=passed, probes=probes)
+    clean = [p for p in probes if 'error' not in p and not p.get('warnings')]
+    if not out.get('executed'):
+        status = 'not_run'
+    elif any(not p['passed'] for p in clean):
+        status = 'fail'
+    elif len(clean) == len(STRICT_LAG_KS) and len(probes) == len(STRICT_LAG_KS):
+        status = 'pass'
+    else:
+        status = 'unverified'
+    return dict(executed=bool(out.get('executed')), status=status, passed=status == 'pass',
+                probes=probes, error=out.get('error'))
+
+
+def versions():
+    """Interpreter and package versions; results depend on them (pandas 3 rejects some
+    in-place dtype changes that pandas 2 accepted)."""
+    out = dict(python=sys.version.split()[0])
+    for name in ('numpy', 'pandas', 'scipy', 'torch', 'transformers'):
+        try:
+            out[name] = __import__(name).__version__
+        except ImportError:
+            out[name] = None
+    out['source'] = os.environ.get('FIN_STUDY_SOURCE_SHA256')
+    return out
 
 
 def freeze(root, arms=DEFAULT_ARMS, only=None):
@@ -322,7 +358,35 @@ def solve(prices, split_factors):
     'same_session_raw_arm': ('raw_guards', 'Lag check failed', v1.QUALIFY['same_session'][2],
                              'Rule:'),
     'recumulated_split_rules_arm': ('rules_guards', 'Rule: [split_once]',
-                                    v1.QUALIFY['recumulated_split'][2], 'fin_skills')}
+                                    v1.QUALIFY['recumulated_split'][2], 'fin_skills'),
+    'panel_module_import': ('library_guards', None, '''from fin_skills.algorithms.panel import positions
+def solve(prices, split_factors):
+    return positions('ma_crossover', prices, split_factors, parameters={'fast': 5, 'slow': 20})
+''', None),
+    'modifies_its_inputs': ('raw_guards', None, '''import numpy as np, pandas as pd
+def solve(prices, split_factors):
+    prices *= split_factors
+    fast = prices.rolling(5).mean().shift(1)
+    slow = prices.rolling(20).mean().shift(1)
+    return (np.sign(fast - slow) / 4).fillna(0.0)
+''', None)}
+
+GRADER_CONTROLS = {
+    # task: a library program the grader must score valid and the strict audit must pass
+    'diagonal_risk_parity': '''from fin_skills.algorithms import positions
+def solve(prices, split_factors):
+    return positions('inverse_volatility', prices, split_factors, window=60)
+''',
+    'cross_sectional_momentum': '''from fin_skills.algorithms import positions
+def solve(prices, split_factors):
+    return positions('cross_sectional_momentum', prices, split_factors,
+                     parameters={'lookback': 60, 'top_k': 2})
+''',
+    'ma_crossover': QUALIFY['library_positions'][2],
+    'vol_target_momentum': '''from fin_skills.algorithms import positions
+def solve(prices, split_factors):
+    return positions('vol_target_momentum', prices, split_factors)
+'''}
 
 
 def qualify(root):
@@ -348,17 +412,25 @@ def qualify(root):
         results[name] = dict(arm=arm, expected_finding=finding, accepted=accepted,
                              feedback=message, controller=strip(out), ok=ok)
         passed &= ok
-    for name in ('library_positions', 'library_keyword_run'):
-        code = QUALIFY[name][2]
-        graded, check = grade(code, data, 'ma_crossover', root)
+    positives = [(task, code) for task, code in GRADER_CONTROLS.items()]
+    positives.append(('ma_crossover', QUALIFY['library_keyword_run'][2]))
+    for task, code in positives:
+        graded, check = grade(code, data, task, root)
         strict = strict_lag(code, data, root)
-        results['grader_positive_' + name] = strip(dict(execution=graded, audit=check,
-                                                        strict_lag=strict))
-        passed &= bool(check.get('financially_valid')) and strict['passed']
+        name = 'grader_positive_' + task + ('_keyword_run' if 'algorithm_id=' in code else '')
+        results[name] = strip(dict(execution=graded, audit=check, strict_lag=strict))
+        passed &= bool(check.get('financially_valid')) and strict['status'] == 'pass'
+    # The default top_k=3 is not the rule; the grader must reject it although checks pass.
+    default_k = GRADER_CONTROLS['cross_sectional_momentum'].replace(", 'top_k': 2", '')
+    graded, check = grade(default_k, data, 'cross_sectional_momentum', root)
+    results['grader_negative_default_top_k'] = strip(dict(execution=graded, audit=check))
+    passed &= bool(graded.get('executed')) and check.get('numerically_correct') is False
     same = v1.QUALIFY['same_session'][2]
+    graded, check = grade(same, data, 'ma_crossover', root)
     strict = strict_lag(same, data, root)
-    results['strict_lag_negative_control'] = strip(strict)
-    passed &= strict['executed'] and not strict['passed']
+    results['grader_negative_same_session'] = strip(dict(execution=graded, audit=check,
+                                                        strict_lag=strict))
+    passed &= check.get('future_invariant') is False and strict['status'] == 'fail'
     write(root/'qualification.json', dict(passed=passed, results=results,
         scope='Software/controller/grader qualification on seed 991 only; not model '
               'performance.'))
@@ -381,7 +453,7 @@ def run(root, backend_factory=None):
     else:
         device = dict(torch=None, device='test backend')
     write(root/'inference-started.json', dict(protocol_sha256=sha(root/'protocol.json'),
-        job_id=os.environ.get('SLURM_JOB_ID'), **device))
+        job_id=os.environ.get('SLURM_JOB_ID'), versions=versions(), **device))
     rows = load(root/'inputs.json')
     inventory = []
     for family, model, revision in MODELS:
@@ -431,6 +503,10 @@ def score(root):
     results = []
     for rec in receipt['rows']:
         item = rows[rec['id']]
+        done = root/'audits'/(item['id']+'.json')
+        if done.exists():                    # resume after an interrupted score; never regrade
+            results.append(load(done))
+            continue
         records = []
         for attempt in rec['attempts']:
             assert sha(root/attempt['path']) == attempt['sha256']
@@ -479,9 +555,10 @@ def score(root):
                                          for r in group),
                 final_timing_failures=sum(r['final_audit']['future_invariant'] is False
                                           for r in group),
-                final_strict_lag_failures=sum(r['final_strict_lag']['executed'] and
-                                              not r['final_strict_lag']['passed']
+                final_strict_lag_failures=sum(r['final_strict_lag']['status'] == 'fail'
                                               for r in group),
+                final_strict_lag_unverified=sum(r['final_strict_lag']['status'] == 'unverified'
+                                                for r in group),
                 library_users=sum(r['library_calls'] > 0 for r in group),
                 mean_attempts=float(np.mean([r['attempts'] for r in group])),
                 mean_prompt_tokens=float(np.mean([r['prompt_tokens'] for r in group])),

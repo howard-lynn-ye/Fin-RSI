@@ -294,3 +294,35 @@ def test_rsi_loop_learns_from_real_controller_checks_on_cpu(tmp_path, package_pa
     assert loop.improve(as_of='2026-11-04T00:00:00Z').status == 'frozen'
     assert loop.instructions(as_of='2026-11-04T00:00:00Z') == book
     assert run_attempt('ma-37', book).valid and not run_attempt('ma-37', '').valid
+
+
+def test_interface_states_the_library_defaults():
+    data = dataset(11)
+    index = pd.to_datetime(data['dates'])
+    prices = pd.DataFrame(data['prices'], index=index, columns=data['assets'])
+    factors = pd.DataFrame(data['factors'], index=index, columns=data['assets'])
+    assert 'top_k=3' in v2.INTERFACE and 'top_k=2' not in v2.INTERFACE
+    for algorithm, defaults in [
+            ('cross_sectional_momentum', dict(lookback=60, top_k=3)),
+            ('ma_crossover', dict(fast=5, slow=20)),
+            ('vol_target_momentum', dict(lookback=20, target_vol=0.10, periods_per_year=252,
+                                         max_exposure=1.0))]:
+        assert all(f'{k}={v}' in v2.INTERFACE for k, v in defaults.items())
+        bare = algorithms.positions(algorithm, prices, factors)
+        explicit = algorithms.positions(algorithm, prices, factors, parameters=defaults)
+        pd.testing.assert_frame_equal(bare, explicit)
+
+
+@linux_only
+def test_controller_counts_panel_imports_and_isolates_inputs(tmp_path, package_path):
+    root = tmp_path/'root'
+    (root/'tmp').mkdir(parents=True)
+    data = dataset(991)
+    out = v2.controller_execute(v2.QUALIFY['panel_module_import'][2], data, root, checks=True)
+    assert out['executed'] and out['library_calls'] == 1
+    out = v2.controller_execute(v2.QUALIFY['modifies_its_inputs'][2], data, root, checks=True)
+    assert v2.decide('raw_guards', out, 1) == (True, None)
+    loud = 'def solve(prices, split_factors):\n    for i in range(10**6): print("x" * 100)\n' \
+           '    return prices * 0.0\n'
+    out = v2.controller_execute(loud, data, root, checks=False)
+    assert out['executed'] and out['printed_chars'] > 10**7

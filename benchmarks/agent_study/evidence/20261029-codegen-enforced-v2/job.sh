@@ -3,6 +3,8 @@ set -euo pipefail
 : "${SLURM_JOB_ID:?}"
 r="${1:?}"
 cd "$r"
+sha256sum -c --strict source/SHA256SUMS
+export FIN_STUDY_SOURCE_SHA256="$(sha256sum source/library-and-runner.tar.gz | cut -d" " -f1)"
 export TMPDIR="$r/tmp" TMP="$r/tmp" TEMP="$r/tmp"
 export XDG_CACHE_HOME="$r/cache/xdg" XDG_CONFIG_HOME="$r/cache/config" XDG_DATA_HOME="$r/cache/data" XDG_STATE_HOME="$r/cache/state"
 export HF_HOME="$r/cache/hf" HF_DATASETS_CACHE="$r/cache/datasets" HF_MODULES_CACHE="$r/cache/modules"
