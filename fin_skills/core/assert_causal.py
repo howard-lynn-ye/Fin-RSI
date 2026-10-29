@@ -56,8 +56,9 @@ def assert_lagged(fn, df: pd.DataFrame, k: int, lag: int = 1, tol: float = 1e-9,
     position on row t is held over the return from row t-1 to row t. With lag=1 it may
     use rows up to t-1 only, so perturbing rows >= k must leave positions up to row k
     unchanged. Two perturbations of rows >= k are applied: every numeric cell times 2,
-    and every numeric cell times an independent factor in [0.5, 1.5] (fixed seed). The
-    second catches cross-sectional rules that a common rescaling leaves unchanged.
+    and every numeric column times its own factor in [0.5, 1.5] (fixed seed). Both are a
+    single level jump at row k, so later returns stay plausible; the second catches
+    cross-sectional rules that a common rescaling leaves unchanged.
     """
     if isinstance(lag, bool) or not isinstance(lag, (int, np.integer)) or lag < 1:
         raise ValueError(f"lag must be an integer >= 1, got {lag!r}")
@@ -70,10 +71,10 @@ def assert_lagged(fn, df: pd.DataFrame, k: int, lag: int = 1, tol: float = 1e-9,
     scaled = df.copy()
     scaled.loc[rows, num] = scaled.loc[rows, num] * 2.0
     noisy = df.copy()
-    factors = np.random.default_rng(seed).uniform(0.5, 1.5, size=(len(rows), len(num)))
+    factors = np.random.default_rng(seed).uniform(0.5, 1.5, size=len(num))
     noisy.loc[rows, num] = noisy.loc[rows, num] * factors
     a = fn(df)
-    for how, df2 in (("x2", scaled), ("random factors", noisy)):
+    for how, df2 in (("x2", scaled), ("per-column factors", noisy)):
         b = fn(df2)
         delta = (a.iloc[:stop].fillna(-9e99) - b.iloc[:stop].fillna(-9e99)).abs()
         bad = delta > tol

@@ -36,10 +36,19 @@ def _array(value, name, ndim):
     if raw.size > MAX_POINTS:
         raise ValueError(f"{name} exceeds {MAX_POINTS} values")
     if raw.ndim != ndim or raw.size == 0 or raw.dtype.kind not in "iuf":
-        raise ValueError(f"{name} must be a nonempty numeric {ndim}-D array")
+        hint = ""
+        if ndim == 1 and raw.ndim == 2:
+            hint = ("; this algorithm takes one asset - for a date x asset table use "
+                    "fin_skills.algorithms.positions(algorithm_id, prices_frame)")
+        raise ValueError(f"{name} must be a nonempty numeric {ndim}-D array{hint}")
     a = raw.astype(float)
     if not np.isfinite(a).all():
-        raise ValueError(f"{name} contains missing or nonfinite values; clean them explicitly")
+        hint = ""
+        if name in ("returns", "asset_returns"):
+            hint = (" (the first row of pct_change() is NaN - drop it with .iloc[1:]; "
+                    "fin_skills.algorithms.positions() builds returns from prices itself)")
+        raise ValueError(f"{name} contains missing or nonfinite values; clean them explicitly"
+                         f"{hint}")
     if isinstance(value, (pd.Series, pd.DataFrame)):
         if (value.index.has_duplicates or value.index.hasnans or
                 not value.index.is_monotonic_increasing):

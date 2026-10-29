@@ -114,13 +114,13 @@ def test_lag_two_requires_two_bars(ohlc):
     assert assert_lagged(lambda d: _cross(d).shift(2), ohlc, k=250, lag=2) is None
 
 
-def test_cross_sectional_rank_on_same_bar_is_caught_by_the_random_perturbation(panel):
+def test_cross_sectional_rank_on_same_bar_is_caught_by_per_column_factors(panel):
     # ranks of the same-bar return survive multiplying every asset by 2, so only the
-    # independent per-cell factors expose the dependence on bar t
+    # per-column factors expose the dependence on bar t
     def top2_same_bar(p):
         r = p.pct_change()
         return (r.rank(axis=1, ascending=False) <= 2).astype(float) / 2
-    with pytest.raises(AssertionError, match="random factors"):
+    with pytest.raises(AssertionError, match="per-column factors"):
         assert_lagged(top2_same_bar, panel, k=150)
     assert assert_lagged(lambda p: top2_same_bar(p).shift(1), panel, k=150) is None
 

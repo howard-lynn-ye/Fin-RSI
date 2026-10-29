@@ -120,9 +120,8 @@ def assert_causal(fn, df, k):
 🚨 **It tests features, not positions.** A value at bar *t* may use bar *t*; a position that earns
 the return from *t-1* to *t* may not. A rule that trades on the same close it reads passes
 `assert_causal`. Run `assert_lagged(positions_fn, df, k)` (same script; guard `execution_lag`) on
-anything that outputs positions: it also requires row *k* itself to stay put, and adds an
-independent per-cell perturbation, because a cross-sectional rank survives multiplying every
-asset by 2.
+anything that outputs positions: it also requires row *k* itself to stay put, and adds a
+per-column perturbation, because a cross-sectional rank survives multiplying every asset by 2.
 
 Off-the-shelf: **`freqtrade lookahead-analysis`** (reruns on truncated data, flags indicators whose
 history changes — only checks *triggered* signals) and **`freqtrade recursive-analysis`** (varies
