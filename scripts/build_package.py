@@ -51,7 +51,7 @@ HAND_WRITTEN = {"__init__.py"}          # kept as-is; everything else under fin_
 #   rsi/ optional bounded agent playbook improvement and validation
 # A new layer is added here in the SAME commit that creates it, or the next regeneration
 # deletes it. --check enforces this.
-HAND_WRITTEN_DIRS = ("algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "jev/", "mcp/", "model_zoo/", "rag/", "rsi/", "synthesis/", "tools/")
+HAND_WRITTEN_DIRS = ("agents/", "algorithms/", "api/", "bridges/", "collect/", "data/", "discovery/", "engine/", "jev/", "mcp/", "model_zoo/", "rag/", "rsi/", "synthesis/", "tools/")
 
 
 def is_hand_written(rel: str) -> bool:
