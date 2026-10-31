@@ -1,12 +1,12 @@
-# Enforced library study v2 (frozen and submitted 2026-10-29, Beacon job 2906547)
+# Enforced library study v2 (Beacon job 2906547, completed 2026-10-29; results in RESULTS.md)
 
 Rerun of `../20260929-codegen-enforced/` with the repaired library surface. The user asked
 for the run on 2026-10-29. Frozen before inference: `inputs.json` (72 episodes),
 `protocol.json`, `job.sh`, `SHA256SUMS`, `manifest.json` (source commit and hashes);
 `local-qualification.json` is the qualification of the extracted bundle on a local Linux
 VM (seed 991, no model, pandas 2.2.3); the job repeats it on Beacon before inference.
-`submission.json` records the single submission. Results are added only after the
-complete batch is fetched and hash-verified.
+`submission.json` records the single submission. The complete batch was fetched and
+hash-verified on 2026-10-31 (`fetch-receipt.json`); `RESULTS.md` summarises it.
 
 Harness: `benchmarks/agent_study/codegen_enforced_v2.py`, with
 `codegen_controller_worker_v2.py` (controller) and `codegen_worker_v2.py` (grader). The v1

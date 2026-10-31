@@ -1,0 +1,63 @@
+{
+  "id": "7b-vol_target_momentum-23-library_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices using the given split factors\n    adjusted_prices = fin_skills.algorithms.adjust_prices(prices, split_factors)\n\n    # Calculate the returns from the adjusted closes\n    returns = adjusted_prices.pct_change()\n\n    # Drop the first row which contains NaN due to pct_change()\n    returns = returns.iloc[1:]\n\n    # Initialize an empty DataFrame to store the weights\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n\n    # Define the lookback period\n    lookback_period = 21\n\n    # Iterate over each row starting from the lookback period\n    for i in range(lookback_period, len(adjusted_prices)):\n        # Get the closing prices for the current and previous periods\n        current_close = adjusted_prices.iloc[i]\n        previous_close = adjusted_prices.iloc[i - lookback_period]\n\n        # Compute the momentum signal\n        momentum_signal = np.sign((current_close / previous_close) - 1)\n\n        # Compute the sample standard deviation of the last 20 returns\n        std_dev = returns.iloc[i - lookback_period:i].std(ddof=1)\n\n        # Compute the scaling factor\n        scaling_factor = min(1, 0.10 / (std_dev * np.sqrt(252)))\n\n        # Assign the weight based on the momentum signal and scaling factor\n        weights.iloc[i] = momentum_signal * scaling_factor / 4\n\n    return weights\n```\n\nThis code defines the `solve` function, which takes two pandas DataFrames `prices` and `split_factors` as inputs. It first adjusts the prices using the provided split factors, calculates the returns, and drops the first row containing NaN values. Then, it initializes an empty DataFrame to store the weights. The function iterates over each row starting from the lookback period, computes the momentum signal, sample standard deviation of the last 20 returns, and assigns the weight based on these calculations. Finally, it returns the computed weights."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "revision": "c03e6d358207e414f1eca0bb1891e29f1db0e242",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 12924,
+      "completion_tokens": 432,
+      "total_tokens": 13356
+    },
+    "generation_seconds": 12.004591100965627
+  },
+  "extraction": "first_fence",
+  "code": "import numpy as np\nimport pandas as pd\n\ndef solve(prices, split_factors):\n    # Adjust prices using the given split factors\n    adjusted_prices = fin_skills.algorithms.adjust_prices(prices, split_factors)\n\n    # Calculate the returns from the adjusted closes\n    returns = adjusted_prices.pct_change()\n\n    # Drop the first row which contains NaN due to pct_change()\n    returns = returns.iloc[1:]\n\n    # Initialize an empty DataFrame to store the weights\n    weights = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n\n    # Define the lookback period\n    lookback_period = 21\n\n    # Iterate over each row starting from the lookback period\n    for i in range(lookback_period, len(adjusted_prices)):\n        # Get the closing prices for the current and previous periods\n        current_close = adjusted_prices.iloc[i]\n        previous_close = adjusted_prices.iloc[i - lookback_period]\n\n        # Compute the momentum signal\n        momentum_signal = np.sign((current_close / previous_close) - 1)\n\n        # Compute the sample standard deviation of the last 20 returns\n        std_dev = returns.iloc[i - lookback_period:i].std(ddof=1)\n\n        # Compute the scaling factor\n        scaling_factor = min(1, 0.10 / (std_dev * np.sqrt(252)))\n\n        # Assign the weight based on the momentum signal and scaling factor\n        weights.iloc[i] = momentum_signal * scaling_factor / 4\n\n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-dzkfw65f",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "error": {
+      "type": "NameError",
+      "message": "name 'fin_skills' is not defined",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 132, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 126, in call\n  File \"submission.py\", line 6, in solve\nNameError: name 'fin_skills' is not defined\n"
+    },
+    "solve_seconds": 0.004211671068333089,
+    "library_calls": 0,
+    "printed_chars": 0,
+    "controller_seconds": 3.9490080600371584
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nExecution failed: NameError: name 'fin_skills' is not defined\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 126, in call\n  File \"submission.py\", line 6, in solve\nNameError: name 'fin_skills' is not defined\nReturn the complete corrected program."
+}

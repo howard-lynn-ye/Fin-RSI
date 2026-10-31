@@ -1,0 +1,77 @@
+{
+  "id": "14b-cross_sectional_momentum-23-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize positions DataFrame with zeros\n    positions = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period and top_k assets\n    lookback = 60\n    top_k = 2\n    \n    # Iterate over the DataFrame starting from the lookback period\n    for i in range(lookback, len(returns)):\n        # Get the returns for the lookback period\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + lookback_returns).prod()\n        \n        # Rank the assets by compounded returns in descending order\n        ranked_assets = compounded_returns.sort_values(ascending=False)\n        \n        # Select the top_k assets\n        top_assets = ranked_assets.head(top_k)\n        \n        # Assign weights to the top_k assets\n        for asset in top_assets.index:\n            if top_assets[asset] > 0:\n                positions.at[prices.index[i], asset] = 0.5 / top_k\n    \n    return positions\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 12338,
+      "completion_tokens": 286,
+      "total_tokens": 12624
+    },
+    "generation_seconds": 16.90179266699124
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Initialize positions DataFrame with zeros\n    positions = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Define the lookback period and top_k assets\n    lookback = 60\n    top_k = 2\n    \n    # Iterate over the DataFrame starting from the lookback period\n    for i in range(lookback, len(returns)):\n        # Get the returns for the lookback period\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Compound the returns\n        compounded_returns = (1 + lookback_returns).prod()\n        \n        # Rank the assets by compounded returns in descending order\n        ranked_assets = compounded_returns.sort_values(ascending=False)\n        \n        # Select the top_k assets\n        top_assets = ranked_assets.head(top_k)\n        \n        # Assign weights to the top_k assets\n        for asset in top_assets.index:\n            if top_assets[asset] > 0:\n                positions.at[prices.index[i], asset] = 0.5 / top_k\n    \n    return positions",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-n1nw2pxd",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "weights_sha256": "cda19fd0fda1759d7f22fadb6d7594d9ffdf803f8b3c6fcd6a03e87636b29a20",
+    "solve_seconds": 0.01913077407516539,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.021s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.022s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "printed_chars": 0,
+    "controller_seconds": 3.864969312911853
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLibrary requirement failed: no fin_skills.algorithms.positions or run call was traced; compute the rule with the discovered library algorithm.\nReturn the complete corrected program."
+}

@@ -1,0 +1,63 @@
+{
+  "id": "14b-vol_target_momentum-23-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices and returns for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal for each asset\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the lookback returns\n        std_dev = lookback_returns.std(ddof=1)\n        \n        # Calculate the scaling factor for each asset\n        scaling_factor = min(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Calculate the raw weights for each asset\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the raw weights to ensure they sum to max_exposure\n        normalized_weights = raw_weights / raw_weights.abs().sum() * max_exposure\n        \n        # Assign the normalized weights to the current row in the weights DataFrame\n        weights.iloc[i] = normalized_weights\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 12363,
+      "completion_tokens": 397,
+      "total_tokens": 12760
+    },
+    "generation_seconds": 22.478618355002254
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices and returns for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal for each asset\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the lookback returns\n        std_dev = lookback_returns.std(ddof=1)\n        \n        # Calculate the scaling factor for each asset\n        scaling_factor = min(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Calculate the raw weights for each asset\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the raw weights to ensure they sum to max_exposure\n        normalized_weights = raw_weights / raw_weights.abs().sum() * max_exposure\n        \n        # Assign the normalized weights to the current row in the weights DataFrame\n        weights.iloc[i] = normalized_weights\n    \n    return weights",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-1_zrwj2z",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 132, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 126, in call\n  File \"submission.py\", line 33, in solve\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/generic.py\", line 1577, in __nonzero__\n    raise ValueError(\nValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\n"
+    },
+    "solve_seconds": 0.010879982961341739,
+    "library_calls": 0,
+    "printed_chars": 0,
+    "controller_seconds": 3.769254204002209
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nExecution failed: ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-audit-20260921/env/lib64/python3.12/site-packages/pandas/core/generic.py\", line 1577, in __nonzero__\n    raise ValueError(\nValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\nReturn the complete corrected program."
+}

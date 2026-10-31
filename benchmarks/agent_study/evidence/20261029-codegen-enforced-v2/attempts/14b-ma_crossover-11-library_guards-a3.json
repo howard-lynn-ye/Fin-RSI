@@ -1,0 +1,81 @@
+{
+  "id": "14b-ma_crossover-11-library_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import positions, adjust_prices\n\ndef solve(prices, split_factors):\n    # Adjust prices using the cumulative split factors\n    adjusted_prices = adjust_prices(prices, split_factors)\n    \n    # Compute the 5-day and 20-day rolling means\n    mean_5 = adjusted_prices.rolling(window=5).mean()\n    mean_20 = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal: sign(mean_5 - mean_20)\n    signal = np.sign(mean_5 - mean_20)\n    \n    # Divide the signal by 4 to get the weights\n    weights = signal / 4\n    \n    # Set warm-up rows to 0\n    weights.iloc[:20] = 0\n    \n    # Apply the execution lag by shifting the positions down one row\n    weights = weights.shift(1)\n    \n    # Ensure no nonfinite values in the weights\n    weights = weights.fillna(0).clip(lower=-np.inf, upper=np.inf)\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 13237,
+      "completion_tokens": 236,
+      "total_tokens": 13473
+    },
+    "generation_seconds": 14.770862114033662
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\nfrom fin_skills.algorithms import positions, adjust_prices\n\ndef solve(prices, split_factors):\n    # Adjust prices using the cumulative split factors\n    adjusted_prices = adjust_prices(prices, split_factors)\n    \n    # Compute the 5-day and 20-day rolling means\n    mean_5 = adjusted_prices.rolling(window=5).mean()\n    mean_20 = adjusted_prices.rolling(window=20).mean()\n    \n    # Compute the signal: sign(mean_5 - mean_20)\n    signal = np.sign(mean_5 - mean_20)\n    \n    # Divide the signal by 4 to get the weights\n    weights = signal / 4\n    \n    # Set warm-up rows to 0\n    weights.iloc[:20] = 0\n    \n    # Apply the execution lag by shifting the positions down one row\n    weights = weights.shift(1)\n    \n    # Ensure no nonfinite values in the weights\n    weights = weights.fillna(0).clip(lower=-np.inf, upper=np.inf)\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [
+      {
+        "kind": "adjust_prices"
+      }
+    ],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-06dfwbk4",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "weights_sha256": "e5623625af44a55de7c4b02420e122a0442dac9c80a650534fab405be6b4d6df",
+    "solve_seconds": 0.006084298947826028,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.007s\n  info: <lambda>: causal: no cell before index 40 depends on rows >= 40"
+        },
+        {
+          "k": 72,
+          "passed": true,
+          "summary": "PASS  assert_causal  [signal-construction]  0.005s\n  info: <lambda>: causal: no cell before index 72 depends on rows >= 72"
+        }
+      ]
+    },
+    "printed_chars": 0,
+    "controller_seconds": 4.153095934074372
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nLibrary requirement failed: no fin_skills.algorithms.positions or run call was traced; compute the rule with the discovered library algorithm.\nReturn the complete corrected program."
+}

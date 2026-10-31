@@ -1,0 +1,77 @@
+{
+  "id": "14b-ma_crossover-23-library_guards",
+  "attempt": 1,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute the moving averages\n    fast_window = 5\n    slow_window = 20\n    \n    # Calculate the simple moving averages\n    fast_ma = adjusted_prices.rolling(window=fast_window).mean()\n    slow_ma = adjusted_prices.rolling(window=slow_window).mean()\n    \n    # Compute the signal: sign(fast_ma - slow_ma)\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Scale the signal by 1/number of assets\n    num_assets = len(prices.columns)\n    scaled_signal = signal / num_assets\n    \n    # Fill warm-up rows with 0\n    warmup_rows = max(fast_window, slow_window) - 1\n    scaled_signal.iloc[:warmup_rows] = 0\n    \n    return scaled_signal\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 12292,
+      "completion_tokens": 205,
+      "total_tokens": 12497
+    },
+    "generation_seconds": 12.755359945003875
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute the moving averages\n    fast_window = 5\n    slow_window = 20\n    \n    # Calculate the simple moving averages\n    fast_ma = adjusted_prices.rolling(window=fast_window).mean()\n    slow_ma = adjusted_prices.rolling(window=slow_window).mean()\n    \n    # Compute the signal: sign(fast_ma - slow_ma)\n    signal = np.sign(fast_ma - slow_ma)\n    \n    # Scale the signal by 1/number of assets\n    num_assets = len(prices.columns)\n    scaled_signal = signal / num_assets\n    \n    # Fill warm-up rows with 0\n    warmup_rows = max(fast_window, slow_window) - 1\n    scaled_signal.iloc[:warmup_rows] = 0\n    \n    return scaled_signal",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-4vqv6yyv",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "weights_sha256": "9fb93042bd7967c6854c07737b3b167102a0f3045ff3f31f1306cd61ff688dcb",
+    "solve_seconds": 0.0030428330646827817,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.005s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.5)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.003s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)"
+        }
+      ]
+    },
+    "printed_chars": 0,
+    "controller_seconds": 4.221691003069282
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 1 of 3:\nLibrary requirement failed: no fin_skills.algorithms.positions or run call was traced; compute the rule with the discovered library algorithm.\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.005s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.5)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.003s error: <lambda>: LOOK-AHEAD in <lambda>: 1 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.5)\nWhy it failed and the rule to follow:\nCheck execution_lag failed: likely a position moved when only prices on or after its own row changed, so it was decided with the close it trades over.\n  Rule: [execution_lag] A position on row t earns the return from row t-1 to row t. Decide it from closes through row t-1 only: compute the signal at each close, then shift the positions down one row. A feature may use row t; a position may not. fin_skills.algorithms.positions() applies this lag for you. (source: signal-construction)\nReturn the complete corrected program."
+}
