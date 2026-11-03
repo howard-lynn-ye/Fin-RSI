@@ -5,6 +5,9 @@ Beacon 尚未运行。
 目标论文：ACL 2027（ARR 截止 2027-01-04），资源类长文。备选：NeurIPS 2027 Datasets and
 Benchmarks track。
 
+论文标题（2026-11-03 确定）：**Fin-RSI: An Agent-Native Library of Financial Skills, Checks,
+and Self-Improvement**。RSI 是库的一部分；标题不提 benchmark，不预设实验结论。
+
 ## 1. 要回答的问题
 
 在同一个模型、同一个裁判、同样预算下，**哪种自我改进（RSI）结构能让 agent 在没见过的
