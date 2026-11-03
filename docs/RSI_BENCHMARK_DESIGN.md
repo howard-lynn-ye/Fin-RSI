@@ -168,6 +168,36 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 100 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
 每个模型 2 道开发题实测再定。
 
+### 6.1 模型元数据资格检查（2026-11-03，只读，未加载权重）
+
+通过已有的共享 SSH 连接（未新建登录）读取 10/17 运行留下的缓存清单，以及每个已缓存模型在
+固定 revision 下的 `config.json` / `tokenizer_config.json`。20 个清单条目中 13 个已缓存，
+7 个未缓存（不下载）。存储剩余 216 GB（96% 已用）。
+
+| 模型 | 家族 | 上下文 | 权重 (GB, bf16) | 单卡 | 备注 |
+|---|---|---:|---:|---|---|
+| qwen-coder-7b | Qwen | 32,768 | 15.2 | 48 GB 卡可 | 开发模型（v1/v2） |
+| qwen-coder-14b | Qwen | 32,768 | 29.5 | 48 GB 卡可 | 开发模型（v1/v2） |
+| qwen-coder-32b | Qwen | 32,768 | 65.5 | 需 80 GB 级 | |
+| qwen-general-7b | Qwen | 32,768 | 15.2 | 48 GB 卡可 | |
+| qwen3-4b | Qwen | 262,144 | 8.0 | 48 GB 卡可 | |
+| mistral-nemo-12b | Mistral | 131,072 | 24.5 | 48 GB 卡可 | |
+| mistral-small-24b | Mistral | 32,768 | 47.1 | 需 80 GB 级 | 48 GB 卡放不下权重加 KV |
+| phi4-mini | Phi | 131,072 | 7.7 | 48 GB 卡可 | |
+| granite-8b | Granite | 131,072 | 16.3 | 48 GB 卡可 | v11 交易研究预检曾因输出格式失败 |
+| olmo3-7b | OLMo | 65,536 | 14.6 | 48 GB 卡可 | |
+| falcon3-10b | Falcon | 32,768 | 20.6 | 48 GB 卡可 | |
+| smollm3-3b | SmolLM | 65,536 | 6.2 | 48 GB 卡可 | |
+| deepseek-r1-distill-14b | Qwen 架构 | 131,072 | 29.5 | 48 GB 卡可 | 推理模型；单次 2,048 token 上限会截断思考过程 |
+
+全部为 bf16，带 chat template，上下文都 ≥ 32k，满足"≥ 16k"的要求。这一步不能代替真实
+加载与生成；GPU 资格检查（加载、短生成、输出能解析出程序）在 Beacon harness 写好后做。
+
+**候选 5 个**（5 个家族，3.8B–32B，均未参与开发）：qwen-coder-32b、mistral-small-24b、
+granite-8b、olmo3-7b、phi4-mini。**替补**：falcon3-10b、mistral-nemo-12b、qwen3-4b。
+不选 deepseek-r1-distill-14b 作主力：固定的单次生成上限会让它的结果主要反映截断，而不是
+RSI 方法的差别。Qwen2.5-Coder 7B/14B 可以额外作为开发参照报告。
+
 执行纪律（仓库 `AGENTS.md`）：fin-skills 同时最多 1 个 Slurm 作业（含排队），按模型串行
 提交；只用 CPU 做资格检查；修库期间不扩大模型实验。2026-11-03 用户确认 GPU 小时不设上限；
 单作业规则不变。
