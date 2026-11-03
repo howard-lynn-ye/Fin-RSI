@@ -87,7 +87,7 @@ class BaseRSI:
 | `CheckFeedback` | 失败后回传失败的检查、原因和规则卡 | 无 | v2 `decide()` + `rules.explain()` | 带验证器的反馈 |
 | `Reflexion` | 失败后先让模型写一段反思，再带反思重试 | 可选：跨题保留反思 | 新增 | Reflexion |
 | `PlaybookLearning` | 把冻结的经验手册放进提示，再按 CheckFeedback 重试 | 在开发题上用 `RSILoop` + `no_regression` 积累手册 | `rsi.core`、`rsi.wiring` | ExpeL、Dynamic Cheatsheet |
-| `Team` | 编写者 + 按规则族的审查者 | 无（可接 `Playbook`） | `agents.Team` | 多角色审查 |
+| `Team` | 编写者 + 按规则族的审查者 | 无 | `agents.Team` | 多角色审查 |
 | `Evolve` | 用开发阶段进化出的提示词 | 在开发题上迭代改写系统提示 | 新增 | GEPA 类提示进化 |
 
 2026-11-03 决定：7 种全部纳入，包括 `Evolve`。`rsi.core` 里已有数据类 `Playbook`，所以方法类名为
@@ -177,7 +177,7 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 | 位置 | 内容 |
 |---|---|
 | `fin_skills/tasks/` | 题目定义、独立参考实现、数据生成、划分；加入 `HAND_WRITTEN_DIRS` |
-| `fin_skills/rsi/methods.py` | `BaseRSI` 与六种方法 |
+| `fin_skills/rsi/methods.py` | `BaseRSI` 与七种方法 |
 | `fin_skills/rsi/meter.py` | 调用与 token 计量、预算强制 |
 | `fin_skills/rsi/bench.py` | `benchmark()` 运行器与汇报 |
 | `benchmarks/agent_study/rsi_bench.py` | Beacon 端：冻结、资格检查、推理、评分，复用 v2 沙箱与 worker |
@@ -187,7 +187,7 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 
 | 时间 | 内容 |
 |---|---|
-| 11/4–11/16 | 基类、计量器、六种方法；接口说明自动生成 |
+| 11/4–11/16 | 基类、计量器、七种方法；接口说明自动生成（11/3 已提前完成） |
 | 11/17–11/27 | 题库、参考实现、资格检查；选模型；冻结协议 |
 | 11/28–12/10 | Beacon 串行跑完整矩阵 |
 | 12/1 | 接口冻结 |
