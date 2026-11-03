@@ -11,6 +11,7 @@ This is NOT a security sandbox by itself. It caps address space and output, and 
 enforces a timeout. Set FIN_TASKS_CONFINE="module:function" to apply a confinement hook
 (for example benchmarks.agent_study.linux_sandbox:confine on Linux) before the program runs;
 the hook receives (box, readonly_paths) and returns a JSON-serializable description.
+FIN_TASKS_READONLY (os.pathsep-separated) adds read-only roots to that list.
 """
 from __future__ import annotations
 
@@ -95,6 +96,10 @@ def main(box: Path) -> None:
         module, _, name = hook.partition(":")
         readonly = [Path(sys.prefix), Path(sys.base_prefix), Path("/usr"), Path("/lib"),
                     Path("/lib64"), Path(algorithms.__file__).parents[1]]
+        # Extra read-only roots, e.g. a shared runtime whose site-packages sit outside
+        # sys.prefix, so a confined program can still import scipy submodules lazily.
+        readonly += [Path(p) for p in os.environ.get("FIN_TASKS_READONLY", "").split(os.pathsep)
+                     if p]
         confinement = getattr(importlib.import_module(module), name)(box, readonly)
     try:
         import resource
