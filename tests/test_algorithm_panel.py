@@ -105,6 +105,35 @@ def test_adjust_prices_refuses_misaligned_or_bad_input():
         adjust_prices(raw, factors, factors="events")
 
 
+@pytest.mark.parametrize("task", sorted(CASES))
+def test_adjusted_prices_with_split_factors_are_refused(task):
+    """codegen-enforced-v2: 8 of 12 14B library programs called adjust_prices() and then passed
+    its output to positions() together with the split factors, applying the splits twice. The
+    result ran without error and was wrong. It must now fail loudly and say how to fix it."""
+    raw, factors, _ = _data()
+    alg, kw = CASES[task]
+    adjusted = adjust_prices(raw, factors)
+    assert adjusted.attrs["split_adjusted"] is True
+    with pytest.raises(ValueError, match="twice"):
+        positions(alg, adjusted, factors, **kw)
+    with pytest.raises(ValueError, match="split_factors=None"):
+        adjust_prices(adjusted, factors)
+    # The two correct spellings agree exactly.
+    np.testing.assert_array_equal(positions(alg, adjusted, None, **kw).to_numpy(),
+                                  positions(alg, raw, factors, **kw).to_numpy())
+
+
+def test_adjusted_series_is_marked_and_refused():
+    raw, factors, _ = _data()
+    adjusted = adjust_prices(raw["A"], factors["A"])
+    assert adjusted.attrs["split_adjusted"] is True
+    with pytest.raises(ValueError, match="twice"):
+        positions("ma_crossover", adjusted, factors["A"], parameters={"fast": 5, "slow": 20})
+    # Unmarked inputs are untouched: raw prices are not marked, and neither is a pass-through.
+    assert "split_adjusted" not in raw.attrs
+    assert "split_adjusted" not in adjust_prices(raw).attrs
+
+
 def test_series_input_and_series_output():
     raw, factors, adjusted = _data()
     out = adjust_prices(raw["A"], factors["A"])

@@ -61,7 +61,9 @@ CARDS: tuple[RuleCard, ...] = (
         "take cumprod() of factors that are already cumulative.",
         ("research-integrity-guards", "adjustment-conventions.md", "`adjusted = raw \u00d7 factor`"),
         ("split_representation", "adjustment_check"), frozenset({"split_factors"}),
-        "fin_skills.algorithms.adjust_prices(raw, split_factors) does this."),
+        "fin_skills.algorithms.positions(algorithm_id, raw, split_factors) does this once for "
+        "you. The output of adjust_prices(raw, split_factors) is already adjusted: pass it with "
+        "split_factors=None, never together with the factors again."),
     RuleCard(
         "same_convention", "corporate_actions",
         "Use one adjustment convention for the signal and for the returns the position earns. "
