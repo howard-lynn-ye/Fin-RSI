@@ -62,3 +62,12 @@ def test_tools_false_leaves_out_library_calls():
     assert "fin_skills" not in prompt_block(cards, tools=False)
     assert "fin_skills" not in explain(["execution_lag", "split_representation"], tools=False)
     assert "adjust_prices" in explain(["split_representation"])
+
+
+def test_split_card_steers_away_from_double_adjustment():
+    """The v2 card ended by pointing at adjust_prices(); 14B then composed adjust_prices() with
+    positions(..., split_factors). The card must name the single-call path and forbid that."""
+    text = card("split_once").render()
+    assert "positions(algorithm_id, raw, split_factors)" in text
+    assert "split_factors=None" in text
+    assert text.isascii()
