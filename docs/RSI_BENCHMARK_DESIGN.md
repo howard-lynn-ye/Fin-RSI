@@ -1,6 +1,7 @@
-# RSI benchmark 设计稿（待确认，未实现）
+# RSI benchmark 设计稿
 
-2026-11-03 起草。本文是接口与实验设计，不是结果；代码、题库和 Beacon 运行都尚未开始。
+2026-11-03 起草，同日确认并开始实现（实现状态见第 10 节）。本文是接口与实验设计，不是结果；
+Beacon 尚未运行。
 目标论文：ACL 2027（ARR 截止 2027-01-04），资源类长文。备选：NeurIPS 2027 Datasets and
 Benchmarks track。
 
@@ -28,10 +29,10 @@ budget = rsi.Budget(attempts=3, calls=6, generated_tokens=12_000)
 method = rsi.Reflexion(library=True)
 method.fit(generate, tasks.dev, budget=rsi.FitBudget(episodes=48, proposals=6))
 episode = method.solve(generate, tasks.heldout[0], seed=11, budget=budget)
-episode.valid, episode.accepted, episode.calls, episode.tokens, episode.attempts
+episode.accepted, episode.code, episode.usage      # calls, generated_tokens, attempts, roles
+# episode.valid is filled in only by rsi.benchmark(), from the hidden grader
 
-report = rsi.benchmark([rsi.NoImprove, rsi.SelfDebug, rsi.CheckFeedback, rsi.Reflexion,
-                        rsi.Playbook, rsi.Team], generate, tasks, seeds=(11, 23, 37),
+report = rsi.benchmark(rsi.METHODS, generate, tasks, seeds=(11, 23, 37),
                        library=(False, True), budget=budget)
 ```
 
@@ -85,11 +86,12 @@ class BaseRSI:
 | `SelfDebug` | 失败后只回传报错，重试 | 无 | v1/v2 `raw_exec` 组 | Self-Debugging |
 | `CheckFeedback` | 失败后回传失败的检查、原因和规则卡 | 无 | v2 `decide()` + `rules.explain()` | 带验证器的反馈 |
 | `Reflexion` | 失败后先让模型写一段反思，再带反思重试 | 可选：跨题保留反思 | 新增 | Reflexion |
-| `Playbook` | 把冻结的经验手册放进提示，再按 CheckFeedback 重试 | 在开发题上用 `RSILoop` + `no_regression` 积累手册 | `rsi.core`、`rsi.wiring` | ExpeL、Dynamic Cheatsheet |
+| `PlaybookLearning` | 把冻结的经验手册放进提示，再按 CheckFeedback 重试 | 在开发题上用 `RSILoop` + `no_regression` 积累手册 | `rsi.core`、`rsi.wiring` | ExpeL、Dynamic Cheatsheet |
 | `Team` | 编写者 + 按规则族的审查者 | 无（可接 `Playbook`） | `agents.Team` | 多角色审查 |
-| `Evolve`（可选） | 用开发阶段进化出的提示词 | 在开发题上迭代改写系统提示 | 新增 | GEPA 类提示进化 |
+| `Evolve` | 用开发阶段进化出的提示词 | 在开发题上迭代改写系统提示 | 新增 | GEPA 类提示进化 |
 
-`Evolve` 是否纳入取决于时间，11/16 前决定；不纳入就在论文里写明。
+2026-11-03 决定：7 种全部纳入，包括 `Evolve`。`rsi.core` 里已有数据类 `Playbook`，所以方法类名为
+`PlaybookLearning`（`name = "playbook"`）。
 
 ## 4. 题库：`fin_skills.tasks`
 
@@ -155,20 +157,20 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 
 | 维度 | 数量 |
 |---|---:|
-| 方法 | 6（不含 Evolve） |
+| 方法 | 7 |
 | 库开关 | 2 |
 | 留出题 | 约 24 |
 | 种子 | 3 |
 | 模型 | 5 |
-| 合计 episode | 约 4,300，另加开发阶段 |
+| 合计 episode | 约 5,000，另加开发阶段 |
 
 粗略算力：v2 在 L40S 上 72 个 episode 用了 1 小时 25 分，平均约 71 秒一个。按此估计约
-85 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
+100 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
 每个模型 2 道开发题实测再定。
 
 执行纪律（仓库 `AGENTS.md`）：fin-skills 同时最多 1 个 Slurm 作业（含排队），按模型串行
-提交；只用 CPU 做资格检查；修库期间不扩大模型实验。超出算力时的降级方案：3 个模型、
-2 个种子。
+提交；只用 CPU 做资格检查；修库期间不扩大模型实验。2026-11-03 用户确认 GPU 小时不设上限；
+单作业规则不变。
 
 ## 7. 要新增的代码
 
@@ -192,8 +194,30 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 | 12/10–12/28 | 写论文、合作者内审 |
 | 12/29–1/4 | 匿名代码包、提交 |
 
-## 9. 需要确认的决定
+## 9. 已确认的决定（2026-11-03）
 
-1. 方法清单是否就是这 6 种，`Evolve` 是否纳入。
-2. 5 个模型的选择（资格检查后给出候选）。
-3. Beacon 算力预算上限（GPU 小时），超出时按第 6 节降级。
+1. 方法：7 种全部纳入（含 `Evolve`）。
+2. 模型：先做资格检查，再给出 5 个候选。
+3. Beacon 算力：GPU 小时不设上限；仍遵守 fin-skills 单作业、串行提交的规则。
+
+## 10. 实现状态（2026-11-03）
+
+已实现并测试（CPU，脚本化假模型，未调用真实 LLM）：
+
+| 部分 | 位置 | 状态 |
+|---|---|---|
+| 计量器与预算 | `fin_skills/rsi/meter.py` | 完成；可嵌套（开发阶段的 episode 同时计入 fit 预算） |
+| 7 种方法 | `fin_skills/rsi/methods.py` | 完成；`PlaybookLearning` 与 `Evolve` 在能改进时接受、不能改进时拒绝，均有测试 |
+| 运行器与汇报 | `fin_skills/rsi/bench.py` | 完成；逐条写 JSONL，按题聚类 bootstrap |
+| 题目、数据、参考实现 | `fin_skills/tasks/` | 18 道题（9 个算法 × 2 个变体）；全部 18 × 3 种子与库函数一致（误差 ≤ 1e-15） |
+| 裁判与隐藏评分器 | `fin_skills/tasks/judge.py`、`worker.py` | 完成；4 类植入错误各被对应检查拒绝 |
+| 库接口说明 | `fin_skills/tasks/prompts.py` | 从函数签名与 docstring 生成；默认参数有测试 |
+| `agents.Team` | `tools` 参数 | 新增；无库组不再泄漏库调用提示 |
+
+当前题库是**临时**的：开发集 12 道（E4 的 4 个算法与 macd、momentum），留出集 6 道
+（bollinger_reversion、donchian_breakout、rsi_reversion）。还要补的题：equal_weight、
+min_variance、hrp，以及 risk、volatility、forecast、execution、pricing 类，合计目标约 36 道；
+补齐后重新抽签并冻结划分。
+
+下一步：补题与参考实现；Beacon 端 harness（复用 v2 的沙箱，`FIN_TASKS_CONFINE`）；模型资格
+检查与候选名单；每模型 2 道开发题实测算力后冻结协议。
