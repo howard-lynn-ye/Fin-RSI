@@ -91,7 +91,8 @@ class Team:
 
     def __init__(self, generate: Callable[[list[dict]], str], *, mode: str = "roles",
                  max_attempts: int = 3, interface: str = "", writer_rules: str = "task",
-                 recorder=None, available_at: str = "", source_version: str = ""):
+                 recorder=None, available_at: str = "", source_version: str = "",
+                 tools: bool = True):
         if not callable(generate):
             raise TypeError("generate must be callable: generate(messages) -> str")
         if mode not in MODES:
@@ -106,6 +107,9 @@ class Team:
         self.interface, self.writer_rules = interface, writer_rules
         self.recorder, self.available_at, self.source_version = (recorder, available_at,
                                                                   source_version)
+        # tools=False renders rule cards and explanations without library calls, for a run in
+        # which the program must not use fin_skills.
+        self.tools = bool(tools)
 
     # roles ---------------------------------------------------------------------------
     def writer_messages(self, task: str, traits: Iterable[str]) -> list[dict]:
@@ -113,7 +117,7 @@ class Team:
         if self.interface:
             parts.append("Interface:\n" + self.interface)
         if self.writer_rules == "task":
-            block = prompt_block(rules_for(traits))
+            block = prompt_block(rules_for(traits), tools=self.tools)
             if block:
                 parts.append(block)
         return [dict(role="system", content="\n\n".join(parts)), dict(role="user", content=task)]
@@ -123,8 +127,9 @@ class Team:
         mine = [name for name in failed if CHECK_FAMILY.get(name) == family]
         cards = [c for c in CARDS if c.family == family
                  and (c.applies & set(traits) or set(c.checks) & set(mine))]
-        system = REVIEWER.format(family=family) + "\n\n" + prompt_block(cards)
-        user = ("Failed checks:\n" + explain(mine) + "\n\nProgram:\n```python\n" + code
+        system = REVIEWER.format(family=family) + "\n\n" + prompt_block(cards, tools=self.tools)
+        user = ("Failed checks:\n" + explain(mine, tools=self.tools)
+                + "\n\nProgram:\n```python\n" + code
                 + "```")
         return [dict(role="system", content=system), dict(role="user", content=user)]
 
@@ -183,7 +188,7 @@ class Team:
             known = [n for n in failed if n in CAUSES]
             if self.mode == "single":
                 if known:
-                    feedback.append(explain(known))
+                    feedback.append(explain(known, tools=self.tools))
             elif not attempt.executed:
                 note = self._ask(self.interface_messages(code, attempt.error))[:MAX_NOTE]
                 transcript.append(Turn("reviewer:interface", number, note))
