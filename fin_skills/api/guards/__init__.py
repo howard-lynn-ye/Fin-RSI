@@ -18,6 +18,7 @@ from fin_skills.api.guards import (  # noqa: F401  (import for the registration 
     cost_curve,
     cost_plausibility,
     data_quality,
+    execution_lag,
     fold_leak_test,
     fx_conventions,
     greeks_convention,
@@ -50,7 +51,7 @@ from fin_skills.api.guards import (  # noqa: F401  (import for the registration 
 __all__ = [
     "adjustment_check", "ashare_rules", "assert_causal", "board_lot_feasibility", "brinson_attribution",
     "cash_drag", "contamination_probe", "continuous_contract", "cost_curve", "cost_plausibility",
-    "data_quality",
+    "data_quality", "execution_lag",
     "fold_leak_test", "fx_conventions", "greeks_convention", "join_asof_sortedness",
     "leveraged_reset", "npv_zero", "paper_account_guard", "pit_fundamentals", "pit_universe",
     "pre_trade", "purge_effect", "qdii_premium", "reconcile_sources", "regime_coverage", "regime_lookahead",

@@ -4,11 +4,18 @@ The test: perturb ONLY rows at/after index k, recompute, and assert nothing befo
 If an early value changed, it depended on future data.
 
 Usage:
-    from assert_causal import assert_causal, scan_indicators
+    from assert_causal import assert_causal, assert_lagged, scan_indicators
     assert_causal(lambda d: ta.momentum.RSIIndicator(d.close).rsi(), df, k=200)
+    assert_lagged(lambda d: positions(d), df, k=200)   # positions, not features
+
+assert_causal and assert_lagged test different properties. A FEATURE at bar t may use bar t
+itself, because it is known at that close. A POSITION held over the return from t-1 to t must
+be decided strictly before t, so it may not move when bar t moves. A strategy that trades on
+the same close it reads passes assert_causal and fails assert_lagged.
 """
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -35,6 +42,47 @@ def assert_causal(fn, df: pd.DataFrame, k: int, tol: float = 1e-9, name: str = "
             f"{n_bad} cells before index {k} changed when only rows >= {k} were perturbed "
             f"(max |delta| = {worst:.6g})"
         )
+
+
+def assert_lagged(fn, df: pd.DataFrame, k: int, lag: int = 1, tol: float = 1e-9,
+                  name: str = "", seed: int = 0) -> None:
+    """Raise AssertionError if a position in rows [0, k + lag) depends on rows [k, end).
+
+    fn maps the frame to POSITIONS (a Series or DataFrame indexed like df), where the
+    position on row t is held over the return from row t-1 to row t. With lag=1 it may
+    use rows up to t-1 only, so perturbing rows >= k must leave positions up to row k
+    unchanged. Two perturbations of rows >= k are applied: every numeric cell times 2,
+    and every numeric column times its own factor in [0.5, 1.5] (fixed seed). Both are a
+    single level jump at row k, so later returns stay plausible; the second catches
+    cross-sectional rules that a common rescaling leaves unchanged.
+    """
+    if isinstance(lag, bool) or not isinstance(lag, (int, np.integer)) or lag < 1:
+        raise ValueError(f"lag must be an integer >= 1, got {lag!r}")
+    if isinstance(k, bool) or not isinstance(k, (int, np.integer)) or not 0 < k < len(df):
+        raise ValueError(f"k must be an integer in 1..{len(df) - 1}, got {k!r}")
+    label = name or getattr(fn, "__name__", "fn")
+    stop = min(len(df), int(k) + int(lag))
+    num = df.select_dtypes("number").columns
+    rows = df.index[k:]
+    scaled = df.copy()
+    scaled.loc[rows, num] = scaled.loc[rows, num] * 2.0
+    noisy = df.copy()
+    factors = np.random.default_rng(seed).uniform(0.5, 1.5, size=len(num))
+    noisy.loc[rows, num] = noisy.loc[rows, num] * factors
+    a = fn(df)
+    for how, df2 in (("x2", scaled), ("per-column factors", noisy)):
+        b = fn(df2)
+        delta = (a.iloc[:stop].fillna(-9e99) - b.iloc[:stop].fillna(-9e99)).abs()
+        bad = delta > tol
+        n_bad = int(bad.to_numpy().sum())
+        if n_bad:
+            worst = float(delta.to_numpy()[bad.to_numpy()].max())
+            raise AssertionError(
+                f"EXECUTION LAG in {label}: {n_bad} positions at or before index {stop - 1} "
+                f"changed when only rows >= {k} were perturbed ({how}; max |delta| = "
+                f"{worst:.6g}). A position must be decided at least {lag} bar(s) before "
+                f"the bar whose return it earns"
+            )
 
 
 def warmup_bars(fn, df: pd.DataFrame, tol: float = 1e-9) -> int | None:
@@ -74,8 +122,6 @@ def scan_indicators(fns: dict, df: pd.DataFrame, k: int | None = None) -> pd.Dat
 
 
 if __name__ == "__main__":
-    import numpy as np
-
     rng = np.random.default_rng(7)
     n = 500
     close = pd.Series(100 * np.exp(np.cumsum(rng.normal(0, 0.01, n))))
@@ -91,3 +137,17 @@ if __name__ == "__main__":
                                                / x.close.expanding().std(),
     }
     print(scan_indicators(checks, d).to_string(index=False))
+
+    # Positions: a 5/20 crossover decided on the same close passes the feature test above
+    # but trades on information it could not have had. Only the lag test catches it.
+    def cross(x):
+        return (x.close.rolling(5).mean() > x.close.rolling(20).mean()).astype(float)
+
+    for label, fn in (("crossover, same close (LEAKS)", cross),
+                      ("crossover, shifted one bar (lagged)", lambda x: cross(x).shift(1))):
+        try:
+            assert_lagged(fn, d, k=250)
+            verdict = "lagged"
+        except AssertionError:
+            verdict = "trades on bar t"
+        print(f"{label:38s} -> {verdict}")

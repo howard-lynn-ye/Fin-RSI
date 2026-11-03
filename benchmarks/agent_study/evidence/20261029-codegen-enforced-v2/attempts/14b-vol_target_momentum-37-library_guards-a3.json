@@ -1,0 +1,63 @@
+{
+  "id": "14b-vol_target_momentum-37-library_guards",
+  "attempt": 3,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the positions DataFrame with zeros\n    positions = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.iloc[i-lookback:i].std(ddof=1)\n        \n        # Ensure std_dev is not zero to avoid division by zero\n        std_dev = std_dev.replace(0, np.nan)\n        \n        # Calculate the scaling factor\n        scaling_factor = np.minimum(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Fill NaN values in scaling_factor with 0\n        scaling_factor = scaling_factor.fillna(0)\n        \n        # Calculate the weights\n        weights = momentum_signal * scaling_factor / 4\n        \n        # Assign the weights to the current row in the positions DataFrame\n        positions.iloc[i] = weights\n    \n    return positions\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 13347,
+      "completion_tokens": 390,
+      "total_tokens": 13737
+    },
+    "generation_seconds": 22.719204817083664
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Calculate simple returns\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the positions DataFrame with zeros\n    positions = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the returns\n        std_dev = returns.iloc[i-lookback:i].std(ddof=1)\n        \n        # Ensure std_dev is not zero to avoid division by zero\n        std_dev = std_dev.replace(0, np.nan)\n        \n        # Calculate the scaling factor\n        scaling_factor = np.minimum(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Fill NaN values in scaling_factor with 0\n        scaling_factor = scaling_factor.fillna(0)\n        \n        # Calculate the weights\n        weights = momentum_signal * scaling_factor / 4\n        \n        # Assign the weights to the current row in the positions DataFrame\n        positions.iloc[i] = weights\n    \n    return positions",
+  "controller": {
+    "executed": false,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-ehra1c8l",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "error": {
+      "type": "ValueError",
+      "message": "output contains nonfinite values",
+      "traceback": "Traceback (most recent call last):\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 132, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker.py\", line 23, in _frame\nValueError: output contains nonfinite values\n"
+    },
+    "solve_seconds": 0.06339497002772987,
+    "library_calls": 0,
+    "printed_chars": 0,
+    "controller_seconds": 4.127199231996201
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 3 of 3:\nExecution failed: ValueError: output contains nonfinite values\nTraceback tail:\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker_v2.py\", line 132, in main\n  File \"/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/work/benchmarks/agent_study/codegen_controller_worker.py\", line 23, in _frame\nValueError: output contains nonfinite values\nReturn the complete corrected program."
+}

@@ -1,0 +1,77 @@
+{
+  "id": "14b-vol_target_momentum-23-library_guards",
+  "attempt": 2,
+  "response": {
+    "choices": [
+      {
+        "message": {
+          "content": "```python\nimport pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices and returns for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal for each asset\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the lookback returns\n        std_dev = lookback_returns.std(ddof=1)\n        \n        # Calculate the scaling factor for each asset\n        scaling_factor = np.minimum(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Calculate the raw weights for each asset\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the raw weights to ensure they sum to max_exposure\n        if raw_weights.abs().sum() > 0:\n            normalized_weights = raw_weights / raw_weights.abs().sum() * max_exposure\n        else:\n            normalized_weights = raw_weights\n        \n        # Assign the normalized weights to the current row in the weights DataFrame\n        weights.iloc[i] = normalized_weights\n    \n    return weights\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "backend_metadata": {
+      "stop_token_ids": [
+        151645,
+        151643
+      ],
+      "identity": {
+        "model": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+        "max_tokens": 2048
+      },
+      "hardware": {
+        "gpus": [
+          "NVIDIA L40S"
+        ],
+        "device_map": {
+          "": "0"
+        }
+      }
+    },
+    "usage": {
+      "prompt_tokens": 12913,
+      "completion_tokens": 420,
+      "total_tokens": 13333
+    },
+    "generation_seconds": 23.98390634392854
+  },
+  "extraction": "first_fence",
+  "code": "import pandas as pd\nimport numpy as np\n\ndef solve(prices, split_factors):\n    # Adjust prices using cumulative split factors\n    adjusted_prices = prices * split_factors\n    \n    # Compute simple returns from adjusted prices\n    returns = adjusted_prices.pct_change().dropna()\n    \n    # Define the lookback period and target volatility\n    lookback = 20\n    target_vol = 0.10\n    periods_per_year = 252\n    max_exposure = 1.0\n    \n    # Initialize the weights DataFrame with zeros\n    weights = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)\n    \n    # Iterate over each row starting from the 21st row (index 20)\n    for i in range(lookback, len(prices)):\n        # Get the adjusted prices and returns for the lookback period\n        lookback_prices = adjusted_prices.iloc[i-lookback:i]\n        lookback_returns = returns.iloc[i-lookback:i]\n        \n        # Calculate the momentum signal for each asset\n        momentum_signal = (lookback_prices.iloc[-1] / lookback_prices.iloc[0] - 1).apply(np.sign)\n        \n        # Calculate the sample standard deviation of the lookback returns\n        std_dev = lookback_returns.std(ddof=1)\n        \n        # Calculate the scaling factor for each asset\n        scaling_factor = np.minimum(1, target_vol / (std_dev * np.sqrt(periods_per_year)))\n        \n        # Calculate the raw weights for each asset\n        raw_weights = momentum_signal * scaling_factor\n        \n        # Normalize the raw weights to ensure they sum to max_exposure\n        if raw_weights.abs().sum() > 0:\n            normalized_weights = raw_weights / raw_weights.abs().sum() * max_exposure\n        else:\n            normalized_weights = raw_weights\n        \n        # Assign the normalized weights to the current row in the weights DataFrame\n        weights.iloc[i] = normalized_weights\n    \n    return weights",
+  "controller": {
+    "executed": true,
+    "trace": [],
+    "confinement": {
+      "landlock_abi": 6,
+      "network": "socket syscalls denied",
+      "writes": "/beacon-projects/radfm/wy891/fin-skills-campaign-codegen-enforced-20261029-v2/tmp/enforced-v2-4ox5t3bm",
+      "subprocesses": "denied",
+      "address_space_bytes": 17179869184
+    },
+    "weights_sha256": "033326b35ccb0c85b557f3bb74b48a6ea4d24b8fa3244be63dddfbecc0e6d4b3",
+    "solve_seconds": 0.05011496297083795,
+    "library_calls": 0,
+    "checks": {
+      "split": {
+        "passed": true,
+        "max_abs_diff": 0.0
+      },
+      "lag": [
+        {
+          "k": 40,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.083s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.0824159)"
+        },
+        {
+          "k": 72,
+          "passed": false,
+          "summary": "FAIL  assert_causal  [signal-construction]  0.082s\n  error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.113723)"
+        }
+      ]
+    },
+    "printed_chars": 0,
+    "controller_seconds": 3.9786454429849982
+  },
+  "accepted": false,
+  "feedback": "Controller findings for attempt 2 of 3:\nLibrary requirement failed: no fin_skills.algorithms.positions or run call was traced; compute the rule with the discovered library algorithm.\nLag check failed at k=40: a position at or before session 40 changed when only prices at or after session 40 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.083s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 40 changed when only rows >= 40 were perturbed (max |delta| = 0.0824159)\nLag check failed at k=72: a position at or before session 72 changed when only prices at or after session 72 were perturbed. Guard report: FAIL assert_causal [signal-construction] 0.082s error: <lambda>: LOOK-AHEAD in <lambda>: 4 cells before index 72 changed when only rows >= 72 were perturbed (max |delta| = 0.113723)\nWhy it failed and the rule to follow:\nCheck execution_lag failed: likely a position moved when only prices on or after its own row changed, so it was decided with the close it trades over.\n  Rule: [execution_lag] A position on row t earns the return from row t-1 to row t. Decide it from closes through row t-1 only: compute the signal at each close, then shift the positions down one row. A feature may use row t; a position may not. fin_skills.algorithms.positions() applies this lag for you. (source: signal-construction)\nReturn the complete corrected program."
+}

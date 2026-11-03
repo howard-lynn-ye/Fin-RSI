@@ -37,7 +37,7 @@ EXCLUDED = excluded()
 # the broker's own positions) have to be ASSEMBLED by the caller from things it read, and a
 # model composing them into a JSON blob is the failure that guard exists to prevent.
 CANNOT_CROSS_JSON = {
-    "assert_causal", "fold_leak_test", "pre_trade", "result_manifest",
+    "assert_causal", "execution_lag", "fold_leak_test", "pre_trade", "result_manifest",
     "synthesis_integrity", "warmup_probe"
 }
 

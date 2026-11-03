@@ -18,6 +18,7 @@ from uuid import uuid4
 from .persistence import writer_lock
 
 SURFACES = ("tool_usage", "retrieval", "experience")
+GUARD_RULES = ("all_pass", "no_regression")
 KINDS = ("tool_contract", "analysis", "environment", "financial_outcome", "success")
 
 
@@ -145,16 +146,35 @@ class Policy:
     max_playbook_chars: int = 12000
     max_trace_chars: int = 24000
     min_gain: float = 0.0
+    # "all_pass": a candidate is vetoed while any evaluation case fails execution or guards.
+    # "no_regression": vetoed only if it makes a case that passed fail. Tasks that already
+    # failed do not veto it, so a weak model can still learn; scores must still not drop.
+    guard_rule: str = "all_pass"
 
     def __post_init__(self):
         if type(self.enabled) is not bool:
             raise ValueError("enabled must be boolean")
+        if self.guard_rule not in GUARD_RULES:
+            raise ValueError(f"guard_rule must be one of {GUARD_RULES}")
         for name in ("max_proposals", "max_evaluations", "max_entries", "max_entry_chars",
                      "max_playbook_chars", "max_trace_chars"):
             if type(getattr(self, name)) is not int or getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be a positive integer")
         if type(self.min_gain) not in (int, float) or not math.isfinite(self.min_gain) or self.min_gain < 0:
             raise ValueError("min_gain must be finite and nonnegative")
+
+
+def _policy_header(policy: Policy) -> dict:
+    """Archive header for a policy. guard_rule is left out at its default, so archives
+    written before the field existed still match."""
+    header = asdict(policy)
+    if header["guard_rule"] == "all_pass":
+        del header["guard_rule"]
+    return header
+
+
+def _clean(case) -> bool:
+    return bool(case.guards_passed and not case.execution_errors)
 
 
 @dataclass(frozen=True)
@@ -308,7 +328,7 @@ class RSILoop:
             raise ValueError("enabled RSI needs caller-owned proposer and independent evaluator")
         self._journal = _Journal(Path(directory), dict(
             schema_version=1, model_id=model_id, protocol_id=protocol_id,
-            available_at=available_at, seed=asdict(seed), policy=asdict(policy)))
+            available_at=available_at, seed=asdict(seed), policy=_policy_header(policy)))
 
     def _bound(self, book: Playbook):
         if len(book.entries) > self.policy.max_entries or any(
@@ -503,8 +523,14 @@ class RSILoop:
         for baseline, candidate, expected in zip(baselines, reports, ids):
             if {case.case_id for case in candidate.cases} != expected:
                 return "candidate changed evaluation case coverage"
-            if any(not case.guards_passed or case.execution_errors for case in candidate.cases):
-                return "candidate failed execution or guards"
+            if self.policy.guard_rule == "all_pass":
+                if any(not case.guards_passed or case.execution_errors
+                       for case in candidate.cases):
+                    return "candidate failed execution or guards"
+            else:
+                before = {case.case_id: _clean(case) for case in baseline.cases}
+                if any(before[case.case_id] and not _clean(case) for case in candidate.cases):
+                    return "candidate broke a case that passed its checks"
             gain = candidate.score - baseline.score
             if not math.isfinite(gain):
                 return "non-finite score difference"
