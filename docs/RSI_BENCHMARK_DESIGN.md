@@ -162,13 +162,13 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 |---|---:|
 | 方法 | 7 |
 | 库开关 | 2 |
-| 留出题 | 约 24 |
+| 留出题 | 16 |
 | 种子 | 3 |
 | 模型 | 5 |
-| 合计 episode | 约 5,000，另加开发阶段 |
+| 合计 episode | 约 3,400，另加开发阶段 |
 
 粗略算力：v2 在 L40S 上 72 个 episode 用了 1 小时 25 分，平均约 71 秒一个。按此估计约
-100 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
+70 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
 每个模型 2 道开发题实测再定。
 
 ### 6.1 模型元数据资格检查（2026-11-03，只读，未加载权重）
@@ -242,15 +242,31 @@ RSI 方法的差别。Qwen2.5-Coder 7B/14B 可以额外作为开发参照报告�
 | 计量器与预算 | `fin_skills/rsi/meter.py` | 完成；可嵌套（开发阶段的 episode 同时计入 fit 预算） |
 | 7 种方法 | `fin_skills/rsi/methods.py` | 完成；`PlaybookLearning` 与 `Evolve` 在能改进时接受、不能改进时拒绝，均有测试 |
 | 运行器与汇报 | `fin_skills/rsi/bench.py` | 完成；逐条写 JSONL，按题聚类 bootstrap |
-| 题目、数据、参考实现 | `fin_skills/tasks/` | 18 道题（9 个算法 × 2 个变体）；全部 18 × 3 种子与库函数一致（误差 ≤ 1e-15） |
+| 题目、数据、参考实现 | `fin_skills/tasks/` | 34 道题（17 个算法 × 2 个变体）；全部 34 × 3 种子与库函数一致（见下） |
 | 裁判与隐藏评分器 | `fin_skills/tasks/judge.py`、`worker.py` | 完成；4 类植入错误各被对应检查拒绝 |
 | 库接口说明 | `fin_skills/tasks/prompts.py` | 从函数签名与 docstring 生成；默认参数有测试 |
 | `agents.Team` | `tools` 参数 | 新增；无库组不再泄漏库调用提示 |
 
-当前题库是**临时**的：开发集 12 道（E4 的 4 个算法与 macd、momentum），留出集 6 道
-（bollinger_reversion、donchian_breakout、rsi_reversion）。还要补的题：equal_weight、
-min_variance、hrp，以及 risk、volatility、forecast、execution、pricing 类，合计目标约 36 道；
-补齐后重新抽签并冻结划分。
+题库现为 **34 道**（2026-11-03 扩充），仍为**临时**，冻结协议时最终确认：
 
-下一步：补题与参考实现；Beacon 端 harness（复用 v2 的沙箱，`FIN_TASKS_CONFINE`）；模型资格
-检查与候选名单；每模型 2 道开发题实测算力后冻结协议。
+| 类型 | 算法 | 题数 | 库里的一步调用 |
+|---|---|---:|---|
+| portfolio | inverse_volatility, cross_sectional_momentum, min_variance, hrp | 8 | `positions()` |
+| signal | ma_crossover, vol_target_momentum, momentum, macd, bollinger_reversion, rsi_reversion, donchian_breakout | 14 | `positions()` |
+| volatility | historical_volatility, ewma_volatility | 4 | `rolling()`（新增） |
+| risk | historical_var_es, normal_var_es | 4 | `rolling()` |
+| forecast | drift, mean | 4 | `rolling()` |
+
+- 34 道 × 3 个种子的独立参考实现全部与库一致（min_variance 在 2e-6 内，其余 ≤ 3e-14）。
+- 不做题的：equal_weight（输出与价格无关，坑测不出来）；naive 预测（等于平移一行）；
+  seasonal_naive、execution、pricing（不适合价格面板的题型）。
+- 划分：开发集 18 道（9 个算法），留出集 16 道（8 个算法），留出集覆盖全部 5 个类型。
+  E4 的 4 个算法和资格检查作业用过的 momentum 强制放开发集：推理前被模型跑过的算法都算
+  开发数据。
+- 新增 `fin_skills.algorithms.rolling()`：波动率、风险、预测类算法按日滚动、滞后一根、
+  复权一次，输出日期 × 资产表格。
+- 扩题时发现并修复一个库缺陷：long-only `min_variance()` 在日收益协方差上 SLSQP 提前停止，
+  权重与精确解（枚举子集）最多差 1.2e-2；现在在单位尺度上求解，误差 ≤ 1.4e-6。
+
+下一步：组件消融（不给技能 / 只给规则卡 / 规则卡加库调用）；主实验 harness 的 run 阶段；
+资格检查结果出来后冻结协议。

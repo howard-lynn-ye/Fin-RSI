@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fin_skills.algorithms import adjust_prices, positions, run
+from fin_skills.algorithms import adjust_prices, positions, rolling, run
 from fin_skills.core.assert_causal import assert_lagged
 
 
@@ -186,3 +186,45 @@ def test_run_error_messages_point_to_the_panel_and_the_nan_row():
         run("ma_crossover", {"prices": raw})
     with pytest.raises(ValueError, match="pct_change"):
         run("inverse_volatility", {"asset_returns": raw.pct_change()})
+
+
+ROLLING = [("historical_volatility", dict(window=20, parameters={"periods_per_year": 252})),
+           ("ewma_volatility", dict(window=40)),
+           ("historical_var_es", dict(window=40, output="expected_shortfall")),
+           ("normal_var_es", dict(window=40)),
+           ("drift", dict(window=30)), ("mean", dict(window=20))]
+
+
+@pytest.mark.parametrize("algorithm,kw", ROLLING, ids=[a for a, _ in ROLLING])
+def test_rolling_is_lagged_split_invariant_and_shaped(algorithm, kw):
+    raw, factors, adjusted = _data()
+    out = rolling(algorithm, raw, factors, **kw)
+    assert out.index.equals(raw.index) and list(out.columns) == list(raw.columns)
+    assert np.isfinite(out.to_numpy()).all() and out.attrs["lag_bars"] == 1
+    assert assert_lagged(lambda p: rolling(algorithm, p, factors, **kw), raw, k=64) is None
+    np.testing.assert_allclose(rolling(algorithm, adjusted, None, **kw).to_numpy(),
+                               out.to_numpy(), atol=1e-12, rtol=0)
+
+
+def test_rolling_volatility_matches_its_equation():
+    raw, factors, adjusted = _data()
+    out = rolling("historical_volatility", raw, factors, window=20,
+                  parameters={"periods_per_year": 252})
+    r = adjusted.pct_change()
+    want = (r.rolling(20).std().shift(1) * np.sqrt(252)).fillna(0.0)
+    np.testing.assert_allclose(out.to_numpy(), want.to_numpy(), atol=1e-12, rtol=0)
+    assert out.attrs["warmup_rows"] == 21
+
+
+def test_rolling_refuses_misuse():
+    raw, factors, _ = _data()
+    with pytest.raises(ValueError, match="twice"):
+        rolling("drift", adjust_prices(raw, factors), factors, window=30)
+    with pytest.raises(ValueError, match="positions"):
+        rolling("ma_crossover", raw, factors, window=20)
+    with pytest.raises(ValueError, match="no output"):
+        rolling("historical_var_es", raw, factors, window=40, output="volatility")
+    with pytest.raises(ValueError, match="at least"):
+        rolling("historical_var_es", raw, factors, window=10)
+    nan = rolling("mean", raw, factors, window=20, warmup="nan")
+    assert nan.iloc[:20].isna().all().all() and nan.iloc[20:].notna().all().all()

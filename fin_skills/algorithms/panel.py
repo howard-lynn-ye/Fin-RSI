@@ -216,3 +216,82 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
                      warmup_rows=warm_rows, warmup=warmup, factors=factors,
                      window=window, rebalance_every=int(rebalance_every), parameters=params)
     return out
+
+
+ROLLING_TASKS = {"volatility": "volatility", "risk": "var", "forecast": None}
+
+
+def rolling(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors=None, *,
+            window: int, output: str | None = None, factors: str = "cumulative", lag: int = 1,
+            warmup: str = "zero", parameters: Mapping[str, Any] | None = None,
+            registry=None) -> pd.DataFrame:
+    """One value per date and asset from a volatility, risk or forecast algorithm.
+
+    The companion of positions() for algorithms that return a number rather than a weight.
+    Row t holds the algorithm's result on the `window` most recent observations ending lag
+    bars before t, so with lag=1 it is known at close t-1 and reads nothing from row t on.
+
+    algorithm_id : a catalogued volatility or risk algorithm (they read simple returns of the
+                   adjusted closes) or forecast algorithm (it reads the adjusted closes and its
+                   one-step forecast is used); see catalog().
+    prices       : raw closes, one column per asset (a Series is one asset).
+    split_factors: as in positions(); None means prices are already adjusted. The output of
+                   adjust_prices() must come with split_factors=None, or this raises.
+    window       : observations per value: returns for volatility and risk, closes for forecast.
+    output       : the result field to keep. Defaults: "volatility" for volatility algorithms,
+                   "var" for risk algorithms ("expected_shortfall" is the other risk field).
+    warmup       : "zero" (default) fills rows without a full window with 0.0; "nan" leaves them.
+    parameters   : passed to the algorithm unchanged (e.g. periods_per_year, confidence).
+
+    The returned frame has exactly the input index and columns; its attrs record the choices.
+    """
+    from . import _DEFAULT
+    reg = registry if registry is not None else _DEFAULT
+    params = dict(parameters or {})
+    if isinstance(lag, bool) or not isinstance(lag, (int, np.integer)) or lag < 1:
+        raise ValueError(f"lag must be an integer >= 1, got {lag!r}")
+    if isinstance(window, bool) or not isinstance(window, (int, np.integer)) or window < 2:
+        raise ValueError(f"window must be an integer >= 2, got {window!r}")
+    if warmup not in WARMUP:
+        raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
+    spec = reg.get(algorithm_id)
+    if spec.task not in ROLLING_TASKS:
+        raise ValueError(f"rolling() supports {sorted(ROLLING_TASKS)} algorithms, not "
+                         f"{spec.task!r} ({algorithm_id}); use positions() for weights")
+    if window < int(spec.min_observations or 1):
+        raise ValueError(f"{algorithm_id} needs at least {spec.min_observations} observations")
+    field = output if output is not None else ROLLING_TASKS[spec.task]
+    if split_factors is not None:
+        _refuse_readjusting(prices)
+    close = adjust_prices(_frame(prices, "prices"), split_factors, factors=factors)
+    out = pd.DataFrame(np.nan, index=close.index, columns=close.columns)
+    for c in close.columns:
+        if spec.task == "forecast":
+            if set(spec.inputs) != {"series"}:
+                raise ValueError(f"{algorithm_id} needs inputs {spec.inputs}; rolling() "
+                                 "supplies series only")
+            source, first = close[c].to_numpy(), window + lag - 1
+        else:
+            source = close[c].pct_change(fill_method=None).to_numpy()   # NaN on row 0
+            first = window + lag
+        for t in range(first, len(close)):
+            end = t - lag + 1                         # one past the last observation used
+            chunk = source[end - window:end]
+            key = "series" if spec.task == "forecast" else "returns"
+            result = reg.run(algorithm_id, {key: chunk}, **params)
+            if spec.task == "forecast":
+                value = float(np.asarray(result, dtype=float).ravel()[0])
+            else:
+                if field not in result:
+                    raise ValueError(f"{algorithm_id} has no output {field!r}; it returns "
+                                     f"{sorted(result)}")
+                value = float(result[field])
+            out.iloc[t, out.columns.get_loc(c)] = value
+    warm_rows = int(np.argmax(out.notna().any(axis=1).to_numpy())) if out.notna().any(
+        axis=None) else len(out)
+    if warmup == "zero":
+        out = out.fillna(0.0)
+    out.attrs.update(algorithm=algorithm_id, task=spec.task, output=field, window=int(window),
+                     lag_bars=int(lag), warmup_rows=warm_rows, warmup=warmup, factors=factors,
+                     parameters=params)
+    return out

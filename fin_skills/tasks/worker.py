@@ -73,7 +73,8 @@ def main(box: Path) -> None:
     lag_guard = get("execution_lag")          # bound before the program can touch fin_skills
     source = (box / "submission.py").read_text()
     trace = []
-    real = dict(run=algorithms.run, positions=panel.positions, adjust=panel.adjust_prices)
+    real = dict(run=algorithms.run, positions=panel.positions, adjust=panel.adjust_prices,
+                rolling=panel.rolling)
 
     def run(algorithm_id, data, **parameters):
         trace.append(dict(kind="algorithm", name=algorithm_id, via="run"))
@@ -83,11 +84,16 @@ def main(box: Path) -> None:
         trace.append(dict(kind="algorithm", name=algorithm_id, via="positions"))
         return real["positions"](algorithm_id, prices, split_factors, **options)
 
+    def rolling(algorithm_id, prices, split_factors=None, **options):
+        trace.append(dict(kind="algorithm", name=algorithm_id, via="rolling"))
+        return real["rolling"](algorithm_id, prices, split_factors, **options)
+
     def adjust_prices(prices, split_factors=None, **options):
         trace.append(dict(kind="adjust_prices"))
         return real["adjust"](prices, split_factors, **options)
 
     algorithms.run, algorithms.positions, algorithms.adjust_prices = run, positions, adjust_prices
+    algorithms.rolling = panel.rolling = rolling
     panel.positions, panel.adjust_prices = positions, adjust_prices
 
     confinement = {}
