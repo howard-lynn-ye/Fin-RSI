@@ -8,9 +8,15 @@ over, warm-up rows left as NaN, index or column order lost. These two functions 
 assembly once, with every one of those choices explicit.
 
     from fin_skills.algorithms import adjust_prices, positions
-    close = adjust_prices(raw, split_factors)                  # factors are cumulative
-    w = positions("inverse_volatility", raw, split_factors, window=60)
+    w = positions("inverse_volatility", raw, split_factors, window=60)   # adjusts once, inside
     w = positions("ma_crossover", raw, split_factors, parameters={"fast": 5, "slow": 20})
+
+    close = adjust_prices(raw, split_factors)    # only when you need the adjusted closes
+    w = positions("inverse_volatility", close, window=60)   # already adjusted: no factors
+
+Give the split factors exactly once. adjust_prices() marks its output as adjusted, and
+positions() raises ValueError if it receives that output together with split factors,
+instead of applying them a second time.
 
 Convention: the position on row t is held over the return from row t-1 to row t, and with
 lag=1 it is computed from adjusted closes through row t-1 only.
@@ -25,6 +31,12 @@ import pandas as pd
 
 FACTOR_KINDS = ("cumulative", "ratio")
 WARMUP = ("zero", "nan")
+ADJUSTED = "split_adjusted"      # attrs key set by adjust_prices() on its output
+
+
+def _mark_adjusted(x):
+    x.attrs[ADJUSTED] = True
+    return x
 
 
 def _frame(x: Any, name: str) -> pd.DataFrame:
@@ -56,10 +68,15 @@ def adjust_prices(prices: pd.DataFrame | pd.Series, split_factors=None, *,
 
     split_factors=None returns the prices unchanged (already adjusted). Index and columns of
     prices and split_factors must match exactly; nothing is aligned silently.
+
+    The result carries attrs["split_adjusted"] = True. Pass it to positions() WITHOUT split
+    factors; adjust_prices() and positions() both refuse to apply factors to it again.
     """
     if factors not in FACTOR_KINDS:
         raise ValueError(f"factors must be one of {FACTOR_KINDS}, got {factors!r}")
     series = isinstance(prices, pd.Series)
+    if split_factors is not None:
+        _refuse_readjusting(prices)
     p = _frame(prices, "prices")
     if split_factors is None:
         return p.iloc[:, 0] if series else p
@@ -69,7 +86,15 @@ def adjust_prices(prices: pd.DataFrame | pd.Series, split_factors=None, *,
     if factors == "ratio":
         f = f.cumprod()
     out = p * f
-    return out.iloc[:, 0] if series else out
+    return _mark_adjusted(out.iloc[:, 0].copy()) if series else _mark_adjusted(out)
+
+
+def _refuse_readjusting(prices) -> None:
+    if getattr(prices, "attrs", {}).get(ADJUSTED):
+        raise ValueError(
+            "these prices were already split-adjusted by adjust_prices(); passing split_factors "
+            "again would apply the splits twice. Either pass the raw prices with split_factors, "
+            "or pass the adjusted prices with split_factors=None.")
 
 
 def _needed(spec, window: int | None, parameters: Mapping[str, Any]) -> int:
@@ -90,7 +115,8 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     algorithm_id   : a catalogued portfolio algorithm (input asset_returns) or signal
                      algorithm (input prices or returns); see catalog().
     prices         : raw closes, one column per asset (a Series is one asset).
-    split_factors  : see adjust_prices(); None means prices are already adjusted.
+    split_factors  : see adjust_prices(); None means prices are already adjusted. The output
+                     of adjust_prices() must come with split_factors=None, or this raises.
     window         : portfolio algorithms only - how many trailing simple returns each
                      decision sees. None passes the whole available history. Rows without
                      enough history are warm-up rows.
@@ -119,6 +145,8 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     if warmup not in WARMUP:
         raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
     spec = reg.get(algorithm_id)
+    if split_factors is not None:
+        _refuse_readjusting(prices)
     close = adjust_prices(_frame(prices, "prices"), split_factors, factors=factors)
     cols, index = close.columns, close.index
     out = pd.DataFrame(np.nan, index=index, columns=cols)
