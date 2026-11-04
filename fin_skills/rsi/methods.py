@@ -428,9 +428,12 @@ class Evolve(_Learner):
             best_score = self._score(best_eps)
             self.history.append(dict(generation=0, score=best_score, accepted=True))
             for g in range(1, min(self.generations, budget.proposals) + 1):
-                failures = [f"- {e.task_id}: " + (e.steps[-1].feedback or e.steps[-1].error
-                                                  or "failed checks")[:400]
-                            for e in best_eps if not e.valid and e.steps]
+                # Only what the judge showed: an accepted program that the hidden grader
+                # rejects is not listed, so the proposer never learns a dev grade.
+                failures = [f"- {e.task_id}: " + (
+                    e.steps[-1].feedback or e.steps[-1].error or "failed checks: " + ", ".join(
+                        n for n, ok in e.steps[-1].checks.items() if not ok))[:400]
+                    for e in best_eps if e.steps and not e.accepted]
                 if not failures:
                     break
                 candidate = fit_meter([dict(role="system", content=MUTATE),

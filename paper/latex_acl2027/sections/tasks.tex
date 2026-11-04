@@ -1,0 +1,83 @@
+\section{Task suite and protocol}
+\label{sec:tasks}
+
+The suite has \NTasks{} tasks: \NTaskAlgorithms{} algorithms, each with two variants
+(Appendix~\ref{app:tasks}). A task states a rule in prose with its parameters. The model
+must implement the rule as \texttt{solve(prices, split\_factors)}, returning a date-by-asset
+frame. For portfolio and signal tasks the frame holds positions. For volatility, risk and
+forecast tasks it holds the value known at the previous close. Each task can be solved
+either by hand or by one library call (\texttt{positions()} or \texttt{rolling()}).
+
+\paragraph{Data.}
+The inputs are synthetic four-asset panels of \NRows{} business days with seeded Gaussian
+returns. Raw quotes are adjusted closes divided by cumulative split factors. A panel has four
+splits at fixed rows: 2-for-1, 3-for-1, 3-for-2 and a 1-for-2 reverse split. The
+\NEFourTasks{} tasks carried over from our earlier study keep \NRowsEFour{} rows, and with them
+only the first two splits, so they reproduce that study's inputs exactly. Variant~a gives cumulative factors in alphabetical column order.
+Variant~b gives event ratios, a shuffled column order and different parameters. Every task
+runs on \NSeeds{} data seeds. Together, the tasks contain the failures we observed in earlier
+agent-written programs:
+\begin{itemize}
+\item cumulative factors applied again, or event ratios used as cumulative factors;
+\item positions decided on the close they trade over;
+\item warm-up rows computed on a partial window or left missing;
+\item the missing first return of \texttt{pct\_change()};
+\item columns assumed to be in alphabetical order.
+\end{itemize}
+
+\paragraph{References.}
+Each task has an independent reference written with numpy, which does not call \lib{}. On
+every task and seed, the reference agrees with the one-step library call to within
+$\RefGapOther$. The exception is \texttt{min\_variance}, which agrees to within
+$\RefGapMinVariance$: the library solves it numerically, and the reference enumerates the
+supports of the long-only solution exactly. Building these references exposed a precision
+defect in the library's long-only minimum-variance optimiser. On daily-scale covariances the
+optimiser stopped early, and weights differed from the exact solution by up to
+$1.2\times10^{-2}$. Rescaling the covariance before solving fixed it.
+
+\paragraph{Judge and hidden grader.}
+\label{sec:grader}
+The judge runs each program in a separate process with a memory limit and a 120-second
+timeout. In our runs the process is also confined on Linux with Landlock and seccomp, which
+restrict its file-system and network access. Without library access, the judge refuses
+\texttt{import fin\_skills}. It applies the three checks of \S\ref{sec:checks}, perturbing
+from rows 32 and 64 for \texttt{execution\_lag}. The grader is separate code that never
+appears in a prompt. A program is \emph{valid} only if it ran, passed every check, and
+matches the reference within an absolute tolerance of $10^{-8}$ ($10^{-5}$ for
+\texttt{min\_variance}). A program that passes every check but is wrong is \emph{accepted but
+wrong}; we report this rate because it is the error the checks cannot see.
+
+Before any model was run, the suite had to pass three qualification tests:
+\begin{itemize}
+\item on every task, a correct program (the one-step library call) passes every check and is
+graded valid, so no check raises a false alarm;
+\item on every task and seed, the reference agrees with the library;
+\item on a position task and a table task, a planted version of each failure fails both its
+check and the grade: trading on the same close, no adjustment, factors cumulated twice
+(position task only), and missing warm-up rows.
+\end{itemize}
+
+\paragraph{Development and held-out split.}
+The split is by algorithm, so no held-out algorithm appears during development. The
+\NForcedDev{} algorithms that a model has already seen go to development: four from our
+earlier study and one used in model qualification. Of the remaining \NDrawn{}, a seeded draw
+sends \NDrawnDev{} to development. Development then has \NDevAlgorithms{} algorithms
+(\NDevTasks{} tasks). The held-out set has \NHeldAlgorithms{} algorithms (\NHeldTasks{} tasks)
+and covers all \NFamilies{} families.
+
+\paragraph{Protocol.}
+The primary outcome is the valid-delivery rate on held-out tasks. Secondary outcomes are
+the accepted-but-wrong rate, model calls, generated tokens, wall time and library use.
+
+The main comparison runs \NMethods{} methods $\times$ 2 arms (\texttt{cards},
+\texttt{cards+library}) $\times$ \NHeldTasks{} tasks $\times$ \NSeeds{} seeds $\times$
+\NModels{} models, or \NMainEpisodes{} episodes. The component ablation adds
+\texttt{NoImprove}, \texttt{CheckFeedback} and \texttt{PlaybookLearning} on the
+\texttt{none} and \texttt{library} arms, a further \NAblationEpisodes{} episodes.
+
+Intervals are task-clustered bootstrap intervals, since seeds of one task are not
+independent. Paired comparisons match the task, seed and model, with a Holm correction. The
+analysis plan is frozen in a protocol file before inference, and every result is reported
+whatever its direction. \pending{Models: \NModels{} open-weight models from at least four
+families, chosen by qualification on development tasks; to be named when the protocol is
+frozen.}
