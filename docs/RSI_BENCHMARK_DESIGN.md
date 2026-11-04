@@ -36,7 +36,7 @@ episode.accepted, episode.code, episode.usage      # calls, generated_tokens, at
 # episode.valid is filled in only by rsi.benchmark(), from the hidden grader
 
 report = rsi.benchmark(rsi.METHODS, generate, tasks, seeds=(11, 23, 37),
-                       library=(False, True), budget=budget)
+                       arms=("cards", "cards+library"), budget=budget)
 ```
 
 ### 2.1 三个对象
@@ -54,7 +54,7 @@ report = rsi.benchmark(rsi.METHODS, generate, tasks, seeds=(11, 23, 37),
 ```python
 class BaseRSI:
     name: str
-    def __init__(self, *, library: bool = False): ...
+    def __init__(self, *, library: bool = False, cards: bool = True): ...
     def fit(self, generate, dev_tasks, *, budget: FitBudget) -> "BaseRSI": ...  # 默认不做事
     def solve(self, generate, task, *, seed: int, budget: Budget) -> Episode: ...
     def state(self) -> dict: ...          # 学到了什么（经验、反思、手册），可哈希、可审计
@@ -65,6 +65,7 @@ class BaseRSI:
 - `library=True`：接口说明**从函数签名自动生成**（修正 v2 里 `data_dictionary=` 与真实参数
   `data` 不一致的问题），规则卡带库调用提示，库调用被追踪。
 - 方法与库开关正交，所以每种方法都有"有库 / 无库"两组。
+- `cards=False`：提示和反馈里都不放规则卡，失败的检查只给原因（用于 6.2 的组件消融）。
 
 ### 2.3 公平预算（由计量器强制，不靠自觉）
 
@@ -171,30 +172,6 @@ Qwen2.5-Coder 7B/14B 参与过开发，若入选需在论文中标为开发模�
 70 GPU 小时，反思、审查类方法调用更多，实际会更高。这是估计，不是承诺；冻结协议前用
 每个模型 2 道开发题实测再定。
 
-### 6.2 组件消融：技能、检查、自我改进各自起多大作用（2026-11-04 设计，未运行）
-
-标题里的三个部分分开测。技能有两部分：规则卡（文字知识）和库调用（可执行工具），用两个
-开关组合成四组（`rsi.ARMS`）：
-
-| 组 | 系统提示里的规则卡 | 库接口，可 `import fin_skills` | 反馈里的规则卡 |
-|---|---|---|---|
-| `none` | 无 | 否 | 无，只有失败的检查和原因 |
-| `cards` | 有（不含库调用） | 否 | 有 |
-| `library` | 无 | 是 | 无，只有失败的检查和原因 |
-| `cards+library` | 有 | 是 | 有 |
-
-- 四组都保留题目本身的定义：规则、时滞说明、复权因子的形式。这些规定了正确答案，不算技能。
-- 检查失败时，四组都看到检查名和原因（检查观察到了什么，例如"只改动当日及以后的价格，
-  仓位却变了"）。原因属于"检查"这部分；"该怎么改"的规则卡属于"技能"。
-- 方法：`NoImprove`（不看反馈）、`CheckFeedback`（看检查反馈）、`PlaybookLearning`（在开发
-  题上学经验）。同一组内，NoImprove→CheckFeedback 的差别是检查的作用，
-  CheckFeedback→PlaybookLearning 的差别是自我改进的作用；同一方法跨组的差别是技能的作用。
-- `cards` 和 `cards+library` 两组就是主实验的无库组和有库组，可直接复用；只需新增 `none`
-  和 `library` 两组：3 种方法 × 2 组 × 16 道留出题 × 3 个种子 × 5 个模型 = 1,440 个
-  episode。按 71 秒一个粗估约 28 GPU 小时，这是估计，冻结协议前按实测再定。
-- 主要比较配对到同一题、同一种子、同一模型，与第 5 节一样用按题聚类的 bootstrap 和 Holm
-  校正。
-
 ### 6.1 模型元数据资格检查（2026-11-03，只读，未加载权重）
 
 通过已有的共享 SSH 连接（未新建登录）读取 10/17 运行留下的缓存清单，以及每个已缓存模型在
@@ -228,6 +205,30 @@ RSI 方法的差别。Qwen2.5-Coder 7B/14B 可以额外作为开发参照报告�
 执行纪律（仓库 `AGENTS.md`）：fin-skills 同时最多 1 个 Slurm 作业（含排队），按模型串行
 提交；只用 CPU 做资格检查；修库期间不扩大模型实验。2026-11-03 用户确认 GPU 小时不设上限；
 单作业规则不变。
+
+### 6.2 组件消融：技能、检查、自我改进各自起多大作用（2026-11-04 设计，未运行）
+
+标题里的三个部分分开测。技能有两部分：规则卡（文字知识）和库调用（可执行工具），用两个
+开关组合成四组（`rsi.ARMS`）：
+
+| 组 | 系统提示里的规则卡 | 库接口，可 `import fin_skills` | 反馈里的规则卡 |
+|---|---|---|---|
+| `none` | 无 | 否 | 无，只有失败的检查和原因 |
+| `cards` | 有（不含库调用） | 否 | 有 |
+| `library` | 无 | 是 | 无，只有失败的检查和原因 |
+| `cards+library` | 有 | 是 | 有 |
+
+- 四组都保留题目本身的定义：规则、时滞说明、复权因子的形式。这些规定了正确答案，不算技能。
+- 检查失败时，四组都看到检查名和原因（检查观察到了什么，例如"只改动当日及以后的价格，
+  仓位却变了"）。原因属于"检查"这部分；"该怎么改"的规则卡属于"技能"。
+- 方法：`NoImprove`（不看反馈）、`CheckFeedback`（看检查反馈）、`PlaybookLearning`（在开发
+  题上学经验）。同一组内，NoImprove→CheckFeedback 的差别是检查的作用，
+  CheckFeedback→PlaybookLearning 的差别是自我改进的作用；同一方法跨组的差别是技能的作用。
+- `cards` 和 `cards+library` 两组就是主实验的无库组和有库组，可直接复用；只需新增 `none`
+  和 `library` 两组：3 种方法 × 2 组 × 16 道留出题 × 3 个种子 × 5 个模型 = 1,440 个
+  episode。按 71 秒一个粗估约 28 GPU 小时，这是估计，冻结协议前按实测再定。
+- 主要比较配对到同一题、同一种子、同一模型，与第 5 节一样用按题聚类的 bootstrap 和 Holm
+  校正。
 
 ## 7. 要新增的代码
 
