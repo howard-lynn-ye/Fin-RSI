@@ -206,6 +206,25 @@ def test_learners_reject_a_lesson_that_does_not_help(cls):
     assert LESSON not in method.addendum
 
 
+class ZeroModel(LessonModel):
+    """Programs that run and pass every visible check but are wrong (all-zero output)."""
+
+    def __call__(self, messages):
+        if "improving the standing instructions" in messages[0]["content"]:
+            return super().__call__(messages)
+        self.roles.append("writer")
+        return "```python\ndef solve(prices, split_factors):\n    return prices * 0.0\n```"
+
+
+def test_evolve_never_shows_the_proposer_a_hidden_grade():
+    model = ZeroModel()
+    method = rsi.Evolve(library=False).fit(model, DEV, budget=rsi.FitBudget(proposals=2))
+    # Every dev episode is accepted but invalid: nothing visible failed, so no proposal.
+    assert "mutate" not in model.roles
+    assert [h["generation"] for h in method.history] == [0]
+    assert method.history[0]["score"][0] == 0 and method.addendum == ""
+
+
 def test_learner_must_be_fitted_and_fit_budget_is_enforced():
     with pytest.raises(RuntimeError, match="fit"):
         rsi.Evolve(library=True).solve(LessonModel(), HELDOUT, seed=11)

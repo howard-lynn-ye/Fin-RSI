@@ -1,0 +1,106 @@
+\section{The \lib{} library}
+\label{sec:library}
+
+\lib{} is a Python package whose base install depends only on numpy, pandas and scipy. It
+has three layers. \emph{Skills} hold the financial knowledge a model needs and the
+algorithms that apply it. \emph{Checks} are executable tests for the failures that the
+knowledge is meant to prevent. \emph{Self-improvement} methods turn check results into
+better programs (\S\ref{sec:methods}). An agent reaches all three through the same
+interfaces (\S\ref{sec:interfaces}).
+
+\subsection{Skills: documents, algorithms and rule cards}
+\label{sec:skills}
+
+\paragraph{Skill documents.}
+The library ships \NSkills{} skills in \NPlugins{} plugins that follow the Agent Skills
+specification \citep{agentskills}, with \NReferenceFiles{} reference files and
+\NScripts{} runnable scripts. A skill is not a tutorial. It records the defaults, licence
+changes and silent failure modes that a model's training prior gets wrong. Each claim is
+dated and marked by how it was verified: at a primary source, secondhand, silently wrong,
+or dead. The descriptions of all \NSkills{} skills take about \NListingTokens{} tokens of an
+agent's skill listing, so the skills are split into plugins and a user installs only the
+ones a task needs.
+
+\paragraph{Algorithms.}
+A catalog of \NAlgorithms{} algorithm entries covers \NAlgorithmTasks{} task types,
+including portfolio construction, trading signals, volatility, risk, forecasting, pricing and
+execution. \NNative{} are implemented in the library. The other \NAdapters{} wrap
+\NOptionalLibraries{} optional libraries; when a library is absent, its entries are reported
+as missing dependencies rather than replaced silently. Two functions turn one algorithm into
+the object a research program needs:
+\begin{lstlisting}[language=Python]
+w = positions("macd", raw, factors,
+              parameters={"fast": 8})
+v = rolling("ewma_volatility", raw,
+            factors, window=40)
+\end{lstlisting}
+\texttt{positions()} takes raw quotes and split factors, applies the factors once, and
+returns positions decided on the previous close. \texttt{rolling()} does the same for
+volatility, risk and forecast algorithms, with one lagged value per date and asset.
+\texttt{adjust\_prices()} marks its output as adjusted, and \texttt{positions()} refuses to
+adjust such a frame again, because passing adjusted prices together with their factors
+applies every split twice.
+
+\paragraph{Rule cards.}
+Between the documents and the code sit \NCards{} rule cards in \NCardFamilies{} families:
+timing, corporate actions and data hygiene (Table~\ref{tab:cards}). A card holds:
+\begin{itemize}
+\item a few sentences of rule text;
+\item the skill passage the rule comes from;
+\item the checks that verify it;
+\item the task traits that select it;
+\item where one exists, the library call that follows the rule.
+\end{itemize}
+A task declares its traits, such as \emph{positions} or \emph{split factors}, and receives
+only the cards those traits select. A run without library access receives the same cards
+without the library calls.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\input{cards_table}
+\caption{Rule cards by family, the checks that verify each one, and whether the card names a
+library call that follows the rule.}
+\label{tab:cards}
+\end{table}
+
+\subsection{Checks}
+\label{sec:checks}
+
+The library has \NGuards{} guards behind one interface: \texttt{run(**inputs)} returns an
+outcome with \texttt{passed}, a message and warnings. A failing guard is a result, not an
+error. Malformed arguments are reported as tool errors that name the field, so a model can
+correct its call. \NGuardsExported{} guards take JSON inputs and are exported as tools. The
+other \NGuardsPythonOnly{} need a live Python object, such as the position function under
+test. A tool schema cannot carry one, and a stand-in built by the model would not be the
+caller's function, so these guards are available only in Python.
+
+For generated programs, the library provides property checks that need no expected output.
+Three are used throughout this paper:
+\begin{itemize}
+\item \texttt{finite\_output}: the result has no missing or infinite values.
+\item \texttt{split\_representation}: the program is re-run on the same economic prices,
+given as adjusted closes with unit factors, and its output must not change (absolute
+tolerance $10^{-8}$). A program that applies the factors twice, or mixes raw and adjusted
+prices, fails.
+\item \texttt{execution\_lag}: the prices from row $k$ onward are perturbed, and no position
+up to row $k$ may move. A rule that trades on the close it reads fails this check. It still
+passes a plain causality test, which lets the value on row $t$ use row $t$.
+\end{itemize}
+Each check carries a \emph{cause}: one sentence saying what the check observed, for
+instance that a position moved when only prices on or after its own row changed.
+\texttt{explain()} pairs each cause with the cards that address it. We treat the cause as
+part of the check and the card as part of the skills; \S\ref{sec:arms} separates the two.
+
+\subsection{Agent interfaces}
+\label{sec:interfaces}
+
+One registry yields \NTools{} tools under the same names in three formats: a Model Context
+Protocol server over stdio \citep{mcp2026spec}, OpenAI tool schemas and Anthropic tool
+schemas. The tools read and search skills; list, recommend and run algorithms; and run the
+exported guards. Python code imports the same functions directly.
+
+\texttt{agents.Team} turns one user model, a callable \texttt{generate(messages) -> str}, into
+a writer and one reviewer per rule family. Code checks decide acceptance, and no role can
+accept a program the checks reject. The self-improvement methods take the same
+\texttt{generate} callable, so a user connects one model to every part of the library.

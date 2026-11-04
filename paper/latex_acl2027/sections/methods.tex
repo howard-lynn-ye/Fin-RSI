@@ -1,0 +1,136 @@
+\section{Self-improvement behind one interface}
+\label{sec:methods}
+
+PyOD put outlier detectors behind one \texttt{fit} / \texttt{decision\_function} interface
+\citep{zhao2019pyod}. That interface later let ADBench compare 30 detectors on equal terms
+\citep{han2022adbench}. \lib{} does the same for self-improvement. Every method is a class
+with one constructor and three calls:
+\begin{lstlisting}[language=Python]
+m = rsi.Reflexion(library=True,
+                  cards=True)
+m.fit(generate, tasks.dev)
+ep = m.solve(generate, task, seed=11)
+ep.accepted, ep.code, ep.usage
+m.state()
+\end{lstlisting}
+\texttt{generate} is the user's own model. \texttt{fit()} does nothing for a method that does
+not learn. \texttt{state()} returns what the method learned,
+which is hashed into every episode record. \texttt{rsi.benchmark()} fits each method once on
+the development tasks, runs it on every held-out task and seed, and grades the results.
+
+\paragraph{What a method sees.}
+\texttt{solve()} receives the task text and a judge, on which it can only call
+\texttt{check(code)}. A check returns whether the program ran, its error, the result of each
+check, and the causes of the failed ones. It never returns the grade: whether the final
+program matches an independent reference. The benchmark runner computes the grade after
+\texttt{solve()} returns and never passes it back (\S\ref{sec:grader}). Learning methods may
+use development grades to keep or reject a candidate, but no text a model reads contains a
+grade.
+
+\paragraph{Equal budgets.}
+Every model call goes through a meter, which refuses a call beyond the budget and records
+which limit stopped the episode. Each episode gets:
+\begin{itemize}
+\item \BudgetAttempts{} program executions;
+\item \BudgetCalls{} model calls, counting helper calls such as reflections and reviews;
+\item \BudgetTokens{} generated tokens.
+\end{itemize}
+Learning methods also get a development budget of \FitEpisodes{} episodes, \FitProposals{}
+proposals, \FitCalls{} calls and \FitTokens{} tokens. Development episodes count against
+both budgets. Token counts come from the backend when it reports them; otherwise they are
+estimated as one token per four characters.
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{5.3cm}p{3.9cm}p{2.8cm}@{}}
+\toprule
+Method & At test time & Learned on development tasks & In the spirit of \\
+\midrule
+\texttt{NoImprove} & one program, no feedback & -- & baseline \\
+\texttt{SelfDebug} & retry with the error only; stop once the program runs & -- &
+\citet{chen2024selfdebug} \\
+\texttt{CheckFeedback} & retry with the failed checks, their causes and cards & -- &
+verifier feedback \\
+\texttt{Reflexion} & as \texttt{CheckFeedback}, plus a written reflection before each retry &
+-- & \citet{shinn2023reflexion} \\
+\texttt{PlaybookLearning} & as \texttt{CheckFeedback}, with a frozen playbook in the prompt &
+playbook entries, through the gated loop & \citet{zhao2024expel,suzgun2026dynamic} \\
+\texttt{Team} & a writer and one reviewer per rule family, from the same model & -- &
+multi-role review \\
+\texttt{Evolve} & as \texttt{CheckFeedback}, with an evolved prompt addendum & the addendum,
+over \EvolveGenerations{} generations on \EvolveMinibatch{} tasks & \citet{agrawal2026gepa} \\
+\bottomrule
+\end{tabular}
+\caption{The \NMethods{} self-improvement methods. All share the prompt, the judge and the
+budget; each keeps the mechanism it is known for. They are not reproductions of the original
+systems.}
+\label{tab:methods}
+\end{table*}
+
+\paragraph{Methods.}
+Table~\ref{tab:methods} lists the \NMethods{} methods.
+\begin{itemize}
+\item \texttt{SelfDebug} returns only the error of a program that did not run, and stops as
+soon as a program runs.
+\item \texttt{CheckFeedback} also returns the failed checks.
+\item \texttt{Reflexion} first asks the model for a reflection of at most five sentences,
+without code, and keeps the reflections for the rest of the episode.
+\item In \texttt{Team}, a reviewer is asked only when a check of its own family failed. It sees
+the program, the failed checks, their causes and its family's cards, and answers with a
+diagnosis rather than code. A program that does not run goes to an interface reviewer.
+\item \texttt{Evolve} rewrites a prompt addendum of at most 1,200 characters from the visible
+failures of the current best addendum. It keeps a candidate only if it scores strictly higher
+on the same development tasks: first by the number of valid programs, then by the share of
+passed checks.
+\end{itemize}
+
+\paragraph{Gated playbook loop.}
+The playbook method is built on the library's \texttt{RSILoop}. A playbook is a list of short
+entries on three editable surfaces: tool usage, retrieval and experience. The proposer sees
+development traces only. For each failed attempt it sees the program, the failed checks and
+their causes, but never the grade. One proposal changes one entry. The candidate and the
+current playbook are both evaluated on two disjoint halves of the development tasks, split by
+algorithm. The candidate is accepted only if all of the following hold:
+\begin{itemize}
+\item its score does not drop on either half;
+\item its score rises on at least one half;
+\item no task that passed every check before fails one under the candidate.
+\end{itemize}
+The last condition is the \emph{no-regression} rule. The stricter \emph{all-pass} rule vetoes
+any candidate while a single task still fails, which blocks learning for a weak model.
+Whitespace-only edits and candidates that were already tried are rejected. Every proposal,
+evaluation and decision is appended to a journal whose receipts carry evidence hashes.
+Timestamps may not move backward, and a frozen playbook cannot change.
+
+\subsection{Skill arms}
+\label{sec:arms}
+
+Two switches separate the parts of the skills. \texttt{library} adds the interface text and
+allows \texttt{import fin\_skills}; \texttt{cards} adds the task's rule cards to the prompt
+and to the check feedback. Together they define \NArms{} arms:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Arm & Rule cards & Library \\
+\midrule
+\texttt{none} & -- & -- \\
+\texttt{cards} & \checkmark & -- \\
+\texttt{library} & -- & \checkmark \\
+\texttt{cards+library} & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Every arm keeps the task definition: the rule, the timing convention and the form of the split
+factors. These fix the correct answer and are not skills. Every arm also sees the failed checks
+and their causes. Within one arm, \texttt{NoImprove} versus \texttt{CheckFeedback} measures the
+checks, and \texttt{CheckFeedback} versus \texttt{PlaybookLearning} measures self-improvement.
+For one method, comparing arms measures the skills.
+
+Each arm sees only its own material. Without the library, the worker refuses
+\texttt{import fin\_skills}, and cards are rendered without library calls. The development
+traces given to a proposer follow the same arm.

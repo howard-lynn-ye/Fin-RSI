@@ -154,6 +154,27 @@ def test_correct_programs_are_accepted_and_graded_valid():
     assert Judge(task, seed=11, library=True).check(LIBRARY).library_calls == 1
 
 
+def _library_program(task) -> str:
+    options = dict(task.library_options)
+    params = {k: v for k, v in task.parameters.items() if k not in options}
+    call = "rolling" if task.kind == "table" else "positions"
+    return (f"from fin_skills.algorithms import {call}\n"
+            "def solve(prices, split_factors):\n"
+            f"    return {call}({task.algorithm!r}, prices, split_factors, "
+            f"factors={task.factors!r}, parameters={params!r}, **{options!r})\n")
+
+
+@pytest.mark.parametrize("task", TASKS.tasks, ids=lambda t: t.id)
+def test_a_correct_program_passes_every_check_on_every_task(task):
+    """Qualification 2: no check rejects a correct program (no false alarm on any task)."""
+    code = _library_program(task)
+    judge = Judge(task, seed=11, library=True)
+    seen = judge.check(code)
+    assert seen.accepted, (seen.error, seen.checks)
+    assert set(seen.checks) == {"finite_output", "split_representation", "execution_lag"}
+    assert judge.grade(code)
+
+
 @pytest.mark.parametrize("bug", sorted(BUGS))
 def test_planted_defects_fail_their_check_and_the_grade(bug):
     """Qualification 3: every kind of trap is caught by the check meant for it."""
