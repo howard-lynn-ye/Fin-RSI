@@ -11,6 +11,7 @@ The RSI methods and the benchmark (methods.py, meter.py, bench.py) share one int
     m = rsi.Reflexion(library=True).fit(generate, suite().dev)
     episode = m.solve(generate, suite().heldout[0], seed=11, budget=rsi.Budget())
     report = rsi.benchmark(rsi.METHODS, generate, suite())
+    ablation = rsi.benchmark([rsi.CheckFeedback], generate, suite(), arms=tuple(rsi.ARMS))
 
 They are loaded on first use, so `import fin_skills.rsi` stays free of numpy and pandas.
 """
@@ -21,8 +22,8 @@ from .core import (
 from .meter import Budget, BudgetExceeded, FitBudget, Meter
 from .wiring import Attempt, check_evaluator, loop_from_checks, observe
 
-_METHODS = ("BaseRSI", "CheckFeedback", "Episode", "Evolve", "METHODS", "NoImprove",
-            "PlaybookLearning", "Reflexion", "SelfDebug", "Step", "Team", "extract")
+_METHODS = ("ARMS", "BaseRSI", "CheckFeedback", "Episode", "Evolve", "METHODS", "NoImprove",
+            "PlaybookLearning", "Reflexion", "SelfDebug", "Step", "Team", "arm_name", "extract")
 _BENCH = ("Report", "benchmark")
 
 __all__ = ["Attempt", "Budget", "BudgetExceeded", "CaseResult", "Decision", "Entry",

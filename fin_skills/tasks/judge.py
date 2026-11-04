@@ -51,13 +51,13 @@ class Visible:
     def error_text(self) -> str:
         return self.error
 
-    def check_text(self, *, tools: bool) -> str:
-        """Failed checks with their causes and rule cards (cards carry library hints only
-        when tools is True). Empty when the program ran and passed."""
+    def check_text(self, *, tools: bool, rules: bool = True) -> str:
+        """Failed checks with their causes and, when rules is True, their rule cards (cards
+        carry library hints only when tools is True). Empty when the program ran and passed."""
         known = [n for n in self.failed if n in CAUSES]
         if not known:
             return ""
-        return explain(known, tools=tools)
+        return explain(known, tools=tools, rules=rules)
 
 
 def reference(task: Task, seed: int) -> np.ndarray:

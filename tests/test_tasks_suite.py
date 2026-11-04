@@ -90,6 +90,23 @@ def test_prompts_without_library_carry_no_library_calls():
     assert "fin_skills.algorithms" in lib and "EVENT RATIOS" in raw
 
 
+def test_cards_switch_removes_only_the_rule_cards():
+    task = TASKS.get("macd_b")
+    for library in (False, True):
+        with_cards = messages(task, seed=11, library=library)[0]["content"]
+        bare = messages(task, seed=11, library=library, cards=False)[0]["content"]
+        assert "Rules that apply" in with_cards and "[split_once]" in with_cards
+        assert "Rules that apply" not in bare and "[split_once]" not in bare
+        assert "EVENT RATIOS" in bare and "closes through row t-1 only" in bare
+        assert ("fin_skills.algorithms" in bare) is library
+    seen = Judge(task, seed=11, library=False).check(BUGS["no_adjustment"][0])
+    assert seen.failed == ["split_representation"]
+    assert "[split_once]" in seen.check_text(tools=False)
+    causes = seen.check_text(tools=False, rules=False)
+    assert causes.startswith("Check split_representation failed: likely")
+    assert "Rule:" not in causes and "[split_once]" not in causes
+
+
 def test_table_tasks_say_values_not_positions():
     text = messages(TASKS.get("drift_a"), seed=11, library=False)[0]["content"]
     assert "DataFrame of values" in text and "known at close t-1" in text

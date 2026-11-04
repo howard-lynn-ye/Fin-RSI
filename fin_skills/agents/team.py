@@ -23,7 +23,9 @@ Roles
   recorder    optional RSILoop; every attempt is observed as a development trace.
 
 mode="single" skips the reviewers and sends the judge's findings with rules.explain(), so the
-two set-ups can be compared with the same model, judge and attempt budget.
+two set-ups can be compared with the same model, judge and attempt budget. cards=False removes
+every rule card: the writer gets none, each reviewer gets its family's failed checks and their
+causes only, so the roles can be tested without the skills behind them.
 """
 from __future__ import annotations
 
@@ -51,6 +53,10 @@ REVIEWER = ("You review one failed program for one family of rules: {family}. On
             "listed here are yours. Say in at most five sentences what in the program breaks "
             "them and how to change it. Do not write code. Do not guess numbers the program "
             "should output.")
+REVIEWER_CHECKS = ("You review one failed program for one family of checks: {family}. Only the "
+                   "failed checks listed here are yours. Say in at most five sentences what in "
+                   "the program makes them fail and how to change it. Do not write code. Do not "
+                   "guess numbers the program should output.")
 INTERFACE_REVIEWER = ("You review one program that failed to run. Say in at most five sentences "
                       "what caused the error and how to change the program. Do not write code.")
 
@@ -92,7 +98,7 @@ class Team:
     def __init__(self, generate: Callable[[list[dict]], str], *, mode: str = "roles",
                  max_attempts: int = 3, interface: str = "", writer_rules: str = "task",
                  recorder=None, available_at: str = "", source_version: str = "",
-                 tools: bool = True):
+                 tools: bool = True, cards: bool = True):
         if not callable(generate):
             raise TypeError("generate must be callable: generate(messages) -> str")
         if mode not in MODES:
@@ -110,13 +116,14 @@ class Team:
         # tools=False renders rule cards and explanations without library calls, for a run in
         # which the program must not use fin_skills.
         self.tools = bool(tools)
+        self.cards = bool(cards)
 
     # roles ---------------------------------------------------------------------------
     def writer_messages(self, task: str, traits: Iterable[str]) -> list[dict]:
         parts = [WRITER]
         if self.interface:
             parts.append("Interface:\n" + self.interface)
-        if self.writer_rules == "task":
+        if self.writer_rules == "task" and self.cards:
             block = prompt_block(rules_for(traits), tools=self.tools)
             if block:
                 parts.append(block)
@@ -125,10 +132,14 @@ class Team:
     def reviewer_messages(self, family: str, code: str, failed: Sequence[str],
                           traits: Iterable[str]) -> list[dict]:
         mine = [name for name in failed if CHECK_FAMILY.get(name) == family]
-        cards = [c for c in CARDS if c.family == family
-                 and (c.applies & set(traits) or set(c.checks) & set(mine))]
-        system = REVIEWER.format(family=family) + "\n\n" + prompt_block(cards, tools=self.tools)
-        user = ("Failed checks:\n" + explain(mine, tools=self.tools)
+        if self.cards:
+            cards = [c for c in CARDS if c.family == family
+                     and (c.applies & set(traits) or set(c.checks) & set(mine))]
+            system = (REVIEWER.format(family=family) + "\n\n"
+                      + prompt_block(cards, tools=self.tools))
+        else:
+            system = REVIEWER_CHECKS.format(family=family)
+        user = ("Failed checks:\n" + explain(mine, tools=self.tools, rules=self.cards)
                 + "\n\nProgram:\n```python\n" + code
                 + "```")
         return [dict(role="system", content=system), dict(role="user", content=user)]
@@ -175,7 +186,8 @@ class Team:
             attempts.append(attempt)
             if self.recorder is not None:
                 observe(self.recorder, [attempt], available_at=self.available_at,
-                        source_version=self.source_version)
+                        source_version=self.source_version, tools=self.tools,
+                        rules=self.cards)
             passed = attempt.executed and all(attempt.checks.values())
             report = self.findings(attempt, number, self.max_attempts)
             transcript.append(Turn("judge", number, "accepted" if passed else report))
@@ -188,7 +200,7 @@ class Team:
             known = [n for n in failed if n in CAUSES]
             if self.mode == "single":
                 if known:
-                    feedback.append(explain(known, tools=self.tools))
+                    feedback.append(explain(known, tools=self.tools, rules=self.cards))
             elif not attempt.executed:
                 note = self._ask(self.interface_messages(code, attempt.error))[:MAX_NOTE]
                 transcript.append(Turn("reviewer:interface", number, note))

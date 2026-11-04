@@ -123,13 +123,16 @@ def prompt_block(cards: Iterable[RuleCard], *, tools: bool = True) -> str:
     return "Rules that apply to this task:\n" + "\n".join(f"- {c.render(tools)}" for c in cards)
 
 
-def explain(failed: Iterable[str], *, tools: bool = True) -> str:
-    """Cause and rule for each failed check, for feedback to the model. No expected output."""
+def explain(failed: Iterable[str], *, tools: bool = True, rules: bool = True) -> str:
+    """Cause and rule for each failed check, for feedback to the model. No expected output.
+
+    rules=False gives the causes only, without the rule cards, for a run that tests the checks
+    without the skills behind them."""
     lines = []
     for name in dict.fromkeys(failed):
         if name not in CAUSES:
             raise KeyError(f"no explanation for check {name!r}; known: {sorted(CAUSES)}")
-        rules = [c for c in CARDS if name in c.checks]
         lines.append(f"Check {name} failed: likely {CAUSES[name]}.")
-        lines.extend(f"  Rule: {c.render(tools)}" for c in rules)
+        if rules:
+            lines.extend(f"  Rule: {c.render(tools)}" for c in CARDS if name in c.checks)
     return "\n".join(lines)
