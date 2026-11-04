@@ -70,6 +70,13 @@ def main() -> None:
     a.text(rows[-1] + 1.5, adjusted[ASSET].iloc[-1], "adjusted", color=INK, va="center",
            fontsize=7)
     a.text(rows[-1] + 1.5, raw[ASSET].iloc[-1], "raw", color=INK, va="center", fontsize=7)
+    jump = raw[ASSET].iloc[split_row] / raw[ASSET].iloc[split_row - 1] - 1
+    pct = f"{jump:.0%}".replace("-", "\u2212")         # a true minus sign, not a hyphen
+    a.annotate(f"ignore the split and this\nis a {pct} one-day return",
+               xy=(split_row + 0.6, (raw[ASSET].iloc[split_row - 1] + raw[ASSET].iloc[split_row]) / 2),
+               xytext=(split_row + 9, 82), fontsize=6.5, color=INK, va="center",
+               arrowprops=dict(arrowstyle="-|>", color=INK2, lw=0.6, shrinkA=1, shrinkB=1,
+                               mutation_scale=6, connectionstyle="arc3,rad=0.25"))
     a.set_xlim(0, rows[-1])
     a.set_xlabel("row", labelpad=1)
     a.set_ylabel("price of asset C", labelpad=2)
@@ -83,6 +90,8 @@ def main() -> None:
                 loc="left", color=INK, pad=4)
 
     names = list(moved)[::-1]              # correct program on top
+    b.add_patch(Rectangle((K - 0.5, -0.55), 1.0, 2.1, facecolor=ORANGE, alpha=0.12,
+                          edgecolor="none", zorder=0))
     for y, name in enumerate(names):
         for x in SHOW:
             hit = moved[name][x]
@@ -92,6 +101,10 @@ def main() -> None:
     b.plot([K - 0.5, K - 0.5], [-0.55, 1.5], color=INK2, lw=0.8)
     b.text(K - 0.5, 1.75, f"prices perturbed from row k = {K}", ha="left", va="center",
            color=INK2, fontsize=7)
+    for y, name in enumerate(names):
+        verdict = "fails" if moved[name][K] else "passes"
+        b.text(SHOW.stop - 0.2, y, verdict, va="center", ha="left", color=INK, fontsize=7,
+               fontweight="bold" if verdict == "fails" else "normal")
     b.set_xlim(SHOW.start - 0.6, SHOW.stop - 0.4)
     b.set_ylim(-0.6, 2.05)
     b.set_yticks(range(len(names)), names)

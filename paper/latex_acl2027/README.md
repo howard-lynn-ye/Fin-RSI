@@ -9,7 +9,8 @@ The earlier NAACL draft stays in `../latex_naacl/` until the coauthors agree wha
 | `sections/methods.tex` | drafted 2026-11-04: the RSI interface, budgets, 7 methods, gated loop, skill arms |
 | `sections/tasks.tex` | drafted 2026-11-04: task suite, references, judge and grader, split, protocol |
 | `sections/related.tex` | drafted 2026-11-04: self-improvement, library-plus-benchmark, financial LLMs, metamorphic testing |
-| `figures/overview.tex` | Figure 1 (TikZ): the library and one episode; counts are macros from `numbers.tex` |
+| `figures/overview.tex` | Figure 1 (TikZ): the library and one episode, numbered steps; counts are macros from `numbers.tex` |
+| `figures/icons.tex` | pictograms drawn in TikZ (no icon font: CTAN is not reachable from the build machine) |
 | `figures/task_checks.pdf` | Figure 2: task data and the `execution_lag` check, drawn by `make_figures.py` from the suite |
 | `main.tex` | abstract, introduction, results, discussion: placeholders in red |
 
