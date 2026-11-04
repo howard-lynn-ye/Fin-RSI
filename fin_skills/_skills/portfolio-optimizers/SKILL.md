@@ -182,7 +182,7 @@ min over w, alpha, z:  alpha + 1/((1-level) T) * sum_t z_t
 "highs")`: the LP objective is **0.071354** and the sample CVaR of the LP's own weights is
 **0.071354** (difference 2.8e-17), so the objective really is the CVaR; `alpha` at the optimum is
 the VaR, **0.055653**; 121 HiGHS iterations. The long-only minimum-*variance* portfolio on the
-same sample has CVaR 0.072853, **2.1 % worse** - a small gap on this well-behaved data, and the
+same sample has CVaR 0.072854, **2.1 % worse** - a small gap on this well-behaved data, and the
 right comparison to make before adopting the heavier objective.
 
 **HRP is deliberately not reimplemented here.**
@@ -208,6 +208,10 @@ changes HRP's answer.
   **2e-4** of the closed-form solution and no closer. That is fine for weights and not fine if
   you difference two solutions - which is exactly what a turnover measurement does, so measure
   turnover with a perturbation well above the solver's own noise.
+  ✅ Measured 2026-11-03 with *daily* returns (4 assets, 40- and 60-day windows): the
+  long-only minimum-variance weights were up to **1.2e-2** away from the exact optimum
+  (found by enumerating every asset subset). `min_variance()` now solves on a unit-scale copy
+  of Sigma - the minimizer is scale-free - and lands within **1.4e-6**.
 - 🚨 **An optimizer fed a singular covariance.** It will answer.
   `../covariance-and-risk-models/SKILL.md` section 1 has what that answer looks like.
 - ⚠️ **The DGP matters for section 2's size, not its sign.** With no cross-sectional alpha the

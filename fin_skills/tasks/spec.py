@@ -15,10 +15,15 @@ import random
 from .data import ASSETS, FACTOR_KINDS
 
 SPLITS = ("dev", "heldout")
+TABLE_FAMILIES = ("volatility", "risk", "forecast")
 # E4 tasks were used to design the checks and to repair the library (v1 and v2), so their
 # algorithms can never be held out.
 E4_ALGORITHMS = ("inverse_volatility", "cross_sectional_momentum", "ma_crossover",
                  "vol_target_momentum")
+# Any algorithm a model has been run on before the protocol is frozen is development data too.
+# Beacon job 3443316 (model qualification) runs e4_ma_crossover and momentum_a.
+QUALIFICATION_ALGORITHMS = ("momentum",)
+FORCED_DEV = E4_ALGORITHMS + QUALIFICATION_ALGORITHMS
 SPLIT_SEED = 20261103
 
 
@@ -26,10 +31,10 @@ SPLIT_SEED = 20261103
 class Task:
     id: str
     algorithm: str                       # catalog id; the dev/held-out split is by algorithm
-    family: str                          # portfolio | signal
+    family: str                          # portfolio | signal | volatility | risk | forecast
     definition: str
     parameters: dict = field(default_factory=dict)      # reference and library parameters
-    library_options: dict = field(default_factory=dict)  # extra positions() keywords
+    library_options: dict = field(default_factory=dict)  # positions() / rolling() keywords
     traits: frozenset = frozenset({"positions", "split_factors", "rolling_window"})
     rows: int = 128
     factors: str = "cumulative"
@@ -40,6 +45,12 @@ class Task:
     def __post_init__(self):
         if self.factors not in FACTOR_KINDS:
             raise ValueError(f"{self.id}: factors must be one of {FACTOR_KINDS}")
+
+    @property
+    def kind(self) -> str:
+        """"positions" (weights held over the next return) or "table" (a value known at close
+        t-1, such as a volatility, VaR or forecast)."""
+        return "table" if self.family in TABLE_FAMILIES else "positions"
 
     @property
     def sha256(self) -> str:
@@ -175,6 +186,29 @@ def _donchian(lookback):
             + SIGNAL_TAIL)
 
 
+def _min_variance(window, min_history=20):
+    first = max(window, min_history) + 1
+    return (f"For every session t >= {first}, take the {window} simple returns of the adjusted "
+            f"closes ending at close t-1 and their sample covariance matrix S (ddof=1). The "
+            f"weights minimize w' S w subject to sum(w) = 1 and w >= 0 (long-only, fully "
+            f"invested minimum variance); weights must be accurate to 1e-5. Earlier rows "
+            f"are 0.")
+
+
+def _hrp(window, linkage, min_history=20):
+    first = max(window, min_history) + 1
+    return (f"Hierarchical risk parity. For every session t >= {first}, take the {window} simple "
+            f"returns of the adjusted closes ending at close t-1, with the columns in the given "
+            f"order. Compute their correlation C and sample covariance S (ddof=1), the distance "
+            f"d = sqrt((1 - C) / 2), and a hierarchical clustering of d with scipy's "
+            f"'{linkage}' linkage. Order the assets by the dendrogram leaves (scipy leaves_list). "
+            f"Then bisect recursively: start every weight at 1 and the list as one cluster; "
+            f"split each cluster of two or more assets into its first half (length // 2) and "
+            f"the rest; for each pair, with V the variance under S of the inverse-variance "
+            f"portfolio of each half, multiply the first half's weights by 1 - V1/(V1+V2) and "
+            f"the second half's by V1/(V1+V2). Earlier rows are 0.")
+
+
 RETURNS = frozenset({"positions", "split_factors", "returns_from_prices", "rolling_window"})
 SHUFFLED = ("C", "A", "D", "B")
 
@@ -193,6 +227,19 @@ def _new() -> list[Task]:
           Task("vol_target_momentum_b", "vol_target_momentum", "signal", _vt(30, 0.15),
                dict(lookback=30, target_vol=0.15), factors="ratio", order=SHUFFLED,
                traits=RETURNS)]
+    # Portfolio optimizers. min_variance is solved by SLSQP in the library and exactly (by subset
+    # enumeration) in the reference, so it is graded at 1e-5. equal_weight is left out: its
+    # output does not depend on prices, so none of the traps can be exercised.
+    t += [Task("min_variance_a", "min_variance", "portfolio", _min_variance(60),
+               dict(window=60), dict(window=60), traits=RETURNS, tolerance=1e-5),
+          Task("min_variance_b", "min_variance", "portfolio", _min_variance(40),
+               dict(window=40), dict(window=40), factors="ratio", order=SHUFFLED,
+               traits=RETURNS, tolerance=1e-5),
+          Task("hrp_a", "hrp", "portfolio", _hrp(60, "single"),
+               dict(window=60, linkage="single"), dict(window=60), traits=RETURNS),
+          Task("hrp_b", "hrp", "portfolio", _hrp(40, "complete"),
+               dict(window=40, linkage="complete"), dict(window=40), factors="ratio",
+               order=SHUFFLED, traits=RETURNS)]
     for algorithm, a, b, text in (
             ("momentum", dict(lookback=20), dict(lookback=40), _momentum),
             ("macd", dict(fast=12, slow=26, signal_span=9), dict(fast=8, slow=21, signal_span=5),
@@ -211,14 +258,97 @@ def _new() -> list[Task]:
     return t
 
 
+TABLE_TAIL = ("Put that value on row t; rows without a full window are 0. Do not lag it a "
+              "second time: the value on row t already uses closes through row t-1 only.")
+
+
+def _returns_window(window):
+    return (f"For every session t >= {window + 1}, take the {window} simple returns of the "
+            f"adjusted closes ending at close t-1. ")
+
+
+def _hist_vol(window):
+    return (_returns_window(window) + "For each asset compute their sample standard deviation "
+            "(ddof=1) times sqrt(252). " + TABLE_TAIL)
+
+
+def _ewma_vol(window, decay):
+    return (_returns_window(window) + f"For each asset run v = r[0]^2 on the first of those "
+            f"returns, then v = {decay} * v + (1 - {decay}) * r^2 for each later return in order "
+            f"(zero mean); the value is sqrt(v * 252). " + TABLE_TAIL)
+
+
+def _hist_risk(window, confidence, output):
+    what = ("the historical value at risk: the {c} quantile of the losses (loss = -return; "
+            "numpy's default linear interpolation)" if output == "var" else
+            "the historical expected shortfall: the mean of the losses (loss = -return) that are "
+            "at or above their {c} quantile (numpy's default linear interpolation)")
+    return (_returns_window(window) + "For each asset compute " + what.format(c=confidence)
+            + ", as a positive decimal loss. " + TABLE_TAIL)
+
+
+def _normal_risk(window, confidence, output):
+    what = ("the normal value at risk mu + sd * z" if output == "var" else
+            "the normal expected shortfall mu + sd * phi(z) / (1 - c)")
+    return (_returns_window(window) + f"With loss = -return, mu the mean loss, sd the sample "
+            f"standard deviation (ddof=1), c = {confidence}, z the standard normal quantile at c "
+            f"and phi the standard normal density, compute {what} for each asset, as a positive "
+            f"decimal loss. " + TABLE_TAIL)
+
+
+def _drift(window):
+    return (f"One-step forecast of each asset's adjusted close by the drift method: for every "
+            f"session t >= {window}, take the {window} adjusted closes on rows t-{window} to t-1, "
+            f"and extend the line through the first and last of them by one step: last + (last - "
+            f"first) / {window - 1}. " + TABLE_TAIL)
+
+
+def _mean(window):
+    return (f"One-step forecast of each asset's adjusted close by the mean method: for every "
+            f"session t >= {window}, the simple mean of the {window} adjusted closes on rows "
+            f"t-{window} to t-1. " + TABLE_TAIL)
+
+
+def _tables() -> list[Task]:
+    level = frozenset({"positions", "split_factors", "rolling_window"})
+    t = []
+    for algorithm, family, (a, a_text), (b, b_text), options in (
+            ("historical_volatility", "volatility",
+             (dict(window=20, periods_per_year=252), _hist_vol(20)),
+             (dict(window=40, periods_per_year=252), _hist_vol(40)), ("window",)),
+            ("ewma_volatility", "volatility",
+             (dict(window=60, decay=0.94, periods_per_year=252), _ewma_vol(60, 0.94)),
+             (dict(window=40, decay=0.97, periods_per_year=252), _ewma_vol(40, 0.97)), ("window",)),
+            ("historical_var_es", "risk",
+             (dict(window=60, confidence=0.95, output="var"), _hist_risk(60, 0.95, "var")),
+             (dict(window=40, confidence=0.975, output="expected_shortfall"),
+              _hist_risk(40, 0.975, "es")), ("window", "output")),
+            ("normal_var_es", "risk",
+             (dict(window=60, confidence=0.99, output="var"), _normal_risk(60, 0.99, "var")),
+             (dict(window=40, confidence=0.95, output="expected_shortfall"),
+              _normal_risk(40, 0.95, "es")), ("window", "output")),
+            ("drift", "forecast", (dict(window=30), _drift(30)), (dict(window=20), _drift(20)),
+             ("window",)),
+            ("mean", "forecast", (dict(window=20), _mean(20)), (dict(window=40), _mean(40)),
+             ("window",))):
+        traits = RETURNS if family != "forecast" else level
+        for name, params, text, variant in (("a", a, a_text, {}),
+                                            ("b", b, b_text, dict(factors="ratio",
+                                                                  order=SHUFFLED))):
+            t.append(Task(f"{algorithm}_{name}", algorithm, family, text, params,
+                          {k: params[k] for k in options}, traits=traits, **variant))
+    return t
+
+
 def assign_splits(algorithms, *, seed: int = SPLIT_SEED, dev_share: float = 1 / 3) -> dict:
-    """Algorithm -> split. E4 algorithms are dev; of the rest, a seeded third are dev."""
+    """Algorithm -> split. E4 and qualification algorithms are dev; of the rest, a seeded
+    third are dev."""
     algorithms = set(algorithms)
-    rest = sorted(a for a in algorithms if a not in E4_ALGORITHMS)
+    rest = sorted(a for a in algorithms if a not in FORCED_DEV)
     rng = random.Random(seed)
     rng.shuffle(rest)
     n_dev = round(len(rest) * dev_share)
-    split = {a: "dev" for a in algorithms if a in E4_ALGORITHMS}
+    split = {a: "dev" for a in algorithms if a in FORCED_DEV}
     split.update({a: ("dev" if i < n_dev else "heldout") for i, a in enumerate(rest)})
     return split
 
@@ -250,7 +380,7 @@ class TaskSet:
 
 def suite() -> TaskSet:
     """The current task suite. PROVISIONAL until the benchmark protocol freezes it."""
-    tasks = tuple(_e4() + _new())
+    tasks = tuple(_e4() + _new() + _tables())
     ids = [t.id for t in tasks]
     if len(ids) != len(set(ids)):
         raise RuntimeError("duplicate task ids")

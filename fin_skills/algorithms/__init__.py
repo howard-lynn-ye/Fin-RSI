@@ -7,7 +7,8 @@
 Catalog entries distinguish ready adapters, missing dependencies and catalog-only methods.
 Routing ranks compatibility, not expected profit. Use walk_forward for forecast validation.
 positions() turns one algorithm into a date x asset table of lagged positions from raw
-prices and split factors (adjust_prices() applies the factors once).
+prices and split factors (adjust_prices() applies the factors once); rolling() does the same
+for volatility, risk and forecast algorithms, one lagged value per date and asset.
 """
 from .core import Algorithm, Candidate, Registry, Request, Selection, TASKS
 from .catalog import default_registry
@@ -25,10 +26,10 @@ from .research import ResearchResult, profile_data, research
 from .diagnostics import doctor
 from .strategy import market_state, recommend_strategy
 from .knowledge import get_method, method_coverage, search_methods
-from .panel import adjust_prices, positions
+from .panel import adjust_prices, positions, rolling
 
 __all__ = ["Algorithm", "Candidate", "Registry", "Request", "Selection", "TASKS",
            "auto_run", "catalog", "default_registry", "recommend", "run", "walk_forward",
            "FittedModel", "fit", "load_model", "ResearchResult", "profile_data", "research", "doctor",
            "market_state", "recommend_strategy", "get_method", "method_coverage", "search_methods",
-           "adjust_prices", "positions"]
+           "adjust_prices", "positions", "rolling"]

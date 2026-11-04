@@ -108,7 +108,12 @@ def min_variance(Sigma: np.ndarray, long_only: bool = False) -> np.ndarray:
     if not long_only:
         x = np.linalg.solve(Sigma, np.ones(len(Sigma)))
         return x / x.sum()
-    return mean_variance(np.zeros(len(Sigma)), Sigma, 1.0, long_only=True)
+    # SLSQP stops on an absolute tolerance, so a daily-return covariance (entries ~1e-4) ends
+    # it early. The minimizer does not change when Sigma is rescaled: solve a unit-scale copy.
+    scale = float(np.mean(np.diag(Sigma)))
+    if not np.isfinite(scale) or scale <= 0:
+        scale = 1.0
+    return mean_variance(np.zeros(len(Sigma)), Sigma / scale, 1.0, long_only=True)
 
 
 # ------------------------------------------------------------------ Black-Litterman ----------

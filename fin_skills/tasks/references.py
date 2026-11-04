@@ -141,6 +141,127 @@ def donchian_breakout(p, *, lookback):
     return _lagged(d, n)
 
 
+def _min_variance_exact(cov):
+    """Long-only, fully invested minimum variance, solved exactly: for every subset of assets
+    take the equality-constrained solution and keep the feasible one with least variance."""
+    from itertools import combinations
+    n, best, best_var = len(cov), None, np.inf
+    for k in range(1, n + 1):
+        for subset in combinations(range(n), k):
+            s = list(subset)
+            x = np.linalg.solve(cov[np.ix_(s, s)], np.ones(k))
+            w_s = x / x.sum()
+            if (w_s < -1e-12).any():
+                continue
+            w = np.zeros(n)
+            w[s] = np.clip(w_s, 0, None)
+            var = w @ cov @ w
+            if var < best_var - 1e-18:
+                best, best_var = w, var
+    return best
+
+
+def min_variance(p, *, window, min_history=20):
+    ret, w = _returns(p), np.zeros_like(p)
+    for t in range(max(window, min_history) + 1, len(p)):
+        w[t] = _min_variance_exact(np.cov(ret[t - 1 - window:t - 1], rowvar=False, ddof=1))
+    return w
+
+
+def _hrp(r, method):
+    from scipy.cluster.hierarchy import leaves_list, linkage
+    from scipy.spatial.distance import squareform
+    corr, cov = np.corrcoef(r, rowvar=False), np.cov(r, rowvar=False, ddof=1)
+    dist = np.sqrt(np.clip((1 - corr) / 2, 0, 1))
+    order = list(leaves_list(linkage(squareform(dist, checks=False), method)))
+
+    def cluster_var(items):
+        c = cov[np.ix_(items, items)]
+        ivp = 1 / np.diag(c)
+        ivp /= ivp.sum()
+        return ivp @ c @ ivp
+
+    w = np.ones(r.shape[1])
+    clusters = [order]
+    while clusters:
+        clusters = [c[a:b] for c in clusters if len(c) > 1
+                    for a, b in ((0, len(c) // 2), (len(c) // 2, len(c)))]
+        for i in range(0, len(clusters), 2):
+            left, right = clusters[i], clusters[i + 1]
+            v0, v1 = cluster_var(left), cluster_var(right)
+            w[left] *= 1 - v0 / (v0 + v1)
+            w[right] *= v0 / (v0 + v1)
+    return w
+
+
+def hrp(p, *, window, linkage, min_history=20):
+    ret, w = _returns(p), np.zeros_like(p)
+    for t in range(max(window, min_history) + 1, len(p)):
+        w[t] = _hrp(ret[t - 1 - window:t - 1], linkage)
+    return w
+
+
+# Tables: one value per date and asset, known at close t-1 ----------------------------------
+
+def _return_windows(p, window):
+    """(t, the window returns ending at close t-1) for every row that has a full window."""
+    ret = _returns(p)                        # ret[i] = P[i+1] / P[i] - 1
+    for t in range(window + 1, len(p)):
+        yield t, ret[t - 1 - window:t - 1]
+
+
+def historical_volatility(p, *, window, periods_per_year):
+    out = np.zeros_like(p)
+    for t, r in _return_windows(p, window):
+        out[t] = r.std(axis=0, ddof=1) * np.sqrt(periods_per_year)
+    return out
+
+
+def ewma_volatility(p, *, window, decay, periods_per_year):
+    out = np.zeros_like(p)
+    for t, r in _return_windows(p, window):
+        v = r[0] ** 2
+        for x in r[1:]:
+            v = decay * v + (1 - decay) * x ** 2
+        out[t] = np.sqrt(v * periods_per_year)
+    return out
+
+
+def historical_var_es(p, *, window, confidence, output):
+    out = np.zeros_like(p)
+    for t, r in _return_windows(p, window):
+        for j in range(p.shape[1]):
+            loss = -r[:, j]
+            var = np.quantile(loss, confidence)          # linear interpolation
+            out[t, j] = var if output == "var" else loss[loss >= var].mean()
+    return out
+
+
+def normal_var_es(p, *, window, confidence, output):
+    from scipy.stats import norm
+    z, out = norm.ppf(confidence), np.zeros_like(p)
+    for t, r in _return_windows(p, window):
+        mu, sd = (-r).mean(axis=0), r.std(axis=0, ddof=1)
+        out[t] = mu + sd * z if output == "var" else mu + sd * norm.pdf(z) / (1 - confidence)
+    return out
+
+
+def drift(p, *, window):
+    out = np.zeros_like(p)
+    for t in range(window, len(p)):
+        y = p[t - window:t]                               # closes through t-1
+        out[t] = y[-1] + (y[-1] - y[0]) / (window - 1)
+    return out
+
+
+def mean(p, *, window):
+    out = np.zeros_like(p)
+    for t in range(window, len(p)):
+        out[t] = p[t - window:t].mean(axis=0)
+    return out
+
+
 REFERENCES = {f.__name__: f for f in (
     inverse_volatility, cross_sectional_momentum, ma_crossover, vol_target_momentum, momentum,
-    macd, bollinger_reversion, rsi_reversion, donchian_breakout)}
+    macd, bollinger_reversion, rsi_reversion, donchian_breakout, min_variance, hrp,
+    historical_volatility, ewma_volatility, historical_var_es, normal_var_es, drift, mean)}

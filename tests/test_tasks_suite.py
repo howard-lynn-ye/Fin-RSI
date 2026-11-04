@@ -7,8 +7,9 @@ import pytest
 from fin_skills.algorithms import positions
 from fin_skills.tasks import Judge, library_positions, library_text, messages, panel, reference
 from fin_skills.tasks import suite
-from fin_skills.tasks.prompts import DEFAULTS
-from fin_skills.tasks.spec import E4_ALGORITHMS, assign_splits
+from fin_skills.algorithms import rolling
+from fin_skills.tasks.prompts import DEFAULTS, ROLLING_DEFAULTS
+from fin_skills.tasks.spec import FORCED_DEV, assign_splits
 
 SEEDS = (11, 23, 37)
 TASKS = suite()
@@ -20,7 +21,10 @@ def test_reference_matches_library_on_every_seed(task):
     for seed in SEEDS:
         raw, factors, _ = panel(seed, rows=task.rows, factors=task.factors, order=task.order)
         lib = library_positions(task, raw, factors).to_numpy()
-        np.testing.assert_allclose(lib, reference(task, seed), atol=1e-12, rtol=0)
+        # Closed-form rules must agree to rounding; a numerical optimizer (min_variance, graded
+        # at 1e-5) must land well inside the tolerance the task is graded at.
+        atol = 1e-12 if task.tolerance <= 1e-8 else task.tolerance / 5
+        np.testing.assert_allclose(lib, reference(task, seed), atol=atol, rtol=0)
 
 
 def test_e4_inputs_are_the_original_inputs():
@@ -45,7 +49,9 @@ def test_split_is_by_algorithm_and_e4_is_always_dev():
     for t in TASKS.tasks:
         by_algorithm.setdefault(t.algorithm, set()).add(TASKS.splits[t.algorithm])
     assert all(len(s) == 1 for s in by_algorithm.values())
-    assert all(TASKS.splits[a] == "dev" for a in E4_ALGORITHMS)
+    assert all(TASKS.splits[a] == "dev" for a in FORCED_DEV)      # E4, qualification
+    assert {t.family for t in TASKS.heldout} == {"portfolio", "signal", "volatility",
+                                                "risk", "forecast"}
     assert TASKS.heldout and not {t.id for t in TASKS.dev} & {t.id for t in TASKS.heldout}
     assert assign_splits(by_algorithm) == assign_splits(sorted(by_algorithm))   # deterministic
 
@@ -60,11 +66,20 @@ def test_listed_defaults_are_the_defaults_the_algorithms_use():
         np.testing.assert_array_equal(implicit.to_numpy(), explicit.to_numpy())
 
 
+def test_listed_rolling_defaults_are_the_defaults_the_algorithms_use():
+    raw, factors, _ = panel(23)
+    for algorithm_id, defaults in ROLLING_DEFAULTS.items():
+        implicit = rolling(algorithm_id, raw, factors, window=30)
+        explicit = rolling(algorithm_id, raw, factors, window=30, parameters=dict(defaults))
+        np.testing.assert_array_equal(implicit.to_numpy(), explicit.to_numpy())
+
+
 def test_library_text_is_generated_from_signatures():
     text = library_text()
     assert "positions(algorithm_id, prices, split_factors=None, *" in text
     assert "run(algorithm_id" in text and "data_dictionary" not in text
-    assert all(a in text for a in DEFAULTS)
+    assert "rolling(algorithm_id, prices, split_factors=None, *, window" in text
+    assert all(a in text for a in DEFAULTS) and all(a in text for a in ROLLING_DEFAULTS)
 
 
 def test_prompts_without_library_carry_no_library_calls():
@@ -73,6 +88,13 @@ def test_prompts_without_library_carry_no_library_calls():
     lib = messages(task, seed=11, library=True)[0]["content"]
     assert "fin_skills.algorithms" not in raw and "Do not import fin_skills" in raw
     assert "fin_skills.algorithms" in lib and "EVENT RATIOS" in raw
+
+
+def test_table_tasks_say_values_not_positions():
+    text = messages(TASKS.get("drift_a"), seed=11, library=False)[0]["content"]
+    assert "DataFrame of values" in text and "known at close t-1" in text
+    assert "DataFrame of positions" in messages(TASKS.get("macd_b"), seed=11,
+                                                library=False)[0]["content"]
 
 
 SCRATCH = '''
@@ -138,3 +160,29 @@ def test_wrong_shape_and_crash_are_results_not_errors():
     crash = judge.check("def solve(prices, split_factors):\n    raise KeyError('x')\n")
     assert not shape.executed and "index and columns" in shape.error
     assert not crash.executed and crash.error.startswith("KeyError")
+
+
+VOL = """
+import numpy as np, pandas as pd
+def solve(prices, split_factors):
+    r = (prices * split_factors).pct_change()
+    return (r.rolling(20).std().shift(1) * np.sqrt(252)).fillna(0.0)
+"""
+TABLE_BUGS = {
+    "same_session": (VOL.replace(".shift(1)", ""), "execution_lag"),
+    "no_adjustment": (VOL.replace("(prices * split_factors)", "prices"), "split_representation"),
+    "nan_warmup": (VOL.replace(".fillna(0.0)", ""), "finite_output"),
+}
+
+
+def test_table_task_accepts_a_correct_program():
+    judge = Judge(TASKS.get("historical_volatility_a"), seed=11, library=False)
+    assert judge.check(VOL).accepted and judge.grade(VOL)
+
+
+@pytest.mark.parametrize("bug", sorted(TABLE_BUGS))
+def test_table_task_defects_fail_their_check(bug):
+    code, check = TABLE_BUGS[bug]
+    judge = Judge(TASKS.get("historical_volatility_a"), seed=11, library=False)
+    seen = judge.check(code)
+    assert seen.executed and seen.checks[check] is False and not judge.grade(code)

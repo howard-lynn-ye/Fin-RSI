@@ -16,9 +16,10 @@ def _program(task, *, bug: bool) -> str:
     options = dict(task.library_options)
     params = {k: v for k, v in task.parameters.items() if k not in options}
     tail = ".shift(-1).fillna(0.0)" if bug else ""       # look-ahead: fails execution_lag
-    return ("```python\nfrom fin_skills.algorithms import positions\n"
+    call = "rolling" if task.kind == "table" else "positions"
+    return (f"```python\nfrom fin_skills.algorithms import {call}\n"
             "def solve(prices, split_factors):\n"
-            f"    w = positions({task.algorithm!r}, prices, split_factors, "
+            f"    w = {call}({task.algorithm!r}, prices, split_factors, "
             f"factors={task.factors!r}, parameters={params!r}, **{options!r})\n"
             f"    return w{tail}\n```")
 
@@ -55,9 +56,11 @@ class LessonModel:
         return _program(task, bug=not fixed)
 
 
-HELDOUT = TASKS.heldout[0]
+HELDOUT = TASKS.get("rsi_reversion_a")
 DEV = [TASKS.get(i) for i in ("e4_ma_crossover", "momentum_a", "e4_vol_target_momentum",
-                              "macd_a")]
+                              "historical_volatility_a")]
+assert TASKS.splits[HELDOUT.algorithm] == "heldout"
+assert all(TASKS.splits[t.algorithm] == "dev" for t in DEV)
 
 
 def test_meter_counts_and_refuses_beyond_budget():
