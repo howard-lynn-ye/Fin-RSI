@@ -3,6 +3,12 @@
 \usepackage[T1]{fontenc}
 \usepackage{times,amsmath,amssymb,booktabs,graphicx,url,multirow,array,xcolor}
 \usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+% Reference palette (categorical slots 1 and 2) and text grey.
+\definecolor{finblue}{HTML}{2A78D6}
+\definecolor{finorange}{HTML}{EB6834}
+\definecolor{fingray}{HTML}{52514E}
 \usepackage{hyperref}
 \hypersetup{hidelinks}
 \lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
@@ -35,13 +41,14 @@ agents need the knowledge, an executable check for each failure, and a way to im
 the checks; \lib{} packages the three behind interfaces an agent can call, the way PyOD put
 detectors behind one interface; contributions and the main findings.}
 
-\section{Related work}
-\pending{To be written: self-improving agents and prompt optimisation
-\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,suzgun2026dynamic,agrawal2026gepa};
-library-plus-benchmark resources \citep{zhao2019pyod,han2022adbench}; financial agents and
-benchmarks \citep{zhang2024finagent,chen2025stockbench,bigeard2025finance}; agent tool
-protocols \citep{mcp2026spec,agentskills}.}
+\begin{figure*}[t]
+\centering
+\input{figures/overview}
+\caption{\lib{} at a glance. (a) The three layers and how an agent reaches them: tools for any agent framework, a Python API, and one \texttt{generate} callable for the user's model. (b) One episode. Every model call passes through the meter; the method sees only what \texttt{check()} returns. The hidden grader runs on the final program after \texttt{solve()} returns, and its verdict goes only to the benchmark report.}
+\label{fig:overview}
+\end{figure*}
 
+\input{sections/related}
 \input{sections/library}
 \input{sections/methods}
 \input{sections/tasks}

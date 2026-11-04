@@ -15,7 +15,7 @@ splits at fixed rows: 2-for-1, 3-for-1, 3-for-2 and a 1-for-2 reverse split. The
 \NEFourTasks{} tasks carried over from our earlier study keep \NRowsEFour{} rows, and with them
 only the first two splits, so they reproduce that study's inputs exactly. Variant~a gives cumulative factors in alphabetical column order.
 Variant~b gives event ratios, a shuffled column order and different parameters. Every task
-runs on \NSeeds{} data seeds. Together, the tasks contain the failures we observed in earlier
+runs on \NSeeds{} data seeds (Figure~\ref{fig:task}a). Together, the tasks contain the failures we observed in earlier
 agent-written programs:
 \begin{itemize}
 \item cumulative factors applied again, or event ratios used as cumulative factors;
@@ -24,6 +24,13 @@ agent-written programs:
 \item the missing first return of \texttt{pct\_change()};
 \item columns assumed to be in alphabetical order.
 \end{itemize}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/task_checks}
+\caption{Task data and one check, computed by the library on the seed-11 panel. (a) The program receives raw quotes and split factors; raw and adjusted prices coincide before the split. (b) Prices are perturbed from row $k=64$ as the guard perturbs them. The library's lagged positions first move at row 65. The same positions read on the close they trade over move at row 64, and \texttt{execution\_lag} fails.}
+\label{fig:task}
+\end{figure}
 
 \paragraph{References.}
 Each task has an independent reference written with numpy, which does not call \lib{}. On
@@ -41,7 +48,7 @@ The judge runs each program in a separate process with a memory limit and a 120-
 timeout. In our runs the process is also confined on Linux with Landlock and seccomp, which
 restrict its file-system and network access. Without library access, the judge refuses
 \texttt{import fin\_skills}. It applies the three checks of \S\ref{sec:checks}, perturbing
-from rows 32 and 64 for \texttt{execution\_lag}. The grader is separate code that never
+from rows 32 and 64 for \texttt{execution\_lag} (Figure~\ref{fig:task}b). The grader is separate code that never
 appears in a prompt. A program is \emph{valid} only if it ran, passed every check, and
 matches the reference within an absolute tolerance of $10^{-8}$ ($10^{-5}$ for
 \texttt{min\_variance}). A program that passes every check but is wrong is \emph{accepted but
