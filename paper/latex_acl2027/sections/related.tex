@@ -1,0 +1,51 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Self-improvement without weight updates.}
+Several methods let a frozen model improve its own output.
+\begin{itemize}
+\item In Self-Refine, the same model critiques its output and revises it
+\citep{madaan2023selfrefine}. \citet{huang2024cannot} find that this kind of intrinsic
+self-correction, with no external signal, rarely helps reasoning and can make it worse.
+\item Methods that bring in an external signal do better. CRITIC consults tools such as
+search engines and interpreters \citep{gou2024critic}, and Self-Debugging uses execution
+results and unit tests \citep{chen2024selfdebug}.
+\item Other methods carry what was learned across attempts or tasks. Reflexion keeps verbal
+reflections \citep{shinn2023reflexion}. ExpeL extracts insights from training tasks
+\citep{zhao2024expel}. Dynamic Cheatsheet curates a memory at test time
+\citep{suzgun2026dynamic}. GEPA evolves prompts by reflecting on trajectories
+\citep{agrawal2026gepa}.
+\end{itemize}
+Each of these was evaluated with its own tasks, feedback and budget, so their results cannot
+be compared directly. \lib{} places them behind one interface with one judge and one budget,
+so that differences come from the method. Its checks supply the external signal that
+\citeauthor{huang2024cannot} found necessary.
+
+\paragraph{Libraries that ship with a benchmark.}
+PyOD made outlier detection a matter of choosing a class \citep{zhao2019pyod}, and ADBench
+used that shared interface to compare detectors under equal conditions \citep{han2022adbench}.
+We follow that pattern for agent self-improvement. Voyager also keeps a library of executable
+skills, but these are programs the agent wrote for itself \citep{wang2024voyager}. The skills
+in \lib{} are written ahead of time and dated, and each claim is marked by how it was
+verified; the rule cards and checks in the library are tied to those skills.
+
+\paragraph{Financial LLMs and agents.}
+FinBen evaluates language models on a broad set of financial tasks \citep{xie2024finben}.
+FinAgent combines market information with tools, reflection and memory for trading
+\citep{zhang2024finagent}. StockBench evaluates sequential portfolio decisions
+\citep{chen2025stockbench}. The Finance Agent Benchmark evaluates financial research tasks
+\citep{bigeard2025finance}. These benchmarks score answers or returns. We score whether a
+research program is correct against a reference: a backtest return can reward a wrong
+program on a favourable price path, and repeated trials make such false discoveries likely
+\citep{lopezdeprado2018advances,bailey2017pbo}.
+
+\paragraph{Testing without expected outputs.}
+Metamorphic testing checks a relation between the outputs on related inputs when the
+expected output itself is unknown \citep{segura2016metamorphic}. CheckList brought
+behavioural tests of this kind to NLP models \citep{ribeiro2020checklist}. Two of our checks
+are metamorphic relations for financial research code:
+\begin{itemize}
+\item the same economic prices, written two ways, must give the same positions;
+\item changing future prices must not move past positions.
+\end{itemize}
+They catch the corporate-action and look-ahead errors that a backtest does not reveal.

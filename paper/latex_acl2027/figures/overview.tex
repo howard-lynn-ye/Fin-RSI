@@ -1,0 +1,68 @@
+% Figure 1: the library (a) and one episode (b). Counts are macros from numbers.tex.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >={Stealth[length=3.5pt]},
+  layer/.style={draw=finblue, fill=finblue!7, rounded corners=2pt, align=left,
+                inner sep=3pt, text width=5.0cm},
+  side/.style={draw=fingray, fill=white, rounded corners=2pt, align=center, inner sep=3pt,
+               text width=2.45cm},
+  box/.style={draw=fingray, fill=white, rounded corners=2pt, align=center, inner sep=2pt,
+              text width=1.55cm, minimum height=0.72cm},
+  narrow/.style={box, text width=1.3cm},
+  hidden/.style={box, draw=finorange, fill=finorange!8, line width=0.7pt},
+  lab/.style={font=\tiny, text=fingray, align=center, inner sep=1.5pt},
+  title/.style={font=\footnotesize\bfseries, anchor=south west, inner sep=0pt},
+]
+% ---------------------------------------------------------------- (a) the library
+\node[layer] (skills) at (0, 0) {\textbf{Skills}\\
+  \NSkills{} skill documents in \NPlugins{} plugins\\
+  \NAlgorithms{} algorithms; \texttt{positions()}, \texttt{rolling()}\\
+  \NCards{} rule cards: rule, source, checks, call};
+\node[layer, below=3pt of skills] (checks) {\textbf{Checks}\\
+  \NGuards{} guards behind one \texttt{run()} interface\\
+  property checks that need no expected output\\
+  every failed check carries its cause};
+\node[layer, below=3pt of checks] (rsi) {\textbf{Self-improvement}\\
+  \NMethods{} methods behind \texttt{fit} / \texttt{solve} / \texttt{state}\\
+  one meter: equal attempts, calls and tokens\\
+  \texttt{RSILoop}: gated, journaled playbook edits};
+\node[side, anchor=west] (tools) at ($(skills.east)!0.5!(checks.east) + (0.55, 0)$)
+  {\textbf{Agent interfaces}\\ \NTools{} tools as MCP, OpenAI\\ and Anthropic schemas;\\
+   Python API};
+\node[side, anchor=west] (model) at ($(rsi.east) + (0.55, 0)$)
+  {\textbf{The user's model}\\ \texttt{generate()} callable};
+\draw[<->, fingray] (skills.east) -- (skills.east -| tools.west);
+\draw[<->, fingray] (checks.east) -- (checks.east -| tools.west);
+\draw[<->, fingray] (rsi.east) -- (model.west);
+\coordinate (ty) at ($(skills.north west) + (0, 0.12)$);
+\node[title] at (ty) {(a) The library};
+
+% ---------------------------------------------------------------- (b) one episode
+\begin{scope}[xshift=7.45cm, yshift=0.15cm]
+\node[narrow] (method) at (0, 0) {method\\[-1pt]\texttt{solve()}};
+\node[narrow] (meter) at (2.4, 0) {meter\\[-1pt]{\tiny equal budgets}};
+\node[narrow] (llm) at (4.8, 0) {user's\\[-1pt]model};
+\node[narrow] (judge) at (0, -1.45) {judge\\[-1pt]\texttt{check()}};
+\node[hidden] (grader) at (2.4, -2.85) {hidden grader\\[-1pt]{\tiny matches reference?}};
+\node[box] (report) at (4.8, -2.85) {benchmark\\[-1pt]{\tiny valid, cost}};
+\draw[->] ([yshift=4pt]method.east) -- node[lab, above] {prompt} ([yshift=4pt]meter.west);
+\draw[->] ([yshift=4pt]meter.east) -- node[lab, above] {prompt} ([yshift=4pt]llm.west);
+\draw[->] ([yshift=-4pt]llm.west) -- node[lab, below] {program} ([yshift=-4pt]meter.east);
+\draw[->] ([yshift=-4pt]meter.west) -- node[lab, below] {program} ([yshift=-4pt]method.east);
+\draw[->] ([xshift=-8pt]method.south) -- node[lab, left] {code} ([xshift=-8pt]judge.north);
+\draw[->] ([xshift=8pt]judge.north) -- node[lab, right, align=left]
+  {ran?, error,\\checks, causes} ([xshift=8pt]method.south);
+\begin{scope}[on background layer]
+\node[draw=fingray, dashed, rounded corners=4pt, fit=(method)(meter)(llm)(judge),
+      inner sep=7pt] (seen) {};
+\end{scope}
+\node[lab, anchor=south east] at ($(seen.south east) + (-0.08, 0.08)$)
+  {what a method sees};
+\draw[->, finorange, line width=0.7pt] (judge.south) |- node[lab, left, pos=0.4,
+  align=right] {final program,\\after \texttt{solve()}\\returns} (grader.west);
+\draw[->] (grader.east) -- (report.west);
+\node[lab, text=finorange!75!black, anchor=north] at ([yshift=-1pt]grader.south)
+  {never shown to a method};
+\node[title] at (seen.north west |- ty) {(b) One episode};
+\end{scope}
+\end{tikzpicture}
