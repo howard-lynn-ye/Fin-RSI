@@ -127,6 +127,25 @@ def test_writer_sees_only_the_task_cards_or_none():
     assert "Rules that apply" not in bare
 
 
+def test_cards_off_gives_every_role_the_checks_without_the_rules():
+    model = Model([RECUMULATED, GOOD])
+    result = Team(model, cards=False).solve("Write solve().", run_checks, traits=TRAITS)
+    assert result.accepted
+    assert "Rules that apply" not in model.seen[0][0]["content"]
+    reviewer = next(m for m in model.seen if m[0]["content"].startswith("You review"))
+    assert reviewer[0]["content"].startswith("You review one failed program for one family "
+                                             "of checks: corporate_actions")
+    assert "[" not in reviewer[0]["content"]
+    assert "Check split_representation failed" in reviewer[1]["content"]
+    assert "Rule:" not in reviewer[1]["content"]
+    single = Model([RECUMULATED, GOOD])
+    Team(single, mode="single", cards=False).solve("Write solve().", run_checks, traits=TRAITS)
+    feedback = single.seen[-1][-1]["content"]
+    assert "Check split_representation failed" in feedback and "[split_once]" not in feedback
+    bare = Team(lambda m: "", cards=False).writer_messages("task", TRAITS)[0]["content"]
+    assert "Rules that apply" not in bare
+
+
 def test_recorder_receives_every_attempt(tmp_path):
     loop = loop_from_checks(tmp_path / "rsi", lambda prompt: "{}", lambda t, p: None,
                             {"development": ["t"], "validation": ["v"]}, model_id="m@1",

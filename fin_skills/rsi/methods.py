@@ -13,6 +13,8 @@ through a Meter, so all methods get the same budget. A method sees only what the
 (ran?, error, failed checks and their causes); the hidden grade is computed by the benchmark
 runner from the final program and is never passed back. library=False removes the fin_skills
 interface, renders rule cards without library calls, and refuses `import fin_skills`.
+cards=False removes the rule cards from the prompt and from feedback (failed checks keep their
+causes), so the skills can be ablated one part at a time; ARMS names the four combinations.
 
 Methods
   NoImprove      one program, no feedback
@@ -43,6 +45,13 @@ from .meter import Budget, BudgetExceeded, FitBudget, Meter
 FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
 FIT_START = datetime(2026, 11, 3, tzinfo=timezone.utc)
 RETRY = "Return the complete corrected program in one python fence."
+# Skills ablation arms: name -> (library, cards).
+ARMS = {"none": (False, False), "cards": (False, True), "library": (True, False),
+        "cards+library": (True, True)}
+
+
+def arm_name(library: bool, cards: bool) -> str:
+    return {v: k for k, v in ARMS.items()}[(bool(library), bool(cards))]
 
 
 def extract(text: str) -> str:
@@ -73,6 +82,7 @@ class Episode:
     task_id: str
     seed: int
     library: bool
+    cards: bool = True
     steps: list = field(default_factory=list)
     status: str = "exhausted"         # accepted | ran | exhausted | budget:<limit>
     usage: dict = field(default_factory=dict)
@@ -94,7 +104,8 @@ class Episode:
 
     def as_dict(self) -> dict:
         d = asdict(self)
-        d.update(accepted=self.accepted, library_used=self.library_used)
+        d.update(accepted=self.accepted, library_used=self.library_used,
+                 arm=arm_name(self.library, self.cards))
         return d
 
 
@@ -109,10 +120,14 @@ class BaseRSI:
     name = "base"
     learns = False
 
-    def __init__(self, *, library: bool = False):
-        self.library = bool(library)
+    def __init__(self, *, library: bool = False, cards: bool = True):
+        self.library, self.cards = bool(library), bool(cards)
         self.fit_usage: dict = dict(calls=0, generated_tokens=0, episodes=0)
         self.fitted = not self.learns
+
+    @property
+    def arm(self) -> str:
+        return arm_name(self.library, self.cards)
 
     # public ------------------------------------------------------------------------------
     def fit(self, generate, dev_tasks: Sequence[Task], *, budget: FitBudget = FitBudget(),
@@ -126,7 +141,7 @@ class BaseRSI:
             raise RuntimeError(f"{self.name} learns on dev tasks: call fit() before solve()")
         meter = Meter(generate, budget)
         judge = Judge(task, seed=seed, library=self.library, meter=meter)
-        episode = Episode(self.name, task.id, int(seed), self.library)
+        episode = Episode(self.name, task.id, int(seed), self.library, self.cards)
         try:
             self._solve(meter, _View(judge), task, seed, episode)
         except BudgetExceeded as exc:
@@ -142,7 +157,8 @@ class BaseRSI:
 
     # shared pieces -----------------------------------------------------------------------
     def _messages(self, task, seed, extra=""):
-        return task_messages(task, seed=seed, library=self.library, extra_system=extra)
+        return task_messages(task, seed=seed, library=self.library, cards=self.cards,
+                             extra_system=extra)
 
     def _attempt(self, meter, judge, history, episode, *, role="writer"):
         if not meter.can_attempt():
@@ -158,8 +174,8 @@ class BaseRSI:
     def _check_feedback(self, seen) -> str:
         if not seen.executed:
             return "Your program did not run:\n" + seen.error[-1500:] + "\n" + RETRY
-        return ("Your program ran but failed these checks:\n" + seen.check_text(tools=self.library)
-                + "\n" + RETRY)
+        return ("Your program ran but failed these checks:\n"
+                + seen.check_text(tools=self.library, rules=self.cards) + "\n" + RETRY)
 
     def _loop(self, meter, judge, task, seed, episode, *, extra="", stop_when_runs=False,
               feedback=None):
@@ -261,8 +277,8 @@ class Team(BaseRSI):
             return meter(messages, role="reviewer" if reviewer else "writer")
 
         team = Roles(labelled, mode="roles", max_attempts=meter.max_attempts,
-                     writer_rules="none", tools=self.library)
-        text = (system_prompt(task, library=self.library) + "\n\n"
+                     writer_rules="none", tools=self.library, cards=self.cards)
+        text = (system_prompt(task, library=self.library, cards=self.cards) + "\n\n"
                 + task_prompt(task, seed=seed))
         result = team.solve(text, run_checks, traits=task.traits, task_id=task.id)
         episode.status = "accepted" if result.accepted else "exhausted"
@@ -273,15 +289,15 @@ class Team(BaseRSI):
 class _Learner(BaseRSI):
     learns = True
 
-    def __init__(self, *, library: bool = False):
-        super().__init__(library=library)
+    def __init__(self, *, library: bool = False, cards: bool = True):
+        super().__init__(library=library, cards=cards)
         self.addendum = ""
 
     def _dev_episode(self, fit_meter, task, seed, episode_budget, extra):
         """One CheckFeedback episode on a dev task, graded (allowed: dev tasks only)."""
         meter = Meter(fit_meter.respond, episode_budget)
         judge = Judge(task, seed=seed, library=self.library, meter=meter)
-        episode = Episode(self.name, task.id, int(seed), self.library)
+        episode = Episode(self.name, task.id, int(seed), self.library, self.cards)
         try:
             self._loop(meter, _View(judge), task, seed, episode, extra=extra)
         except BudgetExceeded as exc:
@@ -349,7 +365,7 @@ class PlaybookLearning(_Learner):
         try:
             for task_id in split["development"]:
                 observe(loop, [run_attempt(task_id, "")], available_at=FIT_START.isoformat(),
-                        source_version="fin-skills")
+                        source_version="fin-skills", tools=self.library, rules=self.cards)
             for i in range(budget.proposals):
                 as_of = (FIT_START + timedelta(minutes=i + 1)).isoformat()
                 decisions.append(loop.improve(as_of=as_of).status)
@@ -381,8 +397,9 @@ class Evolve(_Learner):
 
     name = "evolve"
 
-    def __init__(self, *, library: bool = False, generations: int = 3, minibatch: int = 4):
-        super().__init__(library=library)
+    def __init__(self, *, library: bool = False, cards: bool = True, generations: int = 3,
+                 minibatch: int = 4):
+        super().__init__(library=library, cards=cards)
         self.generations, self.minibatch = generations, minibatch
         self.history: list[dict] = []
 

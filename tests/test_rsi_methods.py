@@ -121,6 +121,72 @@ def test_feedback_without_library_has_no_library_calls():
     assert "fin_skills.algorithms" not in episode.steps[0].feedback
 
 
+class Capture(LessonModel):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.calls = []
+
+    def __call__(self, messages):
+        self.calls.append(messages)
+        return super().__call__(messages)
+
+
+@pytest.mark.parametrize("arm", ["library", "cards+library"])
+def test_arms_set_what_the_writer_and_the_feedback_carry(arm):
+    library, cards = rsi.ARMS[arm]
+    model = Capture(learns_from_feedback=True)
+    method = rsi.CheckFeedback(library=library, cards=cards)
+    episode = method.solve(model, HELDOUT, seed=11)
+    assert method.arm == arm and episode.as_dict()["arm"] == arm
+    assert episode.cards is cards and episode.accepted
+    assert ("Rules that apply" in model.calls[0][0]["content"]) is cards
+    feedback = episode.steps[0].feedback
+    assert "Check execution_lag failed" in feedback
+    assert ("Rule:" in feedback) is cards
+
+
+def test_team_without_cards_reviews_checks_only():
+    model = Capture(learns_from_feedback=True)
+    episode = rsi.Team(library=True, cards=False).solve(model, HELDOUT, seed=11)
+    assert episode.accepted and episode.as_dict()["arm"] == "library"
+    reviewers = [m for m in model.calls if m[0]["content"].startswith("You review")]
+    assert reviewers and all("Rule:" not in m[1]["content"] for m in reviewers)
+    assert all("Rules that apply" not in m[-1]["content"] for m in model.calls)
+
+
+SCRATCH_BUG = ("```python\nimport numpy as np\ndef solve(prices, split_factors):\n"
+               "    up = (prices.diff().fillna(0.0) > 0).astype(float)\n"
+               "    return up / prices.shape[1]\n```")   # same-close and raw: fails two checks
+
+
+class ScratchModel(LessonModel):
+    """Writes a program that runs without the library and fails execution_lag."""
+
+    def __init__(self):
+        super().__init__()
+        self.proposals = []
+
+    def __call__(self, messages):
+        if messages[0]["content"].startswith("Propose ONE small playbook entry"):
+            self.proposals.append(messages[0]["content"])
+        if messages[0]["content"].startswith(("Propose", "You wrote", "You review")) or (
+                "improving the standing instructions" in messages[0]["content"]):
+            return super().__call__(messages)
+        return SCRATCH_BUG
+
+
+@pytest.mark.parametrize("cards", [True, False])
+def test_playbook_proposer_sees_feedback_of_its_own_arm(cards):
+    model = ScratchModel()
+    rsi.PlaybookLearning(library=False, cards=cards).fit(
+        model, DEV, budget=rsi.FitBudget(episodes=4, proposals=1))
+    assert model.proposals
+    prompt = model.proposals[0]
+    assert "Check execution_lag failed" in prompt
+    assert "fin_skills.algorithms" not in prompt          # no library calls without the library
+    assert ("[execution_lag]" in prompt) is cards
+
+
 @pytest.mark.parametrize("cls", [rsi.PlaybookLearning, rsi.Evolve])
 def test_learners_keep_a_lesson_that_helps(cls):
     model = LessonModel()
@@ -153,7 +219,8 @@ def test_benchmark_grades_after_solving_and_reports(tmp_path):
     out = tmp_path / "episodes.jsonl"
     model = LessonModel(learns_from_feedback=True)
     report = rsi.benchmark([rsi.NoImprove, rsi.CheckFeedback], model,
-                           TASKS, seeds=(11,), library=(True,), heldout=[HELDOUT], out=out)
+                           TASKS, seeds=(11,), arms=("cards+library",), heldout=[HELDOUT],
+                           out=out)
     rows = [json.loads(line) for line in out.read_text().splitlines()]
     assert [r["method"] for r in rows] == ["no_improve", "check_feedback"]
     assert [r["valid"] for r in rows] == [False, True]
@@ -162,3 +229,19 @@ def test_benchmark_grades_after_solving_and_reports(tmp_path):
     assert "check_feedback" in report.table()
     with pytest.raises(ValueError, match="development"):
         rsi.benchmark([rsi.NoImprove], LessonModel(), TASKS, heldout=[DEV[0]])
+
+
+def test_benchmark_runs_the_skills_ablation_arms():
+    model = LessonModel(learns_from_feedback=True)
+    report = rsi.benchmark([rsi.CheckFeedback], model, TASKS, seeds=(11,),
+                           arms=tuple(rsi.ARMS), heldout=[HELDOUT])
+    arms = {s["arm"]: s for s in report.summary(draws=50)}
+    assert set(arms) == set(rsi.ARMS)
+    # The scripted model only writes library calls, so only the library arms can pass.
+    assert arms["library"]["valid"] == arms["cards+library"]["valid"] == 1.0
+    assert arms["none"]["valid"] == arms["cards"]["valid"] == 0.0
+    assert [(f["arm"], f["library"], f["cards"]) for f in report.fits] == [
+        (a, *rsi.ARMS[a]) for a in rsi.ARMS]
+    assert "cards+library" in report.table()
+    with pytest.raises(ValueError, match="unknown arms"):
+        rsi.benchmark([rsi.NoImprove], model, TASKS, arms=("skills",), heldout=[HELDOUT])

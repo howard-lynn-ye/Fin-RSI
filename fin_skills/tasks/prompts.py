@@ -4,6 +4,9 @@ The library interface is generated from the functions' own signatures and docstr
 algorithms' defaults, so it cannot drift from the code (v2 described run()'s second argument as
 data_dictionary while the function names it data). tests/test_tasks_suite.py checks that every
 listed default is what the algorithm actually uses.
+
+Two switches give the skills ablation: library (the fin_skills interface, and permission to
+import it) and cards (the task's rule cards). Both off is a model with only the task text.
 """
 from __future__ import annotations
 
@@ -94,11 +97,11 @@ def library_text() -> str:
     return "\n".join(lines)
 
 
-def system_prompt(task: Task, *, library: bool) -> str:
+def system_prompt(task: Task, *, library: bool, cards: bool = True) -> str:
     text = SYSTEM.format(what=WHAT[task.kind], factors=FACTOR_TEXT[task.factors],
                          timing=TIMING[task.kind])
     text += WITH_LIBRARY if library else NO_LIBRARY
-    cards = prompt_block(rules_for(task.traits), tools=library)
+    cards = prompt_block(rules_for(task.traits), tools=library) if cards else ""
     parts = [text]
     if library:
         parts.append("fin_skills interface:\n" + library_text())
@@ -113,8 +116,9 @@ def task_prompt(task: Task, *, seed: int) -> str:
             f"{list(raw.columns)}.\n\n" + sample_text(raw, factors))
 
 
-def messages(task: Task, *, seed: int, library: bool, extra_system: str = "") -> list[dict]:
-    system = system_prompt(task, library=library)
+def messages(task: Task, *, seed: int, library: bool, cards: bool = True,
+             extra_system: str = "") -> list[dict]:
+    system = system_prompt(task, library=library, cards=cards)
     if extra_system:
         system += "\n\n" + extra_system
     return [dict(role="system", content=system),

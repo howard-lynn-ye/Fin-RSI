@@ -103,6 +103,16 @@ def test_traces_carry_cause_and_rule_but_not_the_grader_verdict():
     assert traces(ok, available_at=T0, source_version="test")[0].kind == "success"
 
 
+def test_traces_follow_the_run_tools_and_rules():
+    bad = fake_model("dev-0", "")
+    with_tools = traces(bad, available_at=T0, source_version="test")[0].summary
+    assert "fin_skills.algorithms.positions" in with_tools
+    no_tools = traces(bad, available_at=T0, source_version="test", tools=False)[0].summary
+    assert "[split_once]" in no_tools and "fin_skills" not in no_tools
+    causes = traces(bad, available_at=T0, source_version="test", rules=False)[0].summary
+    assert "Check split_representation failed" in causes and "Rule:" not in causes
+
+
 def test_attempt_and_evaluator_validation():
     with pytest.raises(ValueError, match="valid attempt"):
         Attempt(task_id="t", code="", executed=False, valid=True)

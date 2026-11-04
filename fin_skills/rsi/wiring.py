@@ -59,8 +59,12 @@ class Attempt:
         return hashlib.sha256(json.dumps(self.evidence, sort_keys=True).encode()).hexdigest()
 
 
-def traces(attempt: Attempt, *, available_at: str, source_version: str) -> list[Trace]:
-    """Development traces for one attempt. Never includes the hidden grader's verdict."""
+def traces(attempt: Attempt, *, available_at: str, source_version: str, tools: bool = True,
+           rules: bool = True) -> list[Trace]:
+    """Development traces for one attempt. Never includes the hidden grader's verdict.
+
+    tools and rules are passed to rules.explain(): a run without the library must record
+    tools=False, or the proposer reads library calls the run may not make."""
     from fin_skills.api.rules import CAUSES, explain
 
     base = dict(task_id=attempt.task_id, available_at=available_at,
@@ -76,7 +80,7 @@ def traces(attempt: Attempt, *, available_at: str, source_version: str) -> list[
                       result=json.dumps(dict(attempt.checks), sort_keys=True), **base)]
     known = [name for name in failed if name in CAUSES]
     other = [name for name in failed if name not in CAUSES]
-    summary = explain(known) if known else ""
+    summary = explain(known, tools=tools, rules=rules) if known else ""
     if other:
         summary = (summary + "\n" if summary else "") + "Other failed checks: " + ", ".join(other)
     return [Trace(trace_id=f"{attempt.task_id}:{attempt.sha256[:12]}", kind="analysis",
@@ -85,11 +89,12 @@ def traces(attempt: Attempt, *, available_at: str, source_version: str) -> list[
 
 
 def observe(loop: RSILoop, attempts: Iterable[Attempt], *, available_at: str,
-            source_version: str) -> int:
+            source_version: str, tools: bool = True, rules: bool = True) -> int:
     """Record development attempts as traces. Returns the number of traces recorded."""
     n = 0
     for attempt in attempts:
-        for trace in traces(attempt, available_at=available_at, source_version=source_version):
+        for trace in traces(attempt, available_at=available_at, source_version=source_version,
+                            tools=tools, rules=rules):
             loop.observe(trace)
             n += 1
     return n
