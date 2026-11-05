@@ -1,0 +1,46 @@
+\section{Introduction}
+\label{sec:intro}
+
+Financial research code fails silently. Some programs apply stock splits twice. Others
+decide a position with the closing price it trades over, or leave warm-up rows missing.
+Each of these programs still runs and still returns a backtest, and nothing in the output
+says it is wrong. Language-model agents now write such code for trading and financial
+research \citep{zhang2024finagent,bigeard2025finance}, and they make these mistakes. In
+our earlier audit, a 14B coding model wrote 24 programs. Every one re-applied split factors
+that the prompt defined as already cumulative, and every one failed a split check.
+
+Three things would help an agent avoid them:
+\begin{itemize}
+\item knowledge of the failure modes;
+\item executable checks that detect each failure without an expected output;
+\item a way to turn the results of those checks into better programs.
+\end{itemize}
+All three exist today, but separately. Skill documents and tool collections give agents
+knowledge. Testing utilities give checks. Self-improvement methods each come with their own
+tasks, feedback and budgets
+\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,agrawal2026gepa}. As a result,
+a practitioner cannot tell which self-improvement structure helps on financial code. Nor
+can they tell whether the knowledge and checks help at all.
+
+We present \lib{}, a Python library that puts all three behind interfaces an agent can call
+(Figure~\ref{fig:overview}). We follow PyOD, which put outlier detectors behind one
+interface \citep{zhao2019pyod}, and ADBench, which compared them under equal conditions
+\citep{han2022adbench}. In the same way, \lib{} places self-improvement methods behind one
+\texttt{fit} / \texttt{solve} / \texttt{state} interface, and gives every method the same
+judge and the same metered budget. A user connects a model once, as one
+\texttt{generate(messages)} callable, and every part of the library uses it.
+
+Our contributions:
+\begin{itemize}
+\item \textbf{An agent-native library} (\S\ref{sec:library}): \NSkills{} dated skill
+documents; \NAlgorithms{} algorithms; \NCards{} rule cards; and \NGuards{} guards, exported
+as \NTools{} tools for MCP, OpenAI and Anthropic clients.
+\item \textbf{Self-improvement behind one interface} (\S\ref{sec:methods}): \NMethods{}
+methods with equal budgets. They range from self-debugging and reflection to a playbook
+loop that accepts an edit only when it does not break a task that already passed.
+\item \textbf{A task suite and protocol} (\S\ref{sec:tasks}): \NTasks{} financial programming
+tasks, each with an independent reference and a hidden grader that no method sees. The
+tasks are split by algorithm into development and held-out sets. An ablation over
+\NArms{} skill arms separates the contributions of skills, checks and self-improvement.
+\end{itemize}
+\pending{Main findings, one or two sentences, once the experiments are complete.}
