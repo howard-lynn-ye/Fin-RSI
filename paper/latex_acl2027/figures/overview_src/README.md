@@ -1,14 +1,11 @@
-# Figure 1 sources
+# Figure 1 source
 
-Figure 1 draws the library as a dial: a tilted disc rendered in Chrome with CSS 3D, then composed
-in TikZ.
+Figure 1 draws Fin-RSI the way library papers draw their overview: one container for the library
+with compartments of name chips, the ecosystem on either side, and a tick on what a user picks.
 
 ```bash
-node disc.cjs          # the disc, its rings of pins and the raised pegs -> ../overview/raw_disc.png, disc_anchors.json
-python3 compose_disc.py  # crops the render to ../overview/disc.png and writes ../overview.tex
+python3 compose_kit.py     # writes ../overview.tex (pure TikZ)
 ```
 
-Pin counts come from `../../numbers.tex` (rerun `make_numbers.py` first if a count changed): one pin
-per self-improvement method, check, skill and investor template. The raised pegs are one example
-agent's choices. Needs Node with `playwright`, Google Chrome at `/usr/bin/google-chrome` and
-Pillow. Only `../overview/disc.png` is used by the papers.
+Names are real adapters, collectors, methods, guards, plugins and investor templates. Counts and
+the "+N" chips come from `../../numbers.tex`, so rerun `make_numbers.py` first if a count changed.
