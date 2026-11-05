@@ -1,12 +1,17 @@
-"""Draw figures/task_checks.pdf for the Fin-RSI paper from the task suite's own data.
+"""Draw the data figures for the Fin-RSI paper from the task suite's own data.
 
     python paper/latex_acl2027/make_figures.py
 
+figures/task_checks.pdf:
 (a) One asset of the seed-11 panel: the raw quotes a program receives and the adjusted closes
     it should compute from them. (b) The execution_lag check on two inverse-volatility
     programs: the library's lagged positions and the same positions read on the close they
     trade over. Prices from row k onward are perturbed exactly as the guard perturbs them;
     a cell is filled where a position moved.
+
+figures/real_panel.pdf: the real-price panel (fin_skills.tasks.real), one small multiple per
+    stock: raw quote and adjusted close, both indexed to 100 at the first close, on a log
+    scale. Needs the fetched panel; the figure shows no vendor price level.
 """
 from __future__ import annotations
 
@@ -35,6 +40,64 @@ def perturb(frame, k: int):
     return out
 
 
+STYLE = {
+    "font.family": "TeX Gyre Termes", "mathtext.fontset": "stix", "font.size": 8,
+    "axes.edgecolor": MUTED, "axes.labelcolor": INK2, "xtick.color": INK2,
+    "ytick.color": INK2, "axes.linewidth": 0.6, "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6, "pdf.fonttype": 42}
+
+
+def real_panel_figure() -> None:
+    import matplotlib.dates as mdates
+    from matplotlib.ticker import FixedLocator, NullLocator
+    from fin_skills.tasks import real
+
+    raw, _, adjusted = real.panel()
+    plt.rcParams.update(STYLE)
+    fig, axes = plt.subplots(1, 4, figsize=(7.0, 1.55), sharey=True,
+                             gridspec_kw=dict(wspace=0.12))
+    names = {"AMZN": "Amazon", "SHOP": "Shopify", "GOOGL": "Alphabet (class A)",
+             "TSLA": "Tesla"}
+    for ax, (ticker, date, ratio, _) in zip(axes, real.SPLITS):
+        r = 100 * raw[ticker] / raw[ticker].iloc[0]
+        a = 100 * adjusted[ticker] / adjusted[ticker].iloc[0]
+        ax.plot(a.index, a, color=BLUE, lw=1.2, solid_capstyle="round", zorder=3)
+        ax.plot(r.index, r, color=ORANGE, lw=1.2, solid_capstyle="round", zorder=2)
+        when = np.datetime64(date)
+        ax.axvline(when, color=MUTED, lw=0.6, ls=(0, (3, 2)), zorder=1)
+        day = np.datetime64(date).astype(object)
+        ax.text(when, 185, f" {ratio:g}-for-1, {day.day} {day.strftime('%b')}", color=INK2,
+                fontsize=6.5, va="top", ha="left")
+        ax.set_yscale("log")
+        ax.set_ylim(2.0, 210)
+        ax.yaxis.set_major_locator(FixedLocator([3, 10, 30, 100]))
+        ax.yaxis.set_minor_locator(NullLocator())
+        ax.set_yticklabels(["3", "10", "30", "100"])
+        ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(4, 6, 8)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        ax.set_xlim(raw.index[0], raw.index[-1])
+        ax.grid(axis="y", color=GRID, lw=0.5)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        ax.set_title(names[ticker], fontsize=8, loc="left", color=INK, pad=3)
+    first = axes[0]                        # direct labels once, where there is room
+    first.text(np.datetime64("2022-08-15"), 62, "adjusted", color=INK, fontsize=6.5,
+               ha="center", va="top")
+    first.text(np.datetime64("2022-08-15"), 5.9, "raw", color=INK, fontsize=6.5,
+               ha="center", va="bottom")
+    axes[0].set_ylabel("close, first = 100", labelpad=2)
+    from matplotlib.lines import Line2D
+    fig.legend(handles=[Line2D([], [], color=BLUE, lw=1.2, label="adjusted close"),
+                        Line2D([], [], color=ORANGE, lw=1.2, label="raw quote (as traded)")],
+               loc="upper right", bbox_to_anchor=(0.995, 1.13), ncol=2, frameon=False,
+               fontsize=7, handlelength=1.6, labelcolor=INK)
+    OUT.mkdir(exist_ok=True)
+    fig.savefig(OUT / "real_panel.pdf", bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(OUT / "real_panel.png", dpi=200, bbox_inches="tight", pad_inches=0.02)
+    print("real panel", raw.index[0].date(), raw.index[-1].date())
+
+
 def main() -> None:
     from fin_skills.algorithms import positions
     from fin_skills.tasks import panel
@@ -53,11 +116,7 @@ def main() -> None:
         delta = (fn(raw) - fn(perturb(raw, K))).abs().max(axis=1).to_numpy()
         moved[name] = delta > 1e-8
 
-    plt.rcParams.update({
-        "font.family": "TeX Gyre Termes", "mathtext.fontset": "stix", "font.size": 8,
-        "axes.edgecolor": MUTED, "axes.labelcolor": INK2, "xtick.color": INK2,
-        "ytick.color": INK2, "axes.linewidth": 0.6, "xtick.major.width": 0.6,
-        "ytick.major.width": 0.6, "pdf.fonttype": 42})
+    plt.rcParams.update(STYLE)
     fig, (a, b) = plt.subplots(2, 1, figsize=(3.03, 2.75),
                                gridspec_kw=dict(height_ratios=[1.7, 1.0], hspace=0.85))
 
@@ -126,6 +185,7 @@ def main() -> None:
     fig.savefig(OUT / "task_checks.png", dpi=200, bbox_inches="tight", pad_inches=0.02)
     first = {n: int(np.flatnonzero(moved[n])[0]) for n in names}
     print("split row", split_row, "first moved row", first)
+    real_panel_figure()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,51 @@
+% Experiment design: the four skill arms (cards x library) and the method contrasts that
+% isolate checks and self-improvement. Pictograms come from figures/icons.tex.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >={Stealth[length=3.4pt, width=3.2pt]},
+  tile/.style={draw=#1!70!black, fill=white, rounded corners=3pt, line width=0.5pt,
+               minimum width=1.9cm, minimum height=0.78cm, align=center, inner sep=2pt,
+               copy shadow={shadow xshift=1pt, shadow yshift=-1.3pt, fill=#1!50,
+                            draw=#1!70!black, line width=0.35pt}},
+  tile/.default=fingray,
+  head/.style={font=\tiny\bfseries, text=fingray!90!black, align=center},
+  measure/.style={font=\tiny\itshape, text=black!80, align=center, fill=white,
+                  inner sep=1pt},
+  contrast/.style={<->, line width=0.7pt, draw=#1},
+  title/.style={font=\footnotesize\bfseries, anchor=south west, inner sep=0pt},
+]
+% ---- (a) four skill arms
+\node[title] at (-1.25, 1.2) {(a) Skill arms};
+\node[head] at (0.95, 0.88) {no library};
+\node[head] at (3.25, 0.88) {library};
+\node[head, rotate=90] at (-0.62, 0) {no cards};
+\node[head, rotate=90] at (-0.62, -1.15) {rule cards};
+\node[tile] (none) at (0.95, 0) {\texttt{none}};
+\node[tile=finblue] (lib) at (3.25, 0) {\texttt{library}};
+\node[tile=finaqua] (cards) at (0.95, -1.15) {\texttt{cards}};
+\node[tile=finaqua] (both) at (3.25, -1.15) {\texttt{cards+library}};
+\foreach \n in {cards, both}
+  \node[circle, fill=finorange, text=white, font=\tiny\bfseries, inner sep=0pt,
+        minimum size=7pt] at ($(\n.north east) + (-0.08, -0.06)$) {M};
+\draw[contrast=finblue!80!black] (none.east) -- (lib.west);
+\draw[contrast=finblue!80!black] (cards.east) -- (both.west);
+\node[measure] at ($(none.east)!0.5!(lib.west) + (0, 0.3)$) {library};
+\draw[contrast=finaqua!75!black] (none.south) -- (cards.north);
+\draw[contrast=finaqua!75!black] (lib.south) -- (both.north);
+\node[measure, anchor=west] at ($(lib.south)!0.5!(both.north) + (0.08, 0)$) {cards};
+\node[font=\tiny, text=fingray!90!black, anchor=north west, align=left, text width=4.2cm]
+  at (-0.05, -1.72) {\textcolor{finorange}{\textbf{M}}: arms of the main comparison;
+  the ablation adds the other two.};
+
+% ---- (b) method contrasts within one arm
+\begin{scope}[yshift=-3.25cm]
+\node[title] at (-1.25, 0.72) {(b) Method contrasts, within one arm};
+\node[tile=fingray, minimum width=1.75cm] (no) at (-0.3, 0) {{\tiny\ttfamily NoImprove}\\[-1pt]{\tiny one program}};
+\node[tile=finorange, minimum width=1.75cm] (cf) at (2.35, 0) {{\tiny\ttfamily CheckFeedback}\\[-1pt]{\tiny sees failed checks}};
+\node[tile=finaqua, minimum width=1.75cm] (pl) at (5.0, 0) {{\tiny\ttfamily PlaybookLearning}\\[-1pt]{\tiny learns on dev tasks}};
+\draw[->, line width=0.7pt, draw=finorange!80!black] (no.east) -- (cf.west);
+\draw[->, line width=0.7pt, draw=finaqua!75!black] (cf.east) -- (pl.west);
+\node[measure] at ($(no.east)!0.5!(cf.west) + (0, 0.2)$) {checks};
+\node[measure, anchor=south] at ($(cf.east)!0.5!(pl.west) + (0, 0.06)$) {self-\\[-1pt]improve-\\[-1pt]ment};
+\end{scope}
+\end{tikzpicture}

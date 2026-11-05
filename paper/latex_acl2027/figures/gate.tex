@@ -1,0 +1,40 @@
+% The gated playbook loop: one proposal, two disjoint halves of the development tasks, the
+% no-regression gate, and the journal. Pictograms come from figures/icons.tex.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >={Stealth[length=3.4pt, width=3.2pt]},
+  tile/.style={draw=#1!70!black, fill=white, rounded corners=3pt, line width=0.5pt,
+               minimum width=1.55cm, minimum height=0.72cm, align=center, inner sep=2pt,
+               copy shadow={shadow xshift=1pt, shadow yshift=-1.3pt, fill=#1!50,
+                            draw=#1!70!black, line width=0.35pt}},
+  tile/.default=finaqua,
+  flow/.style={->, line width=0.6pt, draw=fingray!80!black},
+  lab/.style={font=\tiny, text=fingray!90!black, align=center, inner sep=1pt},
+]
+\node[tile] (play) at (0, 0) {playbook $P$\\[-1pt]{\tiny frozen at test time}};
+\node[tile=finblue] (prop) at (2.5, 0) {proposer\\[-1pt]{\tiny one edit}};
+\node[tile] (cand) at (4.75, 0) {candidate $P'$};
+\node[tile=fingray, minimum width=1.5cm] (halfA) at (3.65, -1.35) {dev half A};
+\node[tile=fingray, minimum width=1.5cm] (halfB) at (5.85, -1.35) {dev half B};
+\node[diamond, aspect=2.2, draw=finorange!80!black, fill=finorange!10, line width=0.6pt,
+      inner sep=1pt, align=center, font=\tiny] (gate) at (4.75, -2.75)
+  {no-regression\\gate};
+\node[tile=finaqua] (accept) at (2.05, -2.75) {accept: $P \leftarrow P'$};
+\node[tile=fingray] (reject) at (7.05, -2.75) {reject};
+\node[draw=fingray!55, fill=fingray!8, rounded corners=3pt, align=left, inner sep=3pt,
+      font=\tiny, text width=6.9cm, anchor=north west] (rule) at (0.1, -3.55)
+  {accept only if the score drops on neither half, rises on at least one, and no task that
+  passed every check before now fails one};
+
+\draw[flow] (play.east) -- (prop.west);
+\node[lab] at ($(play.east)!0.5!(prop.west) + (0, 0.55)$) {traces,\\no grades};
+\draw[flow] (prop.east) -- (cand.west);
+\draw[flow] (cand.south) -- ++(0, -0.32) -| (halfA.north);
+\draw[flow] (cand.south) -- ++(0, -0.32) -| (halfB.north);
+\draw[flow] (halfA.south) |- ($(gate.north) + (0, 0.25)$) -- (gate.north);
+\draw[flow] (halfB.south) |- ($(gate.north) + (0, 0.25)$) -- (gate.north);
+\node[lab, anchor=east] at ($(halfA.west) + (-0.05, 0)$) {$P$ and $P'$\\scored on};
+\draw[flow, draw=finaqua!75!black] (gate.west) -- node[lab, above=1pt] {yes} (accept.east);
+\draw[flow] (gate.east) -- node[lab, above=1pt] {no} (reject.west);
+\draw[flow, draw=finaqua!75!black] (accept.west) -| node[lab, pos=0.75, left=1pt] {journal\\receipt} (play.south);
+\end{tikzpicture}
