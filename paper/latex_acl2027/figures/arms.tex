@@ -1,52 +1,56 @@
-% Experiment design: the four skill arms (cards x library) and the method contrasts that
-% isolate checks and self-improvement. Pictograms come from figures/icons.tex.
-\begin{tikzpicture}[
-  font=\scriptsize,
-  >={Stealth[length=3.4pt, width=3.2pt]},
-  tile/.style={draw=#1!55, rounded corners=3pt, line width=0.5pt, top color=white,
-               bottom color=#1!13, minimum width=1.9cm, minimum height=0.78cm,
-               align=center, inner sep=2pt,
-               blur shadow={shadow blur steps=6, shadow xshift=0.5pt, shadow yshift=-1pt,
-                            shadow opacity=26}},
-  tile/.default=fingray,
-  head/.style={font=\tiny\bfseries, text=fingray!90!black, align=center},
-  measure/.style={font=\tiny\itshape, text=black!80, align=center, fill=white,
-                  inner sep=1pt},
-  contrast/.style={<->, line width=0.7pt, draw=#1},
-  title/.style={font=\footnotesize\bfseries, anchor=south west, inner sep=0pt},
-]
-% ---- (a) four skill arms
-\node[title] at (-1.25, 1.2) {(a) Skill arms};
-\node[head] at (0.95, 0.88) {no library};
-\node[head] at (3.25, 0.88) {library};
-\node[head, rotate=90] at (-0.62, 0) {no cards};
-\node[head, rotate=90] at (-0.62, -1.15) {rule cards};
-\node[tile] (none) at (0.95, 0) {\texttt{none}};
-\node[tile=finblue] (lib) at (3.25, 0) {\texttt{library}};
-\node[tile=finaqua] (cards) at (0.95, -1.15) {\texttt{cards}};
-\node[tile=finaqua] (both) at (3.25, -1.15) {\texttt{cards+library}};
-\foreach \n in {cards, both}
-  \node[circle, shading=ball, ball color=finorange, text=white, font=\tiny\bfseries,
-        inner sep=0pt, minimum size=8pt] at ($(\n.north east) + (-0.08, -0.06)$) {M};
-\draw[contrast=finblue!80!black] (none.east) -- (lib.west);
-\draw[contrast=finblue!80!black] (cards.east) -- (both.west);
-\node[measure] at ($(none.east)!0.5!(lib.west) + (0, 0.3)$) {library};
-\draw[contrast=finaqua!75!black] (none.south) -- (cards.north);
-\draw[contrast=finaqua!75!black] (lib.south) -- (both.north);
-\node[measure, anchor=west] at ($(lib.south)!0.5!(both.north) + (0.08, 0)$) {cards};
-\node[font=\tiny, text=fingray!90!black, anchor=north west, align=left, text width=4.2cm]
-  at (-0.05, -1.72) {\textcolor{finorange}{\textbf{M}}: arms of the main comparison;
-  the ablation adds the other two.};
-
-% ---- (b) method contrasts within one arm
-\begin{scope}[yshift=-3.25cm]
-\node[title] at (-1.25, 0.72) {(b) Method contrasts, within one arm};
-\node[tile=fingray, minimum width=1.75cm] (no) at (-0.3, 0) {{\tiny\ttfamily NoImprove}\\[-1pt]{\tiny one program}};
-\node[tile=finorange, minimum width=1.75cm] (cf) at (2.35, 0) {{\tiny\ttfamily CheckFeedback}\\[-1pt]{\tiny sees failed checks}};
-\node[tile=finaqua, minimum width=1.75cm] (pl) at (5.0, 0) {{\tiny\ttfamily PlaybookLearning}\\[-1pt]{\tiny learns on dev tasks}};
-\draw[->, line width=0.7pt, draw=finorange!80!black] (no.east) -- (cf.west);
-\draw[->, line width=0.7pt, draw=finaqua!75!black] (cf.east) -- (pl.west);
-\node[measure] at ($(no.east)!0.5!(cf.west) + (0, 0.2)$) {checks};
-\node[measure, anchor=south] at ($(cf.east)!0.5!(pl.west) + (0, 0.06)$) {self-\\[-1pt]improve-\\[-1pt]ment};
+% Figure: the skill arms (rsi.ARMS) and the method contrasts of the component ablation, in
+% pictures. A blue card stands for the rule cards and a dark square for the library interface;
+% faint means the arm leaves it out. Bold frames are the arms of the main comparison.
+\InputIfFileExists{figures/glyphs}{}{\input{../latex_acl2027/figures/glyphs}}%
+\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily]
+\def\lib#1#2{% \lib{centre}{on 1 / off 0}: the library, a code square
+  \begin{scope}[shift={#1}]
+    \ifnum#2=1 \path[fill=gink, rounded corners=1.5pt, gshade] (-0.2,-0.2) rectangle (0.2,0.2);
+      \pic[draw=white, fill=white, line width=0.55pt, scale=0.75] at (0,0) {fin code};
+    \else \draw[gline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, rounded corners=1.5pt] (-0.2,-0.2) rectangle (0.2,0.2);\fi
+  \end{scope}}
+\def\crd#1#2{% \crd{centre}{on 1 / off 0}: the rule cards
+  \ifnum#2=1 \gcard{#1}\else
+  \begin{scope}[shift={#1}]\draw[gline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, rounded corners=1pt] (-0.22,-0.16) rectangle (0.22,0.16);\end{scope}\fi}
+\def\arm#1#2#3#4#5{% \arm{x}{y}{cards}{library}{main 1/0}
+  \ifnum#5=1 \path[fill=white, draw=gink, line width=0.9pt, rounded corners=2pt, gshade] ({#1-0.75},{#2-0.36}) rectangle ({#1+0.75},{#2+0.36});
+  \else \path[fill=white, draw=gline, line width=0.5pt, rounded corners=2pt, gshade] ({#1-0.75},{#2-0.36}) rectangle ({#1+0.75},{#2+0.36});\fi
+  \crd{({#1-0.3},#2)}{#3} \lib{({#1+0.32},#2)}{#4}}
+\tikzset{both/.style={gflow, {Latex[length=1.5mm,width=1.2mm]}-{Latex[length=1.5mm,width=1.2mm]}}}
+% ---------------------------------------------------------------- (a) skill arms
+\node[gword, anchor=west, font=\sffamily\glab\bfseries] at (0,3.85) {(a) Skill arms};
+\node[gnote] at (2.6,3.48) {no library}; \node[gnote] at (5.0,3.48) {library};
+\node[gnote, anchor=east] at (1.7,2.95) {no cards}; \node[gnote, anchor=east] at (1.7,1.75) {rule cards};
+\arm{2.6}{2.95}{0}{0}{0} \arm{5.0}{2.95}{0}{1}{0}
+\arm{2.6}{1.75}{1}{0}{1} \arm{5.0}{1.75}{1}{1}{1}
+\draw[both] (3.4,2.95) -- (4.2,2.95);
+\draw[both] (3.4,1.75) -- (4.2,1.75);
+\draw[both] (2.6,2.55) -- (2.6,2.15);
+\draw[both] (5.0,2.55) -- (5.0,2.15);
+\draw[gink, line width=0.9pt, rounded corners=1pt] (5.98,1.68) rectangle ++(0.16,0.14);
+\node[gnote, anchor=west] at (6.2,1.75) {main comparison};
+% ---------------------------------------------------------------- (b) method contrasts
+\node[gword, anchor=west, font=\sffamily\glab\bfseries] at (0,0.95) {(b) Within one arm};
+\begin{scope}[shift={(0.9,0.05)}]
+  \gpage{(0,0)}{0.5}{0.62}{white}
 \end{scope}
+\node[gword, font=\fontsize{6}{7}\fontfamily{zi4}\selectfont] at (0.9,-0.55) {NoImprove};
+\node[gnote] at (0.9,-0.78) {one program};
+\begin{scope}[shift={(3.65,0.05)}]
+  \gpage{(0,0)}{0.5}{0.62}{white}
+  \draw[-{Latex[length=1.4mm,width=1.2mm]}, gbad!75, line width=0.8pt, dash pattern=on 2pt off 1.3pt] (0.3,0.12) .. controls (0.75,0.55) and (-0.75,0.55) .. (-0.3,0.12);
+  \gcheck{(0.46,-0.18)}{0}
+\end{scope}
+\node[gword, font=\fontsize{6}{7}\fontfamily{zi4}\selectfont] at (3.65,-0.55) {CheckFeedback};
+\node[gnote] at (3.65,-0.78) {retries on failed checks};
+\begin{scope}[shift={(6.4,0.05)}]
+  \gpage{(0.08,0.05)}{0.5}{0.62}{white}
+  \gpage{(0,0)}{0.5}{0.62}{white}
+  \gbar{-0.15}{-0.12}{0.3}{gok}
+  \draw[-{Latex[length=1.4mm,width=1.2mm]}, gbad!75, line width=0.8pt, dash pattern=on 2pt off 1.3pt] (0.3,0.12) .. controls (0.75,0.55) and (-0.75,0.55) .. (-0.3,0.12);
+\end{scope}
+\node[gword, font=\fontsize{6}{7}\fontfamily{zi4}\selectfont] at (6.4,-0.55) {PlaybookLearning};
+\node[gnote] at (6.4,-0.78) {and keeps a playbook};
+\draw[gflow] (1.45,0.05) -- node[gnote, above=1.5pt] {+ checks} (3.1,0.05);
+\draw[gflow] (4.2,0.05) -- node[gnote, above=1.5pt] {+ self-improvement} (5.85,0.05);
 \end{tikzpicture}
