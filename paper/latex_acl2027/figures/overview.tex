@@ -1,47 +1,39 @@
-% Figure 1: the library at a glance. Left, the interfaces that bring information in; middle,
-% an agent composed from the three layers (pick one self-improvement method, any checks, any
-% skills) and driven by the user's model; right, the ways the library is used. Counts are
-% macros from numbers.tex or the counts in the comments, taken from the code on 2026-11-05.
-% Needs the TikZ libraries 3d, shadows.blur, fadings and shadings; colour finmagenta.
+% Figure 1: the library at a glance. Information comes in on the left, an agent is composed in
+% the middle (the user's model, one self-improvement method, any checks, skills and investor
+% templates) and the library is used from the right. Badges and labels are counts from the code
+% on 2026-11-05: macros from numbers.tex where one exists, otherwise noted here (8 adapters,
+% 4 discovery sources, 9 collectors in fin_skills.data and fin_skills.collect; 14 bridged
+% libraries in fin_skills.bridges). Needs the TikZ libraries 3d, shadows.blur, fadings, shadings.
 \begin{tikzpicture}[
   font=\scriptsize,
   >={Stealth[length=4pt, width=3.8pt, round]},
-  lab/.style={font=\tiny, text=fingray!95!black, align=center, inner sep=1pt},
   head/.style={font=\tiny\bfseries, anchor=south west, inner sep=0pt},
   ball/.style={circle, shading=ball, ball color=#1, inner sep=0pt, minimum size=9pt},
   ball/.default=finblue,
   iso/.style={x={(0.95cm,-0.24cm)}, y={(0.62cm,0.32cm)}, z={(0cm,1cm)}},
-  chipbase/.style={rounded corners=1.8pt, inner xsep=2pt, inner ysep=1.2pt, font=\chipfont,
-                   line width=0.4pt, minimum height=0.25cm},
-  chip/.style={chipbase, draw=#1!55, fill=white, text=#1!70!black},
-  chipsel/.style={chipbase, draw=#1!80!black, top color=#1!80, bottom color=#1,
-                  text=white, font=\chipfont\bfseries},
-  chipmore/.style={chipbase, draw=fingray!55, dashed, fill=fingray!6, text=fingray!95!black},
   shade/.style={blur shadow={shadow blur steps=6, shadow xshift=0.45pt, shadow yshift=-0.9pt,
                              shadow opacity=24}},
+  badge/.style={circle, fill=#1, text=white, font=\tiny\bfseries, inner sep=0pt,
+                minimum size=0.36cm},
+  pick/.style={font=\tiny\bfseries, text=#1!75!black, anchor=east, inner sep=0pt},
 ]
 % ================================================================== helpers
-\providecommand{\chipfont}{\fontsize{5.5}{6.5}\selectfont}
-% \panel{x}{ytop}{w}{h}{colour}{icon}{title}{subtitle}: a card with an accent bar and a ball icon.
-\newcommand{\panel}[8]{%
-  \path[fill=white, rounded corners=3pt, shade] (#1,#2) rectangle ({#1+#3},{#2-#4});
+% \tile{x}{y centre}{w}{colour}{icon}{label}{badge}: a card with an accent bar, an icon and a count.
+\newcommand{\tile}[7]{%
+  \path[fill=white, rounded corners=3pt, shade] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
   \begin{scope}
-    \clip[rounded corners=3pt] (#1,#2) rectangle ({#1+#3},{#2-#4});
-    \fill[#5] (#1,#2) rectangle ({#1+0.08},{#2-#4});
+    \clip[rounded corners=3pt] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
+    \fill[#4] (#1,{#2+0.42}) rectangle ({#1+0.08},{#2-0.42});
   \end{scope}
-  \draw[#5!40, rounded corners=3pt, line width=0.4pt] (#1,#2) rectangle ({#1+#3},{#2-#4});
-  \node[ball=#5, minimum size=0.42cm] at ({#1+0.37},{#2-0.3}) {};
-  \pic[draw=white, fill=white, line width=0.5pt, scale=0.85] at ({#1+0.37},{#2-0.3}) {#6};
-  \node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at ({#1+0.66},{#2-0.22}) {#7};
-  \node[anchor=west, font=\chipfont, text=fingray!95!black, inner sep=0pt] at ({#1+0.66},{#2-0.43}) {#8};}
-% \chips{start}{colour}{flag/text, ...}: a row of chips; flag 1 = selected, 0 = option, 2 = more.
-\newcommand{\chips}[3]{%
-  \coordinate (cr) at #1;
-  \foreach \f/\t [count=\i] in {#3} {
-    \ifnum\f=1 \tikzset{cur/.style={chipsel=#2}}\else
-      \ifnum\f=2 \tikzset{cur/.style={chipmore}}\else \tikzset{cur/.style={chip=#2}}\fi\fi
-    \ifnum\i=1 \node[cur, anchor=west] (cr) at (cr) {\t};
-    \else \node[cur, anchor=west] (cr) at ($(cr.east) + (1.6pt, 0)$) {\t};\fi}}
+  \draw[#4!40, rounded corners=3pt, line width=0.4pt] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
+  \node[ball=#4, minimum size=0.5cm] at ({#1+0.45},#2) {};
+  \pic[draw=white, fill=white, line width=0.55pt] at ({#1+0.45},#2) {#5};
+  \node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at ({#1+0.83},#2) {#6};
+  \if\relax\detokenize{#7}\relax\else
+    \node[badge=#4!85!black] at ({#1+#3-0.32},#2) {#7};\fi}
+% \track{y bottom}{y top}{colour}: the tinted strip that holds one layer's choices.
+\newcommand{\track}[3]{%
+  \path[fill=#3!6, draw=#3!35, line width=0.4pt, rounded corners=3pt] (8.5,#1) rectangle (12.85,#2);}
 \def\sW{2.75}\def\sD{1.45}\def\sT{0.3}\def\pitch{1.3}
 % \slab{z}{colour}{label}: a shaded slab with its label printed on the front face.
 \newcommand{\slab}[3]{%
@@ -80,21 +72,17 @@
   \end{scope}}
 
 % ================================================================== left: information in
-\node[head, text=finmagenta!80!black] at (0, 6.0) {INFORMATION IN};
-\panel{0}{5.85}{3.95}{1.3}{finmagenta}{fin chart}{Market data}{8 adapters, a declaration for each}
-\chips{(0.17, 5.13)}{finmagenta}{0/yfinance, 0/akshare, 0/ccxt, 0/EDGAR, 0/FRED}
-\chips{(0.17, 4.83)}{finmagenta}{0/Tiingo, 0/Alpha Vantage, 0/Stooq}
-\panel{0}{4.4}{3.95}{1.3}{finmagenta}{fin search}{Discovery}{search, then resolve as of a date}
-\chips{(0.17, 3.68)}{finmagenta}{0/EDGAR full text, 0/EDGAR company, 0/FRED series}
-\chips{(0.17, 3.38)}{finmagenta}{0/ccxt markets, 0/symbology}
-\panel{0}{2.95}{3.95}{1.3}{finmagenta}{fin feed}{Collectors}{9 sources, watchlists, an event store}
-\chips{(0.17, 2.23)}{finmagenta}{0/RSS, 0/GDELT, 0/{SEC 4/13F}, 0/US House}
-\chips{(0.17, 1.93)}{finmagenta}{0/CFTC, 0/AAII, 0/UMich, 0/Bluesky, 0/web pages}
-\panel{0}{1.5}{3.95}{1.0}{finmagenta}{fin doc}{Retrieval and synthesis}{source-aware RAG, timelines, vintages}
-\chips{(0.17, 0.78)}{finmagenta}{0/retrieve, 0/research, 0/timeline, 0/dossier}
+\node[head, text=finmagenta!80!black] at (0, 5.22) {INFORMATION IN};
+\tile{0}{4.65}{2.8}{finmagenta}{fin chart}{Market data}{8}
+\tile{0}{3.45}{2.8}{finmagenta}{fin search}{Discovery}{4}
+\tile{0}{2.25}{2.8}{finmagenta}{fin feed}{Collectors}{9}
+\tile{0}{1.05}{2.8}{finmagenta}{fin doc}{Retrieval}{}
+\foreach \y in {4.65, 3.45, 2.25, 1.05}
+  \draw[line width=1.5pt, finmagenta!35] (2.8, \y) to[out=0, in=180] (4.0, 2.3);
+\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, finmagenta!45] (3.95, 2.3) -- (4.56, 2.3);
 
 % ================================================================== middle: compose an agent
-\node[head] at (4.45, 6.0) {COMPOSE AN AGENT\textcolor{fingray!90!black}{\normalfont: one model, then choose what it may use (filled = chosen)}};
+\node[head] at (4.45, 5.22) {COMPOSE AN AGENT};
 \begin{scope}[shift={(4.6, 0.95)}]
 \fill[fingray, opacity=0.35, path fading=circle with fuzzy edge 15 percent]
   (1.75, -0.5) ellipse (2.1cm and 0.34cm);
@@ -105,8 +93,8 @@
   \fill[finorange] (0.1,0.05) rectangle (0.19,0.15); \fill[finblue] (0.24,0.05) rectangle (0.33,0.24);
   \fill[finaqua] (0.38,0.05) rectangle (0.47,0.29);}
 \stand{1.92}{0.32}{\sT}{0.6}{0.44}{finblue}{%
-  \draw[finaqua!80!black, line width=0.6pt, line cap=round, line join=round]
-    (0.19,0.18) -- (0.28,0.1) -- (0.44,0.27);}
+  \fill[finblue!75] (0.3,0.235) circle (0.055);
+  \fill[finblue!75] (0.17,0.04) arc[start angle=180, end angle=0, radius=0.13] -- cycle;}
 \slab{\pitch}{finorange}{CHECKS}
 \stand{0.62}{0.32}{{\pitch+\sT}}{1.5}{0.44}{finorange}{%
   \foreach \yy/\c in {0.27/finaqua, 0.16/finaqua, 0.05/finorange} {
@@ -125,56 +113,68 @@
       (\u, \v, \sT) -- (\u, \v, \pitch) (\u, \v, {\pitch+\sT}) -- (\u, \v, {2*\pitch});
   \foreach \k in {0, 1, 2} \coordinate (r\k) at (\sW, \sD/2, {\k*\pitch+\sT/2});
   \coordinate (topc) at (\sW/2, \sD/2, {2*\pitch+\sT});
-  \coordinate (lft) at (0, 0, {\pitch});
 \end{scope}
 \end{scope}
 
 % the user's model drives the stack
-\path[fill=white, rounded corners=3pt, shade] (4.5, 5.85) rectangle (7.95, 4.86);
-\draw[fingray!45, rounded corners=3pt, line width=0.4pt] (4.5, 5.85) rectangle (7.95, 4.86);
-\node[ball=fingray!70, minimum size=0.44cm] (rob) at (4.84, 5.355) {};
+\path[fill=white, rounded corners=3pt, shade] (5.25, 5.1) rectangle (7.45, 4.5);
+\draw[fingray!45, rounded corners=3pt, line width=0.4pt] (5.25, 5.1) rectangle (7.45, 4.5);
+\node[ball=fingray!70, minimum size=0.44cm] (rob) at (5.6, 4.8) {};
 \pic[draw=white, fill=white, line width=0.55pt] at (rob) {fin robot};
-\node[anchor=west, align=left, inner sep=0pt] at (5.15, 5.355)
-  {\textbf{Your model}\\[-1pt]{\tiny one \texttt{generate(messages)}}\\[-2pt]{\tiny callable, any provider}};
-\draw[->, line width=0.9pt, fingray!80!black] (6.1, 4.86) -- ($(topc) + (0, 0.12)$);
+\node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at (5.92, 4.8) {Your model};
+\draw[->, line width=0.9pt, fingray!80!black] (6.36, 4.5) -- ($(topc) + (0, 0.12)$);
 
-% choices for each layer
+% each layer's choices: filled marks are one agent
+\track{3.02}{3.52}{finaqua}
+\track{1.72}{2.22}{finorange}
+\track{0.25}{1.1}{finblue}
 \foreach \k/\col in {0/finblue, 1/finorange, 2/finaqua} {
-  \draw[\col!75!black, line width=0.5pt] (r\k) -- (r\k -| 8.28, 0);
+  \draw[\col!75!black, line width=0.5pt] (r\k) -- (r\k -| 8.5, 0);
   \node[ball=\col, minimum size=4pt] at (r\k) {};}
-\def\px{8.28}\def\pw{4.78}
-% investor templates: federated packs tagged investor-lenses or value-investing in
-% .claude-plugin/marketplace.json, and the profiles embedded in kol-credibility-registry
-\panel{\px}{5.85}{\pw}{1.56}{finblue}{fin person}{Investor templates: pick any}{named investors' approaches as skills; \NLensSkills{} in \NLensPacks{} packs}
-\chips{(\px+0.17, 5.13)}{finblue}{0/Buffett, 0/Munger, 0/Soros, 0/Simons, 0/Druckenmiller}
-\chips{(\px+0.17, 4.83)}{finblue}{0/Seykota, 0/Turtles, 0/CANSLIM, 0/Duan Yongping, 0/Feng Liu}
-\chips{(\px+0.17, 4.53)}{finblue}{0/{\NKOLProfiles{} KOL track records}, 2/{federated, off by default}}
-\panel{\px}{4.12}{\pw}{1.26}{finaqua}{fin loop}{Self-improvement: pick one}{\NMethods{} methods, one interface, one meter}
-\chips{(\px+0.17, 3.4)}{finaqua}{0/NoImprove, 0/SelfDebug, 0/CheckFeedback}
-\chips{(\px+0.17, 3.1)}{finaqua}{0/Reflexion, 1/{PlaybookLearning}, 0/Team, 0/Evolve}
-\panel{\px}{2.82}{\pw}{1.26}{finorange}{fin check}{Checks: pick any}{\NGuards{} guards behind one interface}
-\chips{(\px+0.17, 2.1)}{finorange}{1/{execution\_lag}, 1/{adjustment\_check}}
-\chips{(\px+0.17, 1.8)}{finorange}{1/{warmup\_probe}, 0/assert\_causal, 0/survivorship, 2/+34}
-\panel{\px}{1.52}{\pw}{1.26}{finblue}{fin doc}{Skills: pick any}{\NSkills{} skills, \NPlugins{} plugins, cards on or off}
-\chips{(\px+0.17, 0.8)}{finblue}{1/{fin-core}, 0/fin-china, 0/fin-crypto, 0/fin-macro, 2/+13}
-\chips{(\px+0.17, 0.5)}{finblue}{1/{\NCards{} rule cards}, 1/{\NAlgorithms{} algorithms}, 0/287 models}
-
-% information flows in
-\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, finmagenta!45] (4.02, 2.3) -- (4.56, 2.3);
+% self-improvement: pick one (radio)
+\foreach \i in {0,...,6} {
+  \ifnum\i=4 \node[ball=finaqua, minimum size=0.21cm] at ({8.75+0.34*\i}, 3.27) {};
+  \else \draw[finaqua!70!black, fill=white, line width=0.5pt] ({8.75+0.34*\i}, 3.27) circle (0.1);\fi}
+\node[pick=finaqua] at (12.72, 3.27) {pick 1 of \NMethods{}};
+% checks: pick any (boxes)
+\foreach \i in {0,...,9} {
+  \def\cx{8.75+0.3*\i}
+  \ifnum\i=1 \def\on{1}\else\ifnum\i=4 \def\on{1}\else\ifnum\i=5 \def\on{1}\else\def\on{0}\fi\fi\fi
+  \ifnum\on=1
+    \draw[finorange!70!black, fill=finorange, line width=0.5pt, rounded corners=1pt]
+      ({\cx-0.1}, 1.87) rectangle ({\cx+0.1}, 2.07);
+    \draw[white, line width=0.6pt, line cap=round, line join=round]
+      ({\cx-0.055}, 1.975) -- ({\cx-0.015}, 1.93) -- ({\cx+0.06}, 2.02);
+  \else
+    \draw[finorange!70!black, fill=white, line width=0.5pt, rounded corners=1pt]
+      ({\cx-0.1}, 1.87) rectangle ({\cx+0.1}, 2.07);\fi}
+\node[pick=finorange] at (12.72, 1.97) {any of \NGuards{}};
+% skills: pick any (documents) and investor templates (people)
+\foreach \i in {0,...,7} {
+  \def\cx{8.75+0.3*\i}
+  \ifnum\i=0 \def\on{1}\else\ifnum\i=2 \def\on{1}\else\ifnum\i=5 \def\on{1}\else\def\on{0}\fi\fi\fi
+  \ifnum\on=1 \def\fc{finblue}\def\lc{white}\else \def\fc{white}\def\lc{finblue!60}\fi
+  \draw[finblue!70!black, fill=\fc, line width=0.5pt, rounded corners=0.6pt]
+    ({\cx-0.085}, 0.76) rectangle ({\cx+0.085}, 0.98);
+  \draw[\lc, line width=0.45pt] ({\cx-0.045}, 0.90) -- ({\cx+0.045}, 0.90)
+    ({\cx-0.045}, 0.84) -- ({\cx+0.045}, 0.84);}
+\node[pick=finblue] at (12.72, 0.87) {any of \NSkills{}};
+\foreach \i in {0,...,4} {
+  \def\cx{8.75+0.3*\i}
+  \ifnum\i=1 \def\fc{finblue}\else\ifnum\i=3 \def\fc{finblue}\else\def\fc{white}\fi\fi
+  \draw[finblue!70!black, fill=\fc, line width=0.5pt] (\cx, 0.535) circle (0.052);
+  \draw[finblue!70!black, fill=\fc, line width=0.5pt]
+    ({\cx-0.1}, 0.37) arc[start angle=180, end angle=0, radius=0.1] -- cycle;}
+\node[pick=finblue] at (12.72, 0.46) {any of \NLensSkills{} investor templates};
 
 % ================================================================== right: use it from
-\def\rx{13.46}
-\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, fingray!40] (13.1, 2.3) -- (\rx-0.04, 2.3);
-\node[head, text=fingray!95!black] at (\rx, 6.0) {USE IT FROM};
-\panel{\rx}{5.85}{3.95}{1.3}{fingray}{fin plug}{Agent interfaces}{\NTools{} tools, one registry}
-\chips{(\rx+0.17, 5.13)}{fingray}{0/MCP, 0/OpenAI, 0/Anthropic, 0/Python API}
-\chips{(\rx+0.17, 4.83)}{fingray}{0/33 checks, 0/13 data and news, 0/8 algorithms}
-\panel{\rx}{4.4}{3.95}{1.3}{fingray}{fin link}{Bridges}{14 libraries, each trap enforced}
-\chips{(\rx+0.17, 3.68)}{fingray}{0/vectorbt, 0/zipline, 0/qlib, 0/QuantLib}
-\chips{(\rx+0.17, 3.38)}{fingray}{0/PyPortfolioOpt, 0/skfolio, 0/quantstats, 2/+7}
-\panel{\rx}{2.95}{3.95}{1.0}{fingray}{fin gauge}{Reference backtester}{returns a Bundle the guards check}
-\chips{(\rx+0.17, 2.23)}{fingray}{0/12 invariants, 0/costs, 0/universe, 0/execution}
-\panel{\rx}{1.8}{3.95}{1.3}{fingray}{fin code}{Benchmark}{\NTasks{} tasks, a judge, a hidden grader}
-\chips{(\rx+0.17, 1.08)}{fingray}{0/\NTaskAlgorithms{} algorithms, 0/dev and held-out}
-\chips{(\rx+0.17, 0.78)}{fingray}{0/synthetic panels, 0/real prices}
+\node[head, text=fingray!95!black] at (14.6, 5.22) {USE IT FROM};
+\tile{14.6}{4.65}{2.8}{fingray}{fin plug}{Agent tools}{\NTools{}}
+\tile{14.6}{3.45}{2.8}{fingray}{fin link}{Bridges}{14}
+\tile{14.6}{2.25}{2.8}{fingray}{fin gauge}{Backtester}{}
+\tile{14.6}{1.05}{2.8}{fingray}{fin code}{Benchmark}{\NTasks{}}
+\draw[line width=2.4pt, fingray!40] (12.95, 2.3) -- (13.4, 2.3);
+\foreach \y in {4.65, 3.45, 2.25, 1.05}
+  \draw[-{Stealth[length=5pt, width=5.5pt]}, line width=1.5pt, fingray!45]
+    (13.35, 2.3) to[out=0, in=180] (14.55, \y);
 \end{tikzpicture}
