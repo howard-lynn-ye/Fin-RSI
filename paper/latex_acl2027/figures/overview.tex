@@ -1,145 +1,171 @@
-% Figure 1: the library as three floating planes. Bottom, the interfaces that bring
-% information in; middle, an agent composed from the user's model and one choice per tray
-% (one self-improvement method, any checks, skills and investor templates; coloured pieces are
-% the ones chosen, and their threads run into the agent); top, the interfaces it is used
-% through. Counts are macros from numbers.tex. Cabinet projection: x across, y into the page,
-% z up, so text on the front faces is not distorted. Needs the TikZ library 3d.
-\definecolor{ink}{HTML}{2B2D42}
-\definecolor{lil}{HTML}{7D6BB0}
-\definecolor{sla}{HTML}{5F7286}
+% Figure 1: the library at a glance. In the middle, an agent built as a tower of glass plates on
+% the user's model: skills, investor templates, checks and one self-improvement method. Only
+% the chosen pieces are coloured; a core threads them together and leaves the top as the agent.
+% Left, the interfaces that bring information in; right, the interfaces the agent is used
+% through. Counts are macros from numbers.tex. Oblique projection: x across, y into the page,
+% z up, so front faces and their text are not distorted. Needs the TikZ libraries 3d,
+% shadows.blur and fadings.
+\definecolor{ink}{HTML}{1F2335}
+\definecolor{lil}{HTML}{6B5CA5}
+\definecolor{sla}{HTML}{4C6378}
+\definecolor{edge}{HTML}{D5D9E1}
 \begin{tikzpicture}[
-  font=\scriptsize,
+  font=\sffamily\scriptsize,
   >={Stealth[length=3.6pt, width=3.4pt, round]},
-  cab/.style={x={(1cm,0cm)}, y={(0.5cm,0.28cm)}, z={(0cm,1cm)}},
-  plab/.style={font=\tiny\bfseries, text=ink, anchor=east, inner sep=0pt, align=right},
-  gloss/.style={font=\tiny, text=fingray!90!black, anchor=east, inner sep=0pt, align=right},
-  tlab/.style={font=\tiny, text=ink, anchor=north, inner sep=0pt, align=center},
+  ob/.style={x={(1cm,0cm)}, y={(0.55cm,0.4cm)}, z={(0cm,1cm)}},
+  soft/.style={blur shadow={shadow blur steps=8, shadow xshift=0.3pt, shadow yshift=-0.9pt,
+                            shadow opacity=18, shadow blur radius=2.2pt}},
+  card/.style={rounded corners=3pt, fill=white, draw=edge, line width=0.4pt, soft},
+  head/.style={font=\sffamily\tiny\bfseries, text=ink!75, anchor=south west, inner sep=0pt},
 ]
-\def\L{14.0}\def\D{2.6}\def\zA{1.85}\def\zB{3.7}
-\def\tA{2.35}\def\tB{4.85}\def\tC{7.35}\def\tD{9.85}
-% \plane{z}{accent}: a thin sheet, its top face, front and right edges.
-\newcommand{\plane}[2]{%
-  \fill[#2!38] (0,0,{#1-0.06}) -- (\L,0,{#1-0.06}) -- (\L,0,#1) -- (0,0,#1) -- cycle;
-  \fill[#2!48] (\L,0,{#1-0.06}) -- (\L,\D,{#1-0.06}) -- (\L,\D,#1) -- (\L,0,#1) -- cycle;
-  \shade[left color=#2!7, right color=#2!14, opacity=0.95]
-    (0,0,#1) -- (\L,0,#1) -- (\L,\D,#1) -- (0,\D,#1) -- cycle;
-  \draw[#2!45, line width=0.35pt, line join=round]
-    (0,0,{#1-0.06}) -- (\L,0,{#1-0.06}) -- (\L,\D,{#1-0.06}) -- (\L,\D,#1) -- (0,\D,#1)
-    -- (0,0,#1) -- cycle (0,0,#1) -- (\L,0,#1) -- (\L,\D,#1);}
-% \block{x}{y}{z}{w}{d}{h}{accent}{front fill}{front content}: a box standing on a plane,
-% with a soft shadow cast back and to the right. Content is drawn in front-face coordinates.
-\newcommand{\block}[9]{%
-  \fill[black, opacity=0.07] ({#1+0.06},{#2+0.08},#3) -- ({#1+#4+0.18},{#2+0.08},#3)
-    -- ({#1+#4+0.18},{#2+#5+0.3},#3) -- ({#1+0.06},{#2+#5+0.3},#3) -- cycle;
-  \filldraw[fill=#7!14, draw=#7!55, line width=0.35pt, line join=round]
+% ================================================================== helpers
+% \card{x}{y centre}{w}{h}{accent}{icon}{label}: a white card with a tinted icon disc.
+\newcommand{\card}[7]{%
+  \path[card] (#1,{#2-#4/2}) rectangle ({#1+#3},{#2+#4/2});
+  \fill[#5!14] ({#1+0.36},#2) circle (0.21);
+  \pic[draw=#5, fill=#5, line width=0.55pt, scale=0.85] at ({#1+0.36},#2) {#6};
+  \node[anchor=west, font=\sffamily\scriptsize\bfseries, text=ink, inner sep=0pt] at ({#1+0.68},#2) {#7};}
+\def\L{4.2}\def\D{1.6}\def\T{0.22}\def\ty{0.7}
+\def\cx{2.1}\def\cy{1.15}
+% \plate{z}{accent}{label}: a glass plate with its name on the front edge.
+\newcommand{\plate}[3]{%
+  \fill[#2!26] (0,0,#1) -- (\L,0,#1) -- (\L,0,{#1+\T}) -- (0,0,{#1+\T}) -- cycle;
+  \fill[#2!40] (\L,0,#1) -- (\L,\D,#1) -- (\L,\D,{#1+\T}) -- (\L,0,{#1+\T}) -- cycle;
+  \fill[#2!7, opacity=0.92] (0,0,{#1+\T}) -- (\L,0,{#1+\T}) -- (\L,\D,{#1+\T}) -- (0,\D,{#1+\T}) -- cycle;
+  \draw[#2!50, line width=0.35pt, line join=round]
+    (0,0,#1) -- (\L,0,#1) -- (\L,\D,#1) -- (\L,\D,{#1+\T}) -- (0,\D,{#1+\T}) -- (0,0,{#1+\T}) -- cycle
+    (0,0,{#1+\T}) -- (\L,0,{#1+\T}) -- (\L,\D,{#1+\T}) (\L,0,{#1+\T}) -- (\L,0,#1);
+  \draw[white, opacity=0.8, line width=0.5pt] (0.04,0,{#1+\T-0.02}) -- (\L-0.04,0,{#1+\T-0.02});
+  \begin{scope}[canvas is xz plane at y=0]
+    \node[font=\sffamily\tiny\bfseries, text=#2!72!black, inner sep=0pt] at (\L/2, {#1+\T/2}) {#3};
+  \end{scope}
+  % the core passes through the plate
+  \begin{scope}[canvas is xy plane at z={#1+\T}]
+    \fill[ink!18] (\cx,\cy) circle (0.075); \fill[ink!80] (\cx,\cy) circle (0.035);
+  \end{scope}}
+% \core{z from}{z to}: one visible segment of the core.
+\newcommand{\core}[2]{%
+  \draw[ink!85, line width=1.1pt] (\cx,\cy,#1) -- (\cx,\cy,#2);
+  \draw[white, opacity=0.55, line width=0.3pt] ({\cx-0.012},\cy,#1) -- ({\cx-0.012},\cy,#2);}
+% \wire{x}{z}{accent}: a chosen piece wired to the core along its plate.
+\newcommand{\wire}[3]{%
+  \begin{scope}[canvas is xy plane at z=#2]
+    \draw[#3, line width=0.6pt, line cap=round] (#1,\ty) -- (\cx,\cy);
+  \end{scope}}
+% \cube{x}{y}{z}{w}{d}{h}{edge}{front}{top}{side}: a small box.
+\newcommand{\cube}[9]{%
+  \filldraw[fill=#9, draw=#7, line width=0.35pt, line join=round]
     (#1,#2,{#3+#6}) -- ({#1+#4},#2,{#3+#6}) -- ({#1+#4},{#2+#5},{#3+#6}) -- (#1,{#2+#5},{#3+#6}) -- cycle;
-  \filldraw[fill=#7!30, draw=#7!55, line width=0.35pt, line join=round]
+  \filldraw[fill=#8!80!black, draw=#7, line width=0.35pt, line join=round]
     ({#1+#4},#2,#3) -- ({#1+#4},{#2+#5},#3) -- ({#1+#4},{#2+#5},{#3+#6}) -- ({#1+#4},#2,{#3+#6}) -- cycle;
-  \filldraw[fill=#8, draw=#7!55, line width=0.35pt, line join=round]
-    (#1,#2,#3) -- ({#1+#4},#2,#3) -- ({#1+#4},#2,{#3+#6}) -- (#1,#2,{#3+#6}) -- cycle;
-  \begin{scope}[canvas is xz plane at y=#2, shift={(#1,#3)}] #9 \end{scope}}
-% \unit{x}{z}{w}{h}{icon}{label}{accent}: an icon and a label on a front face.
-\newcommand{\facelabel}[5]{%
-  \pic[draw=#5!80!black, fill=#5!80!black, line width=0.55pt, scale=0.9] at (0.32, #2/2) {#3};
-  \node[anchor=west, font=\scriptsize\bfseries, text=ink, inner sep=0pt] at (0.58, #2/2) {#4};}
+  \filldraw[fill=#8, draw=#7, line width=0.35pt, line join=round]
+    (#1,#2,#3) -- ({#1+#4},#2,#3) -- ({#1+#4},#2,{#3+#6}) -- (#1,#2,{#3+#6}) -- cycle;}
 
-\begin{scope}[shift={(2.1cm, 0.3cm)}, cab]
-% a soft shadow on the floor under the stack
-\begin{scope}[canvas is xy plane at z=-0.55]
-  \fill[black, opacity=0.10, path fading=circle with fuzzy edge 20 percent]
-    (7.0, 1.3) ellipse (6.9 and 1.5);
-\end{scope}
 % ================================================================== information
-\plane{0}{lil}
-\foreach \x/\ic/\t in {0.4/fin chart/Market data, 3.6/fin search/Discovery,
-                       6.8/fin feed/Collectors, 10.0/fin doc/Retrieval}
-  {\block{\x}{0.8}{0}{2.85}{0.5}{0.62}{lil}{white}{\facelabel{2.85}{0.62}{\ic}{\t}{lil}}}
-% information rises to the agent
-\begin{scope}[canvas is xz plane at y=1.35]
-  \shade[bottom color=lil!45, top color=lil!4, opacity=0.75] (12.85, 0) rectangle (13.4, \zA);
-\end{scope}
+\node[head, text=lil] at (0, 5.0) {INFORMATION};
+\card{0}{4.45}{2.8}{0.78}{lil}{fin chart}{Market data}
+\card{0}{3.45}{2.8}{0.78}{lil}{fin search}{Discovery}
+\card{0}{2.45}{2.8}{0.78}{lil}{fin feed}{Collectors}
+\card{0}{1.45}{2.8}{0.78}{lil}{fin doc}{Retrieval}
+\foreach \y in {4.45, 3.45, 2.45, 1.45}
+  \draw[lil!45, line width=0.8pt] (2.85, \y) to[out=0, in=180] (5.0, 2.85);
+\draw[->, lil!70, line width=0.8pt] (4.98, 2.85) -- (5.75, 2.85);
 
-% ================================================================== agent
-\plane{\zA}{fingray}
-\block{0.35}{0.8}{\zA}{1.65}{0.5}{0.55}{fingray}{white}{%
-  \pic[draw=ink!80, fill=ink!80, line width=0.55pt, scale=0.9] at (0.3, 0.275) {fin robot};
-  \node[anchor=west, font=\scriptsize\bfseries, text=ink, inner sep=0pt, align=left] at (0.52, 0.275)
-    {Your\\[-2pt]model};}
-% trays: self-improvement, checks, skills, investor templates
-\foreach \x/\c in {\tA/finaqua, \tB/finorange, \tC/finblue, \tD/finmagenta}
-  {\block{\x}{0.7}{\zA}{2.25}{0.85}{0.1}{\c}{\c!22}{}}
-\pgfmathsetmacro\zT{\zA+0.1}
-% self-improvement: one of seven
-\begin{scope}[canvas is xz plane at y=1.12]
-  \foreach \i in {0,...,6} {
-    \ifnum\i=4 \filldraw[fill=finaqua, draw=finaqua!70!black, line width=0.45pt]
-        ({\tA+0.22+0.3*\i}, {\zT+0.13}) circle (0.11);
-    \else \filldraw[fill=white, draw=fingray!65, line width=0.45pt]
-        ({\tA+0.22+0.3*\i}, {\zT+0.13}) circle (0.11);\fi}
+% ================================================================== the agent
+\begin{scope}[shift={(5.85cm, 0.45cm)}, ob]
+% floor shadow
+\begin{scope}[canvas is xy plane at z=0]
+  \fill[black, opacity=0.13, path fading=circle with fuzzy edge 20 percent]
+    (2.3, 0.8) ellipse (2.6 and 1.1);
 \end{scope}
-% checks: any of them
+% the user's model is the base
+\def\zm{0}\def\hm{0.35}
+\fill[white] (0,0,\hm) -- (\L,0,\hm) -- (\L,\D,\hm) -- (0,\D,\hm) -- cycle;
+\fill[edge!70] (\L,0,0) -- (\L,\D,0) -- (\L,\D,\hm) -- (\L,0,\hm) -- cycle;
+\fill[white] (0,0,0) -- (\L,0,0) -- (\L,0,\hm) -- (0,0,\hm) -- cycle;
+\draw[ink!35, line width=0.4pt, line join=round]
+  (0,0,0) -- (\L,0,0) -- (\L,\D,0) -- (\L,\D,\hm) -- (0,\D,\hm) -- (0,0,\hm) -- cycle
+  (0,0,\hm) -- (\L,0,\hm) -- (\L,\D,\hm) (\L,0,\hm) -- (\L,0,0);
+\begin{scope}[canvas is xz plane at y=0]
+  \pic[draw=ink, fill=ink, line width=0.55pt, scale=0.85] at (1.45, \hm/2) {fin robot};
+  \node[anchor=west, font=\sffamily\scriptsize\bfseries, text=ink, inner sep=0pt] at (1.68, \hm/2) {Your model};
+\end{scope}
+\begin{scope}[canvas is xy plane at z=\hm]
+  \fill[ink!18] (\cx,\cy) circle (0.075); \fill[ink!80] (\cx,\cy) circle (0.035);
+\end{scope}
+\def\zS{0.8}\def\zP{1.9}\def\zC{3.0}\def\zI{4.1}
+\core{\hm}{\zS}
+% ---- skills: any of them
+\plate{\zS}{finblue}{SKILLS \,$\cdot$\, ANY OF \NSkills{}}
+\pgfmathsetmacro\zt{\zS+\T}
+\foreach \i in {0,2,5} {\wire{{0.56+0.5*\i}}{\zt}{finblue}}
+\core{\zt}{\zP}
 \foreach \i in {0,...,6} {
-  \pgfmathsetmacro\bx{\tB+0.12+0.3*\i}
-  \ifnum\i=1 \def\on{1}\else\ifnum\i=3 \def\on{1}\else\ifnum\i=4 \def\on{1}\else\def\on{0}\fi\fi\fi
-  \ifnum\on=0
-    \block{\bx}{1.02}{\zT}{0.2}{0.2}{0.2}{fingray}{white}{}
-  \else
-    \block{\bx}{1.02}{\zT}{0.2}{0.2}{0.2}{finorange}{finorange}{%
-      \draw[white, line width=0.55pt, line cap=round, line join=round]
-        (0.05, 0.105) -- (0.09, 0.06) -- (0.155, 0.145);}
-  \fi}
-% skills: any of them
-\foreach \i in {0,...,6} {
-  \pgfmathsetmacro\bx{\tC+0.11+0.3*\i}
+  \pgfmathsetmacro\bx{0.45+0.5*\i}
   \ifnum\i=0 \def\on{1}\else\ifnum\i=2 \def\on{1}\else\ifnum\i=5 \def\on{1}\else\def\on{0}\fi\fi\fi
-  \ifnum\on=0 \def\cc{fingray}\def\ff{white}\def\ll{fingray!55}
-  \else \def\cc{finblue}\def\ff{finblue}\def\ll{white}\fi
-  \block{\bx}{1.08}{\zT}{0.22}{0.05}{0.31}{\cc}{\ff}{%
-    \draw[\ll, line width=0.45pt] (0.05,0.21) -- (0.17,0.21) (0.05,0.15) -- (0.17,0.15)
-      (0.05,0.09) -- (0.13,0.09);}}
-% investor templates: any of them
-\begin{scope}[canvas is xz plane at y=1.12]
+  \ifnum\on=1 \def\ff{finblue}\def\ee{finblue!70!black}\def\ll{white}
+  \else \def\ff{white}\def\ee{ink!30}\def\ll{ink!30}\fi
+  \cube{\bx}{\ty}{\zt}{0.22}{0.05}{0.3}{\ee}{\ff}{\ff}
+  \begin{scope}[canvas is xz plane at y=\ty]
+    \draw[\ll, line width=0.45pt] ({\bx+0.05},{\zt+0.21}) -- ({\bx+0.17},{\zt+0.21})
+      ({\bx+0.05},{\zt+0.15}) -- ({\bx+0.17},{\zt+0.15}) ({\bx+0.05},{\zt+0.09}) -- ({\bx+0.13},{\zt+0.09});
+  \end{scope}}
+% ---- investor templates: any of them
+\plate{\zP}{finmagenta}{INVESTOR TEMPLATES \,$\cdot$\, ANY OF \NLensSkills{}}
+\pgfmathsetmacro\zt{\zP+\T}
+\foreach \i in {1,4} {\wire{{0.56+0.5*\i}}{\zt}{finmagenta}}
+\core{\zt}{\zC}
+\begin{scope}[canvas is xz plane at y=\ty]
   \foreach \i in {0,...,6} {
-    \ifnum\i=1 \def\ff{finmagenta}\def\dd{finmagenta!70!black}\else
-      \ifnum\i=4 \def\ff{finmagenta}\def\dd{finmagenta!70!black}\else
-        \def\ff{white}\def\dd{fingray!65}\fi\fi
-    \pgfmathsetmacro\cx{\tD+0.22+0.3*\i}
-    \filldraw[fill=\ff, draw=\dd, line width=0.45pt]
-      ({\cx-0.1}, \zT) arc[start angle=180, end angle=0, radius=0.1] -- cycle;
-    \filldraw[fill=\ff, draw=\dd, line width=0.45pt] (\cx, {\zT+0.165}) circle (0.055);}
+    \pgfmathsetmacro\px{0.56+0.5*\i}
+    \ifnum\i=1 \def\ff{finmagenta}\def\ee{finmagenta!70!black}\else
+      \ifnum\i=4 \def\ff{finmagenta}\def\ee{finmagenta!70!black}\else
+        \def\ff{white}\def\ee{ink!30}\fi\fi
+    \filldraw[fill=\ff, draw=\ee, line width=0.45pt]
+      ({\px-0.11}, \zt) arc[start angle=180, end angle=0, radius=0.11] -- cycle;
+    \filldraw[fill=\ff, draw=\ee, line width=0.45pt] (\px, {\zt+0.19}) circle (0.062);}
 \end{scope}
-% threads: the model and the chosen pieces run into the agent
-\def\ax{13.125}
-\foreach \x/\y/\z/\c in {1.18/1.05/0.55/ink!55, 3.77/1.12/0.24/finaqua,
-                         5.37/1.12/0.2/finorange, 5.97/1.12/0.2/finorange, 6.27/1.12/0.2/finorange,
-                         7.57/1.1/0.31/finblue, 8.17/1.1/0.31/finblue, 9.07/1.1/0.31/finblue,
-                         10.37/1.12/0.22/finmagenta, 11.27/1.12/0.22/finmagenta}
-  \draw[\c, line width=0.6pt, opacity=0.85]
-    (\x, \y, {\zA+0.1+\z}) .. controls (\x, \y, {\zA+1.0}) and (\ax, 1.15, {\zA+1.3})
-    .. (\ax, 1.15, {\zA+0.86});
-% the agent
-\block{12.35}{0.85}{\zA}{1.55}{0.6}{0.85}{ink}{ink}{%
-  \pic[draw=white, fill=white, line width=0.6pt, scale=1.05] at (0.775, 0.56) {fin robot};
-  \node[font=\scriptsize\bfseries, text=white, inner sep=0pt] at (0.775, 0.22) {Agent};}
-% the agent is used through the top plane
-\begin{scope}[canvas is xz plane at y=1.15]
-  \shade[bottom color=ink!35, top color=ink!4, opacity=0.6] (12.85, {\zA+0.85}) rectangle (13.4, \zB);
+% ---- checks: any of them
+\plate{\zC}{finorange}{CHECKS \,$\cdot$\, ANY OF \NGuards{}}
+\pgfmathsetmacro\zt{\zC+\T}
+\foreach \i in {1,3,4} {\wire{{0.56+0.5*\i}}{\zt}{finorange}}
+\core{\zt}{\zI}
+\foreach \i in {0,...,6} {
+  \pgfmathsetmacro\bx{0.45+0.5*\i}
+  \ifnum\i=1 \def\on{1}\else\ifnum\i=3 \def\on{1}\else\ifnum\i=4 \def\on{1}\else\def\on{0}\fi\fi\fi
+  \ifnum\on=1
+    \cube{\bx}{\ty}{\zt}{0.22}{0.22}{0.22}{finorange!70!black}{finorange}{finorange!75}
+    \begin{scope}[canvas is xz plane at y=\ty]
+      \draw[white, line width=0.6pt, line cap=round, line join=round]
+        ({\bx+0.055},{\zt+0.115}) -- ({\bx+0.095},{\zt+0.07}) -- ({\bx+0.17},{\zt+0.16});
+    \end{scope}
+  \else
+    \cube{\bx}{\ty}{\zt}{0.22}{0.22}{0.22}{ink!30}{white}{white}
+  \fi}
+% ---- self-improvement: one of them
+\plate{\zI}{finaqua}{SELF-IMPROVEMENT \,$\cdot$\, ONE OF \NMethods{}}
+\pgfmathsetmacro\zt{\zI+\T}
+\wire{2.56}{\zt}{finaqua}
+\begin{scope}[canvas is xz plane at y=\ty]
+  \foreach \i in {0,...,6} {
+    \pgfmathsetmacro\px{0.56+0.5*\i}
+    \ifnum\i=4 \filldraw[fill=finaqua, draw=finaqua!70!black, line width=0.45pt] (\px, {\zt+0.13}) circle (0.12);
+    \else \filldraw[fill=white, draw=ink!30, line width=0.45pt] (\px, {\zt+0.13}) circle (0.12);\fi}
 \end{scope}
+\core{\zt}{4.78}
+\coordinate (top) at (\cx, \cy, 4.78);
+\end{scope}
+% the agent leaves the top of the tower
+\node[fill=ink, text=white, rounded corners=3pt, inner xsep=6pt, inner ysep=3.2pt,
+      font=\sffamily\scriptsize\bfseries, soft, anchor=south] (agent) at ($(top)+(0,-0.02)$)
+  {\tikz[baseline=-0.6ex]\pic[draw=white, fill=white, line width=0.55pt, scale=0.85] {fin robot};\ Agent};
 
 % ================================================================== interfaces
-\plane{\zB}{sla}
-\foreach \x/\ic/\t in {0.2/fin plug/MCP, 2.5/fin code/Tool schemas, 4.8/fin doc/Python API,
-                       7.1/fin link/Bridges, 9.4/fin gauge/Backtester, 11.7/fin check/Benchmark}
-  {\block{\x}{0.8}{\zB}{2.1}{0.5}{0.62}{sla}{white}{\facelabel{2.1}{0.62}{\ic}{\t}{sla}}}
-\end{scope}
-
-% ================================================================== labels
-\foreach \z/\n/\g in {0/INFORMATION/what comes in, \zA/AGENT/model and choices,
-                      \zB/INTERFACES/how it is used} {
-  \node[plab] at (1.95, {0.3+\z+0.42}) {\n};
-  \node[gloss] at (1.95, {0.3+\z+0.2}) {\g};}
-% tray captions, under the agent plane's front edge
-\foreach \x/\a/\b in {\tA/Self-improvement/one of \NMethods{}, \tB/Checks/any of \NGuards{},
-                      \tC/Skills/any of \NSkills{}, \tD/Investor templates/any of \NLensSkills{}}
-  \node[tlab] at ({2.1+\x+1.125}, {0.3+\zA-0.12}) {\textbf{\a}\\[-1pt]{\color{fingray!95!black}\b}};
+\node[head, text=sla] at (14.3, 5.78) {INTERFACES};
+\draw[sla!55, line width=0.8pt, rounded corners=4pt] (agent.east) -- (13.7, 0 |- agent.east) -- (13.7, 0.7);
+\foreach \y/\ic/\t in {5.3/fin plug/MCP, 4.38/fin code/Tool schemas, 3.46/fin doc/Python API,
+                       2.54/fin link/Bridges, 1.62/fin gauge/Backtester, 0.7/fin check/Benchmark} {
+  \card{14.3}{\y}{2.8}{0.7}{sla}{\ic}{\t}
+  \draw[->, sla!55, line width=0.8pt] (13.7, \y) -- (14.25, \y);
+  \fill[sla!70] (13.7, \y) circle (0.045);}
 \end{tikzpicture}
