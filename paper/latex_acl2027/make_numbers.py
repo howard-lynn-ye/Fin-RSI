@@ -43,7 +43,14 @@ def main() -> None:
     from fin_skills.tasks.spec import FORCED_DEV
     import fin_skills.tools as tools
 
+    from fin_skills.china.kol_credibility_registry import EMBEDDED_KOL_PROFILES
+
     idx = json.loads((ROOT / "catalog" / "index.json").read_text())
+    market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    federated = [p for p in market["plugins"] if p.get("category") == "federated"]
+    lenses = [p for p in federated
+              if {"investor-lenses", "value-investing"} & set(p.get("tags", ()))]
+    count = lambda packs: sum(p["metadata"]["skill_count"] for p in packs)
     algos = catalog()
     native = [a for a in algos if a["library"] == "fin-skills"]
     adapters = [a for a in algos if a["library"] != "fin-skills"]
@@ -75,6 +82,9 @@ def main() -> None:
         "NSkills": idx["n_skills"], "NPlugins": len(idx["plugins"]),
         "NReferenceFiles": idx["n_reference_files"], "NScripts": idx["n_scripts"],
         "NListingTokens": f"{round(idx['discovery_cost']['approx_tokens'], -2):,}",
+        "NFederatedPacks": len(federated), "NFederatedSkills": f"{count(federated):,}",
+        "NLensPacks": len(lenses), "NLensSkills": count(lenses),
+        "NKOLProfiles": len(EMBEDDED_KOL_PROFILES),
         "NAlgorithms": len(algos), "NAlgorithmTasks": len({a["task"] for a in algos}),
         "NNative": len(native), "NAdapters": len(adapters),
         "NOptionalLibraries": len({a["library"] for a in adapters}),

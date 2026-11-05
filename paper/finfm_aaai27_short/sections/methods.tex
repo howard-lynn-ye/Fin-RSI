@@ -13,10 +13,20 @@ m.state()
 \texttt{fit()} does nothing for a method that does not learn. \texttt{rsi.benchmark()} fits each method once on the
 development tasks and runs it on every held-out task and seed.
 
+\begin{figure}[t]
+\centering
+\input{../latex_acl2027/figures/episode}
+\caption{One episode. (1)~Each prompt and (2)~each program pass through the meter; (3)~the
+method sends code to the judge and (4)~sees only what \texttt{check()} returns. (5)~After
+\texttt{solve()} returns, the hidden grader runs on the final program, and (6)~its verdict
+goes only to the benchmark report.}
+\label{fig:episode}
+\end{figure}
+
 \paragraph{What a method sees.}
 \texttt{solve()} gets the task text and a judge on which it can only call
 \texttt{check(code)}. That returns whether the program ran, its error, each check's result
-and the causes of the failed ones, never the grade (Figure~\ref{fig:overview}b). Learning
+and the causes of the failed ones, never the grade (Figure~\ref{fig:episode}). Learning
 methods may use development grades to keep or reject a candidate, but no text a model reads
 contains a grade.
 

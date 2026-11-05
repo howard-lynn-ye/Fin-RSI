@@ -1,26 +1,49 @@
-% Figure 1: (a) the library as an exploded isometric stack of its three layers, each carrying
-% what it holds; (b) one episode as UI cards, with the information barrier between what a
-% method sees and the hidden grader. Counts are macros from numbers.tex; pictograms come from
-% figures/icons.tex. Needs the TikZ libraries 3d, shadows.blur, fadings and shadings.
+% Figure 1: the library at a glance. Left, the interfaces that bring information in; middle,
+% an agent composed from the three layers (pick one self-improvement method, any checks, any
+% skills) and driven by the user's model; right, the ways the library is used. Counts are
+% macros from numbers.tex or the counts in the comments, taken from the code on 2026-11-05.
+% Needs the TikZ libraries 3d, shadows.blur, fadings and shadings; colour finmagenta.
 \begin{tikzpicture}[
   font=\scriptsize,
   >={Stealth[length=4pt, width=3.8pt, round]},
-  flow/.style={->, line width=0.9pt, line cap=round, draw=#1},
-  flow/.default=fingray!85!black,
   lab/.style={font=\tiny, text=fingray!95!black, align=center, inner sep=1pt},
-  title/.style={font=\footnotesize\bfseries, anchor=south west, inner sep=0pt},
-  ball/.style={circle, shading=ball, ball color=#1, text=white, font=\tiny\bfseries,
-               inner sep=0pt, minimum size=9pt},
+  head/.style={font=\tiny\bfseries, anchor=south west, inner sep=0pt},
+  ball/.style={circle, shading=ball, ball color=#1, inner sep=0pt, minimum size=9pt},
   ball/.default=finblue,
   iso/.style={x={(0.95cm,-0.24cm)}, y={(0.62cm,0.32cm)}, z={(0cm,1cm)}},
-  callout/.style={align=left, anchor=west, inner sep=2.2pt, text width=2.9cm, font=\tiny,
-                  text=black!85, fill=white, rounded corners=2.5pt,
-                  blur shadow={shadow blur steps=6, shadow xshift=0.4pt,
-                               shadow yshift=-0.8pt, shadow opacity=22}},
+  chipbase/.style={rounded corners=1.8pt, inner xsep=2pt, inner ysep=1.2pt, font=\chipfont,
+                   line width=0.4pt, minimum height=0.25cm},
+  chip/.style={chipbase, draw=#1!55, fill=white, text=#1!70!black},
+  chipsel/.style={chipbase, draw=#1!80!black, top color=#1!80, bottom color=#1,
+                  text=white, font=\chipfont\bfseries},
+  chipmore/.style={chipbase, draw=fingray!55, dashed, fill=fingray!6, text=fingray!95!black},
+  shade/.style={blur shadow={shadow blur steps=6, shadow xshift=0.45pt, shadow yshift=-0.9pt,
+                             shadow opacity=24}},
 ]
 % ================================================================== helpers
-\def\sW{3.45}\def\sD{1.85}\def\sT{0.34}\def\pitch{1.22}
-% \slab{z}{colour}{label}: a shaded W x D x T slab, label printed on the front face.
+\providecommand{\chipfont}{\fontsize{5.5}{6.5}\selectfont}
+% \panel{x}{ytop}{w}{h}{colour}{icon}{title}{subtitle}: a card with an accent bar and a ball icon.
+\newcommand{\panel}[8]{%
+  \path[fill=white, rounded corners=3pt, shade] (#1,#2) rectangle ({#1+#3},{#2-#4});
+  \begin{scope}
+    \clip[rounded corners=3pt] (#1,#2) rectangle ({#1+#3},{#2-#4});
+    \fill[#5] (#1,#2) rectangle ({#1+0.08},{#2-#4});
+  \end{scope}
+  \draw[#5!40, rounded corners=3pt, line width=0.4pt] (#1,#2) rectangle ({#1+#3},{#2-#4});
+  \node[ball=#5, minimum size=0.42cm] at ({#1+0.37},{#2-0.3}) {};
+  \pic[draw=white, fill=white, line width=0.5pt, scale=0.85] at ({#1+0.37},{#2-0.3}) {#6};
+  \node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at ({#1+0.66},{#2-0.22}) {#7};
+  \node[anchor=west, font=\chipfont, text=fingray!95!black, inner sep=0pt] at ({#1+0.66},{#2-0.43}) {#8};}
+% \chips{start}{colour}{flag/text, ...}: a row of chips; flag 1 = selected, 0 = option, 2 = more.
+\newcommand{\chips}[3]{%
+  \coordinate (cr) at #1;
+  \foreach \f/\t [count=\i] in {#3} {
+    \ifnum\f=1 \tikzset{cur/.style={chipsel=#2}}\else
+      \ifnum\f=2 \tikzset{cur/.style={chipmore}}\else \tikzset{cur/.style={chip=#2}}\fi\fi
+    \ifnum\i=1 \node[cur, anchor=west] (cr) at (cr) {\t};
+    \else \node[cur, anchor=west] (cr) at ($(cr.east) + (1.6pt, 0)$) {\t};\fi}}
+\def\sW{2.75}\def\sD{1.45}\def\sT{0.3}\def\pitch{1.3}
+% \slab{z}{colour}{label}: a shaded slab with its label printed on the front face.
 \newcommand{\slab}[3]{%
   \begin{scope}[iso]
     \shade[top color=#2!78!black, bottom color=#2!60!black]
@@ -38,196 +61,120 @@
       \node[transform shape, text=white, font=\scriptsize\bfseries] at (\sW/2, {#1+\sT/2}) {#3};
     \end{scope}
   \end{scope}}
-% \stand{x}{y}{z}{w}{h}{colour}{content}: a card standing on a top face (xz plane at y),
-% with its shadow cast forward on the face. Content is drawn in card coordinates (0..w, 0..h).
+% \stand{x}{y}{z}{w}{h}{colour}{content}: a card standing on a top face, shadow cast behind.
 \newcommand{\stand}[7]{%
   \begin{scope}[iso]
     \begin{scope}[canvas is xy plane at z=#3]
-      \fill[black, opacity=0.12] (#1, #2) -- ({#1+#4}, #2) -- ({#1+#4+0.16}, {#2+0.3})
-        -- ({#1+0.16}, {#2+0.3}) -- cycle;
+      \fill[black, opacity=0.12] (#1, #2) -- ({#1+#4}, #2) -- ({#1+#4+0.14}, {#2+0.26})
+        -- ({#1+0.14}, {#2+0.26}) -- cycle;
     \end{scope}
     \begin{scope}[canvas is xz plane at y=#2, shift={(#1, #3)}]
       \fill[white, rounded corners=1.2pt] (0,0) rectangle (#4, #5);
       \begin{scope}
         \clip[rounded corners=1.2pt] (0,0) rectangle (#4, #5);
-        \fill[#6] (0, #5-0.11) rectangle (#4, #5);
+        \fill[#6] (0, #5-0.1) rectangle (#4, #5);
       \end{scope}
       \draw[#6!75!black, line width=0.35pt, rounded corners=1.2pt] (0,0) rectangle (#4, #5);
       #7
     \end{scope}
   \end{scope}}
 
-% ================================================================== (a) the library
-\begin{scope}[shift={(2.5, 0)}]
-% soft ground shadow
+% ================================================================== left: information in
+\node[head, text=finmagenta!80!black] at (0, 6.0) {INFORMATION IN};
+\panel{0}{5.85}{3.95}{1.3}{finmagenta}{fin chart}{Market data}{8 adapters, a declaration for each}
+\chips{(0.17, 5.13)}{finmagenta}{0/yfinance, 0/akshare, 0/ccxt, 0/EDGAR, 0/FRED}
+\chips{(0.17, 4.83)}{finmagenta}{0/Tiingo, 0/Alpha Vantage, 0/Stooq}
+\panel{0}{4.4}{3.95}{1.3}{finmagenta}{fin search}{Discovery}{search, then resolve as of a date}
+\chips{(0.17, 3.68)}{finmagenta}{0/EDGAR full text, 0/EDGAR company, 0/FRED series}
+\chips{(0.17, 3.38)}{finmagenta}{0/ccxt markets, 0/symbology}
+\panel{0}{2.95}{3.95}{1.3}{finmagenta}{fin feed}{Collectors}{9 sources, watchlists, an event store}
+\chips{(0.17, 2.23)}{finmagenta}{0/RSS, 0/GDELT, 0/{SEC 4/13F}, 0/US House}
+\chips{(0.17, 1.93)}{finmagenta}{0/CFTC, 0/AAII, 0/UMich, 0/Bluesky, 0/web pages}
+\panel{0}{1.5}{3.95}{1.0}{finmagenta}{fin doc}{Retrieval and synthesis}{source-aware RAG, timelines, vintages}
+\chips{(0.17, 0.78)}{finmagenta}{0/retrieve, 0/research, 0/timeline, 0/dossier}
+
+% ================================================================== middle: compose an agent
+\node[head] at (4.45, 6.0) {COMPOSE AN AGENT\textcolor{fingray!90!black}{\normalfont: one model, then choose what it may use (filled = chosen)}};
+\begin{scope}[shift={(4.6, 0.95)}]
 \fill[fingray, opacity=0.35, path fading=circle with fuzzy edge 15 percent]
-  (2.15, -0.42) ellipse (2.55cm and 0.42cm);
-
-% --- layer 1: skills, with a document, a chart and a rule card standing on it
+  (1.75, -0.5) ellipse (2.1cm and 0.34cm);
 \slab{0}{finblue}{SKILLS}
-\stand{0.35}{0.38}{\sT}{0.72}{0.5}{finblue}{%
-  \foreach \yy in {0.29, 0.21, 0.13, 0.05} \draw[fingray!60, line width=0.5pt] (0.1,\yy) -- (0.6,\yy);}
-\stand{1.37}{0.38}{\sT}{0.72}{0.5}{finblue}{%
-  \fill[finorange] (0.12,0.06) rectangle (0.22,0.17); \fill[finblue] (0.27,0.06) rectangle (0.37,0.27);
-  \fill[finaqua] (0.42,0.06) rectangle (0.52,0.33); \draw[fingray, line width=0.3pt] (0.08,0.06) -- (0.62,0.06);}
-\stand{2.39}{0.38}{\sT}{0.72}{0.5}{finblue}{%
+\stand{0.22}{0.32}{\sT}{0.6}{0.44}{finblue}{%
+  \foreach \yy in {0.25, 0.17, 0.09} \draw[fingray!60, line width=0.45pt] (0.09,\yy) -- (0.53,\yy);}
+\stand{1.07}{0.32}{\sT}{0.6}{0.44}{finblue}{%
+  \fill[finorange] (0.1,0.05) rectangle (0.19,0.15); \fill[finblue] (0.24,0.05) rectangle (0.33,0.24);
+  \fill[finaqua] (0.38,0.05) rectangle (0.47,0.29);}
+\stand{1.92}{0.32}{\sT}{0.6}{0.44}{finblue}{%
   \draw[finaqua!80!black, line width=0.6pt, line cap=round, line join=round]
-    (0.22,0.21) -- (0.32,0.12) -- (0.5,0.31);
-  \draw[fingray!60, line width=0.45pt] (0.12,0.05) -- (0.6,0.05);}
-
-% --- layer 2: checks, with a checklist board
+    (0.19,0.18) -- (0.28,0.1) -- (0.44,0.27);}
 \slab{\pitch}{finorange}{CHECKS}
-\stand{0.85}{0.38}{{\pitch+\sT}}{1.75}{0.5}{finorange}{%
-  \foreach \yy/\c/\m in {0.32/finaqua/1, 0.2/finaqua/1, 0.08/finorange/0} {
-    \fill[\c] (0.13,\yy) circle (0.045);
-    \ifnum\m=1 \draw[white, line width=0.45pt, line cap=round] (0.105,\yy) -- (0.125,{\yy-0.02}) -- (0.16,{\yy+0.025});
-    \else \draw[white, line width=0.45pt, line cap=round] (0.105,{\yy-0.022}) -- (0.155,{\yy+0.022}) (0.105,{\yy+0.022}) -- (0.155,{\yy-0.022}); \fi
-    \draw[fingray!60, line width=0.5pt] (0.27,\yy) -- (1.55,\yy);}}
-
-% --- layer 3: self-improvement, with a loop ring lying on it
+\stand{0.62}{0.32}{{\pitch+\sT}}{1.5}{0.44}{finorange}{%
+  \foreach \yy/\c in {0.27/finaqua, 0.16/finaqua, 0.05/finorange} {
+    \fill[\c] (0.12,\yy) circle (0.04); \draw[fingray!60, line width=0.45pt] (0.24,\yy) -- (1.36,\yy);}}
 \slab{2*\pitch}{finaqua}{SELF-IMPROVEMENT}
 \begin{scope}[iso]
   \begin{scope}[canvas is xy plane at z={2*\pitch+\sT}]
-    \fill[black, opacity=0.10] (\sW/2+0.06, \sD/2-0.08) circle (0.66);
-    \draw[finaqua!70!black, line width=2.2pt, line cap=round, -{Stealth[length=5pt, width=6pt]}]
-      ({\sW/2+0.62*cos(20)}, {\sD/2+0.62*sin(20)}) arc[start angle=20, end angle=340, radius=0.62];
+    \fill[black, opacity=0.1] (\sW/2+0.05, \sD/2-0.06) circle (0.5);
+    \draw[finaqua!70!black, line width=2pt, line cap=round, -{Stealth[length=4.5pt, width=5.5pt]}]
+      ({\sW/2+0.5*cos(20)}, {\sD/2+0.5*sin(20)}) arc[start angle=20, end angle=340, radius=0.5];
   \end{scope}
   \foreach \a/\c in {90/finblue, 210/finorange, 330/finaqua}
-    \node[ball=\c, minimum size=6.5pt] at ({\sW/2+0.62*cos(\a)}, {\sD/2+0.62*sin(\a)}, {2*\pitch+\sT}) {};
-\end{scope}
-
-% dotted risers, as in an exploded view
-\begin{scope}[iso]
+    \node[ball=\c, minimum size=6pt] at ({\sW/2+0.5*cos(\a)}, {\sD/2+0.5*sin(\a)}, {2*\pitch+\sT}) {};
   \foreach \u/\v in {0/0, \sW/0, \sW/\sD}
     \draw[fingray!50, densely dotted, line width=0.5pt]
       (\u, \v, \sT) -- (\u, \v, \pitch) (\u, \v, {\pitch+\sT}) -- (\u, \v, {2*\pitch});
-  \foreach \k in {0, 1, 2} {
-    \coordinate (r\k) at (\sW, \sD/2, {\k*\pitch+\sT/2});
-    \coordinate (l\k) at (0, 0, {\k*\pitch+\sT/2});}
-  \coordinate (edge) at (\sW, \sD, 0);
+  \foreach \k in {0, 1, 2} \coordinate (r\k) at (\sW, \sD/2, {\k*\pitch+\sT/2});
+  \coordinate (topc) at (\sW/2, \sD/2, {2*\pitch+\sT});
+  \coordinate (lft) at (0, 0, {\pitch});
 \end{scope}
 \end{scope}
 
-% callouts on the right
-\coordinate (cx) at ($(edge) + (0.35, 0)$);
+% the user's model drives the stack
+\path[fill=white, rounded corners=3pt, shade] (4.5, 5.85) rectangle (7.95, 4.86);
+\draw[fingray!45, rounded corners=3pt, line width=0.4pt] (4.5, 5.85) rectangle (7.95, 4.86);
+\node[ball=fingray!70, minimum size=0.44cm] (rob) at (4.84, 5.355) {};
+\pic[draw=white, fill=white, line width=0.55pt] at (rob) {fin robot};
+\node[anchor=west, align=left, inner sep=0pt] at (5.15, 5.355)
+  {\textbf{Your model}\\[-1pt]{\tiny one \texttt{generate(messages)}}\\[-2pt]{\tiny callable, any provider}};
+\draw[->, line width=0.9pt, fingray!80!black] (6.1, 4.86) -- ($(topc) + (0, 0.12)$);
+
+% choices for each layer
 \foreach \k/\col in {0/finblue, 1/finorange, 2/finaqua} {
-  \draw[\col!75!black, line width=0.5pt] (r\k) -- (r\k -| cx);
+  \draw[\col!75!black, line width=0.5pt] (r\k) -- (r\k -| 8.28, 0);
   \node[ball=\col, minimum size=4pt] at (r\k) {};}
-\node[callout] at (r0 -| cx) {%
-  \textbf{\NSkills{} skill documents}, \NPlugins{} plugins\\
-  \textbf{\NAlgorithms{} algorithms}, \NAlgorithmTasks{} task types\\
-  \textbf{\NCards{} rule cards}: rule, source, checks, call};
-\node[callout] at (r1 -| cx) {%
-  \textbf{\NGuards{} guards} behind one interface\\
-  checks that need no expected output\\
-  every failure carries its cause};
-\node[callout] at (r2 -| cx) {%
-  \textbf{\NMethods{} methods}: fit, solve, state\\
-  one meter: attempts, calls, tokens\\
-  gated, journaled playbook edits};
+\def\px{8.28}\def\pw{4.78}
+% investor templates: federated packs tagged investor-lenses or value-investing in
+% .claude-plugin/marketplace.json, and the profiles embedded in kol-credibility-registry
+\panel{\px}{5.85}{\pw}{1.56}{finblue}{fin person}{Investor templates: pick any}{named investors' approaches as skills; \NLensSkills{} in \NLensPacks{} packs}
+\chips{(\px+0.17, 5.13)}{finblue}{0/Buffett, 0/Munger, 0/Soros, 0/Simons, 0/Druckenmiller}
+\chips{(\px+0.17, 4.83)}{finblue}{0/Seykota, 0/Turtles, 0/CANSLIM, 0/Duan Yongping, 0/Feng Liu}
+\chips{(\px+0.17, 4.53)}{finblue}{0/{\NKOLProfiles{} KOL track records}, 2/{federated, off by default}}
+\panel{\px}{4.12}{\pw}{1.26}{finaqua}{fin loop}{Self-improvement: pick one}{\NMethods{} methods, one interface, one meter}
+\chips{(\px+0.17, 3.4)}{finaqua}{0/NoImprove, 0/SelfDebug, 0/CheckFeedback}
+\chips{(\px+0.17, 3.1)}{finaqua}{0/Reflexion, 1/{PlaybookLearning}, 0/Team, 0/Evolve}
+\panel{\px}{2.82}{\pw}{1.26}{finorange}{fin check}{Checks: pick any}{\NGuards{} guards behind one interface}
+\chips{(\px+0.17, 2.1)}{finorange}{1/{execution\_lag}, 1/{adjustment\_check}}
+\chips{(\px+0.17, 1.8)}{finorange}{1/{warmup\_probe}, 0/assert\_causal, 0/survivorship, 2/+34}
+\panel{\px}{1.52}{\pw}{1.26}{finblue}{fin doc}{Skills: pick any}{\NSkills{} skills, \NPlugins{} plugins, cards on or off}
+\chips{(\px+0.17, 0.8)}{finblue}{1/{fin-core}, 0/fin-china, 0/fin-crypto, 0/fin-macro, 2/+13}
+\chips{(\px+0.17, 0.5)}{finblue}{1/{\NCards{} rule cards}, 1/{\NAlgorithms{} algorithms}, 0/287 models}
 
-% left: the user's model and the agent interfaces
-\tikzset{port/.style={rounded corners=2.5pt, fill=white, align=center, inner sep=2.5pt,
-                      font=\tiny, text width=1.78cm,
-                      blur shadow={shadow blur steps=6, shadow xshift=0.4pt,
-                                   shadow yshift=-0.8pt, shadow opacity=22}}}
-\node[port] (model) at (0.86, 3.28) {%
-  \tikz{\node[circle, shading=ball, ball color=fingray!70, minimum size=0.52cm] {};
-        \pic[draw=white, fill=white, line width=0.6pt] at (0,0) {fin robot};}\\[1pt]
-  \textbf{The user's model}\\one \texttt{generate()} call};
-\node[port] (tools) at (0.86, 1.05) {%
-  \tikz{\node[circle, shading=ball, ball color=fingray!70, minimum size=0.52cm] {};
-        \pic[draw=white, fill=white, line width=0.6pt] at (0,0) {fin plug};}\\[1pt]
-  \textbf{Agent interfaces}\\\NTools{} tools for\\\textcolor{finblue!80!black}{\textbf{MCP}},
-  \textcolor{finaqua!75!black}{\textbf{OpenAI}},\\\textcolor{finorange!85!black}{\textbf{Anthropic}},
-  Python};
-\foreach \k in {0, 1, 2}
-  \draw[->, fingray!55, line width=0.6pt] (tools.east) to[out=0, in=180] (l\k);
-\draw[->, fingray!55, line width=0.6pt] (model.east) to[out=0, in=180] (l2);
-\node[title] at (-0.02, 4.42) {(a) The library};
+% information flows in
+\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, finmagenta!45] (4.02, 2.3) -- (4.56, 2.3);
 
-% ================================================================== (b) one episode
-\begin{scope}[xshift=10.4cm]
-\def\pw{6.9}
-% \card{name}{x,y}{colour}{HEADER}{illustration}{caption}
-\newcommand{\card}[6]{%
-  \node[fill=white, rounded corners=3pt, minimum width=1.92cm, minimum height=1.26cm,
-        blur shadow={shadow blur steps=7, shadow xshift=0.5pt, shadow yshift=-1pt,
-                     shadow opacity=28}] (#1) at (#2) {};
-  \begin{scope}
-    \clip[rounded corners=3pt] (#1.south west) rectangle (#1.north east);
-    \shade[left color=#3, right color=#3!75!white] ($(#1.north west) + (0, -0.27)$) rectangle (#1.north east);
-  \end{scope}
-  \draw[#3!55, line width=0.4pt, rounded corners=3pt] (#1.south west) rectangle (#1.north east);
-  \node[font=\tiny\bfseries, text=white, anchor=center] at ($(#1.north) + (0, -0.135)$) {#4};
-  \begin{scope}[shift={($(#1.center) + (0, -0.06)$)}] #5 \end{scope}
-  \node[font=\tiny, text=black!80, anchor=south] at ($(#1.south) + (0, 0.02)$) {#6};}
-
-
-
-\shade[top color=finblue!10, bottom color=finblue!3, rounded corners=7pt, draw=finblue!35,
-       line width=0.5pt] (0, 4.27) rectangle (\pw, 0.95);
-\shade[top color=fingray!17, bottom color=fingray!6, rounded corners=7pt, draw=fingray!45,
-       line width=0.5pt] (0, 0.59) rectangle (\pw, -1.06);
-\node[lab, anchor=south east, font=\tiny\bfseries, text=finblue!75!black] at (\pw-0.12, 1.02)
-  {VISIBLE TO THE METHOD};
-\node[lab, anchor=south west, font=\tiny\bfseries, text=fingray!95!black] at (0.12, -1.0)
-  {HIDDEN FROM METHODS};
-
-\card{method}{1.15, 3.5}{finblue}{METHOD}{%
-  \fill[fingray!85!black, rounded corners=1pt] (-0.55, -0.13) rectangle (0.55, 0.2);
-  \foreach \i/\c/\l in {0/finorange/0.5, 1/finaqua/0.75, 2/finblue!60/0.4}
-    \fill[\c] (-0.45, {0.12-\i*0.09}) rectangle ({-0.45+\l}, {0.085-\i*0.09});}{\texttt{solve()}}
-\card{meter}{3.45, 3.5}{finblue}{METER}{%
-  \foreach \a/\b/\c in {180/120/finaqua, 120/60/finorange!70!yellow, 60/0/finorange}
-    \draw[\c, line width=2.2pt] (\a:0.3) arc[start angle=\a, end angle=\b, radius=0.3];
-  \draw[fingray!90!black, line width=0.8pt, line cap=round] (0,0) -- (50:0.26);
-  \fill[fingray!90!black] (0,0) circle (0.045);}{equal budget}
-\card{llm}{5.75, 3.5}{fingray}{YOUR MODEL}{%
-  \node[circle, shading=ball, ball color=fingray!65, minimum size=0.46cm] at (0, 0.02) {};
-  \pic[draw=white, fill=white, line width=0.6pt] at (0, 0.02) {fin robot};}{\texttt{generate()}}
-\card{judge}{1.15, 1.66}{finorange}{JUDGE}{%
-  \foreach \yy/\c/\t in {0.17/finaqua/finite, 0.06/finaqua/split, -0.05/finorange/lag} {
-    \fill[\c] (-0.55, \yy) circle (0.045);
-    \node[font=\fontsize{4}{4}\selectfont\ttfamily, anchor=west, inner sep=0pt] at (-0.47, \yy) {\t};
-    \fill[fingray!25] (0.05, {\yy-0.02}) rectangle (0.55, {\yy+0.02});}}{\texttt{check()}}
-\card{grader}{3.62, -0.22}{fingray!90!black}{HIDDEN GRADER}{%
-  \begin{scope}[iso, scale=0.32, shift={(-0.6, -0.4, -0.55)}]
-    \fill[fingray!80!black] (1,0,0) -- (1,1,0) -- (1,1,1) -- (1,0,1) -- cycle;
-    \fill[fingray!60!black] (0,0,0) -- (1,0,0) -- (1,0,1) -- (0,0,1) -- cycle;
-    \fill[fingray!35] (0,0,1) -- (1,0,1) -- (1,1,1) -- (0,1,1) -- cycle;
-  \end{scope}
-  \pic[draw=white, fill=white, line width=0.5pt, scale=0.8] at (-0.07, -0.05) {fin lock};}{vs.\ reference}
-\card{report}{5.9, -0.22}{finaqua}{BENCHMARK}{%
-  \foreach \i/\h/\c in {0/0.18/fingray!45, 1/0.30/finblue, 2/0.24/finorange, 3/0.38/finaqua}
-    \fill[\c, rounded corners=0.6pt] ({-0.42+\i*0.23}, -0.18) rectangle ({-0.26+\i*0.23}, {-0.18+\h});}{valid, cost}
-
-% the barrier
-\draw[fingray!90!black, line width=1pt, dash pattern=on 4pt off 2.5pt] (0.1, 0.77) -- (\pw-0.1, 0.77);
-\node[ball=fingray!80, minimum size=0.46cm] (barrier) at (\pw - 0.5, 0.77) {};
-\pic[draw=white, fill=white, line width=0.55pt] at (barrier) {fin lock};
-\node[lab, anchor=east, font=\tiny\itshape, fill=white, rounded corners=1.5pt, inner sep=1.5pt]
-  at ($(barrier.west) + (-0.06, 0)$) {no grade crosses this line};
-
-% arrows and steps
-\draw[flow=finblue!80!black] ([yshift=7pt]method.east) -- ([yshift=7pt]meter.west);
-\draw[flow=finblue!80!black] ([yshift=7pt]meter.east) -- ([yshift=7pt]llm.west);
-\draw[flow=finblue!80!black] ([yshift=-7pt]llm.west) -- ([yshift=-7pt]meter.east);
-\draw[flow=finblue!80!black] ([yshift=-7pt]meter.west) -- ([yshift=-7pt]method.east);
-\node[ball] at ($([yshift=7pt]meter.east)!0.5!([yshift=7pt]llm.west) + (0, 0.27)$) {1};
-\node[ball] at ($([yshift=-7pt]llm.west)!0.5!([yshift=-7pt]meter.east) + (0, -0.27)$) {2};
-\draw[flow=finblue!80!black] ([xshift=-10pt]method.south) -- ([xshift=-10pt]judge.north);
-\draw[flow=finorange!85!black] ([xshift=10pt]judge.north) -- ([xshift=10pt]method.south);
-\node[ball] at ($([xshift=-10pt]method.south)!0.5!([xshift=-10pt]judge.north) + (-0.25, 0)$) {3};
-\node[ball=finorange] at ($([xshift=10pt]judge.north)!0.5!([xshift=10pt]method.south) + (0.25, 0)$) {4};
-\node[lab, anchor=west, align=left] at ($(judge.east) + (0.12, 0.05)$)
-  {ran?\ error,\\failed checks\\and their causes};
-\draw[flow=fingray!95!black] (judge.south) |- (grader.west);
-\node[ball=fingray!85] at ($(judge.south |- grader.west) + (-0.25, 0.3)$) {5};
-\node[lab, anchor=south west, align=left] at ($(judge.south |- grader.west) + (0.1, 0.03)$)
-  {final\\program};
-\draw[flow=fingray!95!black] (grader.east) -- (report.west);
-\node[ball=fingray!85] at ($(grader.east)!0.5!(report.west) + (0, 0.27)$) {6};
-\node[title] at (0, 4.42) {(b) One episode};
-\end{scope}
+% ================================================================== right: use it from
+\def\rx{13.46}
+\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, fingray!40] (13.1, 2.3) -- (\rx-0.04, 2.3);
+\node[head, text=fingray!95!black] at (\rx, 6.0) {USE IT FROM};
+\panel{\rx}{5.85}{3.95}{1.3}{fingray}{fin plug}{Agent interfaces}{\NTools{} tools, one registry}
+\chips{(\rx+0.17, 5.13)}{fingray}{0/MCP, 0/OpenAI, 0/Anthropic, 0/Python API}
+\chips{(\rx+0.17, 4.83)}{fingray}{0/33 checks, 0/13 data and news, 0/8 algorithms}
+\panel{\rx}{4.4}{3.95}{1.3}{fingray}{fin link}{Bridges}{14 libraries, each trap enforced}
+\chips{(\rx+0.17, 3.68)}{fingray}{0/vectorbt, 0/zipline, 0/qlib, 0/QuantLib}
+\chips{(\rx+0.17, 3.38)}{fingray}{0/PyPortfolioOpt, 0/skfolio, 0/quantstats, 2/+7}
+\panel{\rx}{2.95}{3.95}{1.0}{fingray}{fin gauge}{Reference backtester}{returns a Bundle the guards check}
+\chips{(\rx+0.17, 2.23)}{fingray}{0/12 invariants, 0/costs, 0/universe, 0/execution}
+\panel{\rx}{1.8}{3.95}{1.3}{fingray}{fin code}{Benchmark}{\NTasks{} tasks, a judge, a hidden grader}
+\chips{(\rx+0.17, 1.08)}{fingray}{0/\NTaskAlgorithms{} algorithms, 0/dev and held-out}
+\chips{(\rx+0.17, 0.78)}{fingray}{0/synthetic panels, 0/real prices}
 \end{tikzpicture}
