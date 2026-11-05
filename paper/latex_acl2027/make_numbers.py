@@ -43,6 +43,7 @@ def main() -> None:
     from fin_skills.tasks.spec import FORCED_DEV
     import fin_skills.tools as tools
 
+    from fin_skills.bridges import LIBRARIES as BRIDGED
     from fin_skills.china.kol_credibility_registry import EMBEDDED_KOL_PROFILES
 
     idx = json.loads((ROOT / "catalog" / "index.json").read_text())
@@ -84,7 +85,7 @@ def main() -> None:
         "NListingTokens": f"{round(idx['discovery_cost']['approx_tokens'], -2):,}",
         "NFederatedPacks": len(federated), "NFederatedSkills": f"{count(federated):,}",
         "NLensPacks": len(lenses), "NLensSkills": count(lenses),
-        "NKOLProfiles": len(EMBEDDED_KOL_PROFILES),
+        "NKOLProfiles": len(EMBEDDED_KOL_PROFILES), "NBridgeLibraries": len(BRIDGED),
         "NAlgorithms": len(algos), "NAlgorithmTasks": len({a["task"] for a in algos}),
         "NNative": len(native), "NAdapters": len(adapters),
         "NOptionalLibraries": len({a["library"] for a in adapters}),
