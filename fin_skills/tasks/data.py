@@ -1,6 +1,9 @@
-"""Synthetic raw-price panels with known splits, for graded position tasks.
+"""Raw-price panels with known splits, for graded position tasks.
 
-Four assets with seeded Gaussian returns. Raw quotes are the continuous adjusted closes divided
+An integer seed gives a synthetic panel; the seed REAL ("real") gives the real-price panel of
+fin_skills.tasks.real (four large caps through their 2022 splits), with the same layout.
+
+Synthetic panels: four assets with seeded Gaussian returns. Raw quotes are the continuous adjusted closes divided
 by cumulative split factors, so a program that forgets or repeats the adjustment sees jumps.
 With rows=96 and the default column order this reproduces codegen_utility.dataset(seed)
 exactly, so the E4 tasks keep their original inputs.
@@ -10,7 +13,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from . import real
+
 ASSETS = ("A", "B", "C", "D")
+REAL = real.NAME
+REAL_SAMPLING_SEED = 2022     # the model's sampling seed when the data is the real panel
 FACTOR_KINDS = ("cumulative", "ratio")
 START = "2024-01-02"
 
@@ -26,7 +33,21 @@ def _cumulative(rows: int) -> np.ndarray:
     return f
 
 
-def panel(seed: int, *, rows: int = 128, factors: str = "cumulative",
+def as_seed(seed) -> int | str:
+    """A data seed: an integer for a synthetic panel, or REAL."""
+    if seed == REAL:
+        return REAL
+    if isinstance(seed, bool) or int(seed) != seed:
+        raise ValueError(f"a data seed is an integer or {REAL!r}, not {seed!r}")
+    return int(seed)
+
+
+def sampling_seed(seed) -> int:
+    """The integer sampling seed a model backend gets for this data seed."""
+    return REAL_SAMPLING_SEED if as_seed(seed) == REAL else int(seed)
+
+
+def panel(seed: int | str, *, rows: int = 128, factors: str = "cumulative",
           order: tuple[str, ...] = ASSETS) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """(raw prices, split factors as given to the program, adjusted closes), date-indexed.
 
@@ -38,6 +59,8 @@ def panel(seed: int, *, rows: int = 128, factors: str = "cumulative",
         raise ValueError(f"factors must be one of {FACTOR_KINDS}")
     if sorted(order) != sorted(ASSETS):
         raise ValueError(f"order must be a permutation of {ASSETS}")
+    if as_seed(seed) == REAL:
+        return real.panel(rows=rows, factors=factors, order=order)
     if rows < 60:
         raise ValueError("rows must be at least 60")
     rng = np.random.default_rng(seed)

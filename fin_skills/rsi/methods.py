@@ -38,6 +38,7 @@ from typing import Callable, Sequence
 
 from fin_skills.tasks import Judge, messages as task_messages, library_text, system_prompt
 from fin_skills.tasks import task_prompt
+from fin_skills.tasks.data import as_seed
 from fin_skills.tasks.spec import Task
 
 from .meter import Budget, BudgetExceeded, FitBudget, Meter
@@ -80,7 +81,7 @@ class Step:
 class Episode:
     method: str
     task_id: str
-    seed: int
+    seed: int | str                   # a synthetic seed, or "real" for the real panel
     library: bool
     cards: bool = True
     steps: list = field(default_factory=list)
@@ -136,12 +137,13 @@ class BaseRSI:
         self.fitted = True
         return self
 
-    def solve(self, generate, task: Task, *, seed: int, budget: Budget = Budget()) -> Episode:
+    def solve(self, generate, task: Task, *, seed: int | str, budget: Budget = Budget()
+              ) -> Episode:
         if not self.fitted:
             raise RuntimeError(f"{self.name} learns on dev tasks: call fit() before solve()")
         meter = Meter(generate, budget)
         judge = Judge(task, seed=seed, library=self.library, meter=meter)
-        episode = Episode(self.name, task.id, int(seed), self.library, self.cards)
+        episode = Episode(self.name, task.id, as_seed(seed), self.library, self.cards)
         try:
             self._solve(meter, _View(judge), task, seed, episode)
         except BudgetExceeded as exc:
@@ -297,7 +299,7 @@ class _Learner(BaseRSI):
         """One CheckFeedback episode on a dev task, graded (allowed: dev tasks only)."""
         meter = Meter(fit_meter.respond, episode_budget)
         judge = Judge(task, seed=seed, library=self.library, meter=meter)
-        episode = Episode(self.name, task.id, int(seed), self.library, self.cards)
+        episode = Episode(self.name, task.id, as_seed(seed), self.library, self.cards)
         try:
             self._loop(meter, _View(judge), task, seed, episode, extra=extra)
         except BudgetExceeded as exc:

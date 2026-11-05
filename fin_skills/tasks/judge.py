@@ -22,7 +22,7 @@ import tempfile
 import numpy as np
 
 from fin_skills.api.rules import CAUSES, explain
-from .data import panel
+from .data import as_seed, panel
 from .references import REFERENCES
 from .spec import Task
 
@@ -60,7 +60,7 @@ class Visible:
         return explain(known, tools=tools, rules=rules)
 
 
-def reference(task: Task, seed: int) -> np.ndarray:
+def reference(task: Task, seed: int | str) -> np.ndarray:
     _, _, adjusted = panel(seed, rows=task.rows, factors=task.factors, order=task.order)
     return REFERENCES[task.algorithm](adjusted.to_numpy(), **task.parameters)
 
@@ -89,7 +89,7 @@ def _run_worker(code: str, request: dict, timeout: int) -> dict:
 class Judge:
     def __init__(self, task: Task, *, seed: int, library: bool, meter=None,
                  lag_ks=LAG_KS, timeout: int = TIMEOUT):
-        self.task, self.seed, self.library = task, int(seed), bool(library)
+        self.task, self.seed, self.library = task, as_seed(seed), bool(library)
         self.meter, self.lag_ks, self.timeout = meter, tuple(lag_ks), timeout
         self.records: list[dict] = []
         self._positions: dict[str, list] = {}

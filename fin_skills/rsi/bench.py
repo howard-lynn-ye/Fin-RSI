@@ -16,6 +16,10 @@ for methods that do not learn) and then solves every held-out task for every see
 comes from the judge's hidden grader on the final program and is added to the episode only
 after the method has returned. Results are written as they finish, one JSON line per episode,
 so an interrupted run keeps everything it completed.
+
+A seed is a synthetic panel (an integer) or "real", the real-price panel of
+fin_skills.tasks.real. The report keeps the two apart: every summary row is one method, arm
+and data source, so real-panel episodes are never averaged into the synthetic ones.
 """
 from __future__ import annotations
 
@@ -25,12 +29,18 @@ from pathlib import Path
 import random
 from typing import Iterable, Sequence
 
+from fin_skills.tasks.data import REAL, sampling_seed
+
 from .meter import Budget, FitBudget
 from .methods import ARMS, arm_name
 
 
 def _arm(row: dict) -> str:
     return row.get("arm") or arm_name(row["library"], row.get("cards", True))
+
+
+def _data(row: dict) -> str:
+    return "real" if row.get("seed") == REAL else "synthetic"
 
 
 @dataclass
@@ -41,15 +51,15 @@ class Report:
     def groups(self) -> dict:
         out = {}
         for r in self.rows:
-            out.setdefault((r["method"], _arm(r)), []).append(r)
+            out.setdefault((r["method"], _arm(r), _data(r)), []).append(r)
         return out
 
     def summary(self, *, draws: int = 2000, seed: int = 0) -> list[dict]:
-        """Per method and arm: valid rate with a task-clustered bootstrap 95% interval,
-        accepted rate, accepted-but-wrong rate, library use and mean cost."""
+        """Per method, arm and data source: valid rate with a task-clustered bootstrap 95%
+        interval, accepted rate, accepted-but-wrong rate, library use and mean cost."""
         rng = random.Random(seed)
         table = []
-        for (method, arm), rows in sorted(self.groups().items()):
+        for (method, arm, data), rows in sorted(self.groups().items()):
             by_task = {}
             for r in rows:
                 by_task.setdefault(r["task_id"], []).append(bool(r["valid"]))
@@ -59,7 +69,7 @@ class Report:
             boot = sorted(rate([rng.choice(tasks) for _ in tasks]) for _ in range(draws))
             n = len(rows)
             table.append(dict(
-                method=method, arm=arm, library=ARMS[arm][0], cards=ARMS[arm][1],
+                method=method, arm=arm, data=data, library=ARMS[arm][0], cards=ARMS[arm][1],
                 episodes=n, tasks=len(tasks),
                 valid=rate(tasks), valid_ci=(boot[int(.025 * draws)], boot[int(.975 * draws) - 1]),
                 accepted=sum(r["accepted"] for r in rows) / n,
@@ -70,12 +80,12 @@ class Report:
         return table
 
     def table(self) -> str:
-        head = (f"{'method':16s} {'arm':>13s} {'n':>4s} {'valid':>6s} {'95% CI':>13s} "
+        head = (f"{'method':16s} {'arm':>13s} {'data':>9s} {'n':>4s} {'valid':>6s} {'95% CI':>13s} "
                 f"{'acc':>5s} {'acc-wrong':>9s} {'lib-use':>7s} {'calls':>5s} {'tokens':>7s}")
         lines = [head]
         for s in self.summary():
             lo, hi = s["valid_ci"]
-            lines.append(f"{s['method']:16s} {s['arm']:>13s} "
+            lines.append(f"{s['method']:16s} {s['arm']:>13s} {s['data']:>9s} "
                          f"{s['episodes']:4d} {s['valid']:6.3f} [{lo:5.3f},{hi:5.3f}] "
                          f"{s['accepted']:5.3f} {s['accepted_but_wrong']:9.3f} "
                          f"{s['library_used']:7.3f} {s['calls']:5.2f} "
@@ -83,7 +93,8 @@ class Report:
         return "\n".join(lines)
 
 
-def benchmark(methods: Iterable[type], generate, tasks, *, seeds: Sequence[int] = (11, 23, 37),
+def benchmark(methods: Iterable[type], generate, tasks, *,
+              seeds: Sequence[int | str] = (11, 23, 37),
               arms: Sequence[str] = ("cards", "cards+library"), budget: Budget = Budget(),
               fit_budget: FitBudget = FitBudget(), fit_seeds: Sequence[int] = (11,),
               heldout=None, out: str | Path | None = None, model_id: str = "") -> Report:
@@ -111,7 +122,7 @@ def benchmark(methods: Iterable[type], generate, tasks, *, seeds: Sequence[int] 
             for task in test_tasks:
                 for seed in seeds:
                     if hasattr(generate, "seed"):
-                        generate.seed = seed          # sampling seed for backends that take one
+                        generate.seed = sampling_seed(seed)   # for backends that take one
                     episode = method.solve(generate, task, seed=seed, budget=budget)
                     judge = episode.__dict__.pop("_judge")
                     episode.valid = bool(episode.steps) and judge.grade(episode.code)
