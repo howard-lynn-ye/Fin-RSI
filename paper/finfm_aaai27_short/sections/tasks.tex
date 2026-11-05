@@ -1,0 +1,55 @@
+\section{Task suite and protocol}
+\label{sec:tasks}
+
+\NTasks{} tasks cover \NTaskAlgorithms{} algorithms in \NFamilies{} families, two variants
+each (Appendix Table~\ref{tab:tasks}). A task states a rule in prose; the model implements
+\texttt{solve(prices, split\_factors)} returning positions, or for volatility, risk and
+forecast tasks the value known at the previous close. Each task can be solved by hand or by
+one library call.
+
+\paragraph{Data.}
+Synthetic panels have four assets and \NRows{} business days of seeded Gaussian returns,
+with four splits at fixed rows (2-for-1, 3-for-1, 3-for-2, 1-for-2), on \NSeeds{} seeds.
+Variant~a gives cumulative factors in alphabetical order; variant~b gives event ratios,
+shuffled columns and other parameters. Held-out tasks also run on a real panel: as-traded
+closes of Amazon, Shopify, Alphabet and Tesla for \NRealRows{} sessions from \RealFirst{} to
+\RealLast{}, in which all four split (20-, 10-, 20- and 3-for-1). Yahoo Finance serves the
+closes split-adjusted; we rebuild as-traded quotes from a split table checked against the
+companies' announcements and published pre-split closes, and release the fetch code and the
+file's SHA-256, since the prices may not be redistributed.
+
+\paragraph{Judge and hidden grader.}
+The judge runs each program in a separate process with a memory limit and a 120-second
+timeout (in our runs also confined with Landlock and seccomp), refuses \texttt{import fin\_skills} without library access, and applies the three
+checks of \S\ref{sec:library} (Figure~\ref{fig:task}). A program is \emph{valid} only if it
+ran, passed every check and matches an independent numpy reference within $10^{-8}$
+($10^{-5}$ for \texttt{min\_variance}). A program that passes the checks but is wrong is
+\emph{accepted but wrong}; we report that rate because the checks cannot see it.
+
+\paragraph{Qualification.}
+Before any model ran: on every task and data panel, the reference agrees with the library
+to within $\RefGapOther$ ($\RefGapMinVariance$ for \texttt{min\_variance}); a correct
+program passes every check and is graded valid; and on a position task and a table task,
+planted versions of each failure (same close, no adjustment, factors cumulated twice,
+missing warm-up) fail their check and the grade. Building the references exposed a library
+defect: the long-only minimum-variance optimiser stopped early on daily-scale covariances,
+off by up to $1.2\times10^{-2}$, until we rescaled the covariance before solving.
+
+\paragraph{Split and protocol.}
+The split is by algorithm. The \NForcedDev{} algorithms a model has already seen go to
+development, and a seeded draw sends \NDrawnDev{} of the other \NDrawn{} there too:
+\NDevTasks{} development and \NHeldTasks{} held-out tasks, the latter covering all
+\NFamilies{} families. The primary outcome is the held-out valid rate, with task-clustered
+bootstrap intervals and Holm-corrected paired comparisons. The main comparison runs
+\NMethods{} methods $\times$ 2 arms $\times$ \NHeldTasks{} tasks $\times$ \NSeeds{} seeds
+$\times$ \NModels{} open-weight models (\NMainEpisodes{} episodes); the real panel adds
+\NRealEpisodes{}, reported separately, and the skill-arm ablation \NAblationEpisodes{}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/task_checks}
+\caption{(a) Raw and adjusted closes of one asset on a synthetic panel. (b)
+\texttt{execution\_lag} perturbs prices from row $k=64$: lagged positions first move at row
+65 and pass; positions read on the close they trade over move at row 64 and fail.}
+\label{fig:task}
+\end{figure}

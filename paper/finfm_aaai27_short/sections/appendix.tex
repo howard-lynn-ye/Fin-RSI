@@ -1,0 +1,67 @@
+\section{Self-improvement methods}
+\label{app:methods}
+
+\begin{table*}[h]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{5.3cm}p{3.9cm}p{2.8cm}@{}}
+\toprule
+Method & At test time & Learned on development tasks & In the spirit of \\
+\midrule
+\texttt{NoImprove} & one program, no feedback & -- & baseline \\
+\texttt{SelfDebug} & retry with the error only; stop once the program runs & -- &
+\citet{chen2024selfdebug} \\
+\texttt{CheckFeedback} & retry with the failed checks, their causes and cards & -- &
+verifier feedback \\
+\texttt{Reflexion} & as \texttt{CheckFeedback}, plus a written reflection before each retry &
+-- & \citet{shinn2023reflexion} \\
+\texttt{PlaybookLearning} & as \texttt{CheckFeedback}, with a frozen playbook in the prompt &
+playbook entries, through the gated loop & \citet{zhao2024expel,suzgun2026dynamic} \\
+\texttt{Team} & a writer and one reviewer per rule family, from the same model & -- &
+multi-role review \\
+\texttt{Evolve} & as \texttt{CheckFeedback}, with an evolved prompt addendum & the addendum,
+over \EvolveGenerations{} generations on \EvolveMinibatch{} tasks & \citet{agrawal2026gepa} \\
+\bottomrule
+\end{tabular}
+\caption{The \NMethods{} self-improvement methods. All share the prompt, the judge and the
+budget; each keeps the mechanism it is known for. They are not reproductions of the original
+systems.}
+\label{tab:methods}
+\end{table*}
+
+\texttt{Reflexion} asks for a reflection of at most five sentences, without code, and keeps
+the reflections for the rest of the episode. In \texttt{Team}, a reviewer is asked only when a
+check of its own family failed; it sees the program, the failed checks, their causes and its
+family's cards, and answers with a diagnosis rather than code. \texttt{Evolve} rewrites a
+prompt addendum of at most 1,200 characters from the visible failures of the current best
+addendum, and keeps a candidate only if it scores strictly higher on the same development
+tasks. The playbook is a list of short entries on three surfaces (tool usage, retrieval,
+experience). Its loop rejects whitespace-only and repeated edits, and appends every proposal,
+evaluation and decision to a journal whose receipts carry evidence hashes; a frozen playbook
+cannot change. A stricter \emph{all-pass} rule, which vetoes any candidate while a single
+task fails, blocks learning for a weak model, so we use no-regression.
+
+\section{Rule cards}
+\label{app:cards}
+
+\begin{table}[h]
+\centering
+\scriptsize
+\input{cards_table}
+\caption{Rule cards by family, the checks that verify each one, and whether the card names a
+library call that follows the rule.}
+\label{tab:cards}
+\end{table}
+
+\section{Task suite}
+\label{app:tasks}
+
+\begin{table}[h]
+\centering
+\footnotesize
+\input{tasks_table}
+\caption{The \NTaskAlgorithms{} algorithms of the task suite, with their split and the
+one-step library call that solves them. Each algorithm has two tasks (variants a and b).}
+\label{tab:tasks}
+\end{table}
