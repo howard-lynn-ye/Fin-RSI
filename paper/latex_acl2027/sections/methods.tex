@@ -18,15 +18,18 @@ not learn. \texttt{state()} returns what the method learned,
 which is hashed into every episode record. \texttt{rsi.benchmark()} fits each method once on
 the development tasks, runs it on every held-out task and seed, and grades the results.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\input{figures/episode}
-\caption{One episode. (1)~Each prompt and (2)~each program pass through the meter; (3)~the
-method sends code to the judge and (4)~sees only what \texttt{check()} returns. (5)~After
-\texttt{solve()} returns, the hidden grader runs on the final program, and (6)~its verdict
-goes only to the benchmark report.}
+\resizebox{\textwidth}{!}{\input{figures/episode}}
+\caption{One episode, with real content: the \texttt{momentum\_a} task, two programs and what
+the judge returns for them (the same on every seed and on the real panel). (1)~The prompt, here
+with the \texttt{split\_once} rule card of the cards arm. (2)~The first program takes momentum on
+raw quotes and (3)~fails \texttt{split\_representation}; the method gets the failed check, its
+cause and the card, never the grade. (4)~The retry applies the split factors and passes. (5)~Only
+after \texttt{solve()} returns does the hidden grader compare the final program with the
+reference, and its verdict goes to the benchmark report alone.}
 \label{fig:episode}
-\end{figure}
+\end{figure*}
 
 \paragraph{What a method sees (Figure~\ref{fig:episode}).}
 \texttt{solve()} receives the task text and a judge, on which it can only call
@@ -114,13 +117,17 @@ Whitespace-only edits and candidates that were already tried are rejected. Every
 evaluation and decision is appended to a journal whose receipts carry evidence hashes.
 Timestamps may not move backward, and a frozen playbook cannot change.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\resizebox{\columnwidth}{!}{\input{figures/gate}}
-\caption{The gated playbook loop: one edit per proposal, scored on two disjoint halves of the
-development tasks; only the no-regression gate can accept it.}
+\resizebox{\textwidth}{!}{\input{figures/gate}}
+\caption{The gated playbook loop of \texttt{PlaybookLearning}. (1)~The playbook is added to every
+prompt. (2)~The proposer reads development traces without grades and proposes one entry as JSON.
+(3)~The current and the candidate playbook are scored on two disjoint halves of the development
+tasks. (4)~The no-regression gate accepts the candidate only if neither half is lower, one is
+higher and no task that passed its checks now fails; the reasons shown are the gate's own. The
+entries and the dots are an example, not results.}
 \label{fig:gate}
-\end{figure}
+\end{figure*}
 
 \subsection{Skill arms}
 \label{sec:arms}

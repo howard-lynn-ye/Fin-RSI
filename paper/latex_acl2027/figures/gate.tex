@@ -1,42 +1,87 @@
-% The gated playbook loop: one proposal, two disjoint halves of the development tasks, the
-% no-regression gate, and the journal. Pictograms come from figures/icons.tex.
-\begin{tikzpicture}[
-  font=\scriptsize,
-  >={Stealth[length=3.4pt, width=3.2pt]},
-  tile/.style={draw=#1!55, rounded corners=3pt, line width=0.5pt, top color=white,
-               bottom color=#1!13, minimum width=1.55cm, minimum height=0.72cm,
-               align=center, inner sep=2pt,
-               blur shadow={shadow blur steps=6, shadow xshift=0.5pt, shadow yshift=-1pt,
-                            shadow opacity=26}},
-  tile/.default=finaqua,
-  flow/.style={->, line width=0.6pt, draw=fingray!80!black},
-  lab/.style={font=\tiny, text=fingray!90!black, align=center, inner sep=1pt},
-]
-\node[tile] (play) at (0, 0) {playbook $P$\\[-1pt]{\tiny frozen at test time}};
-\node[tile=finblue] (prop) at (2.5, 0) {proposer\\[-1pt]{\tiny one edit}};
-\node[tile] (cand) at (4.75, 0) {candidate $P'$};
-\node[tile=fingray, minimum width=1.5cm] (halfA) at (3.65, -1.35) {dev half A};
-\node[tile=fingray, minimum width=1.5cm] (halfB) at (5.85, -1.35) {dev half B};
-\node[diamond, aspect=2.2, draw=finorange!80!black, top color=white, bottom color=finorange!22,
-      line width=0.6pt, blur shadow={shadow blur steps=6, shadow opacity=26},
-      inner sep=1pt, align=center, font=\tiny] (gate) at (4.75, -2.75)
-  {no-regression\\gate};
-\node[tile=finaqua] (accept) at (2.05, -2.75) {accept: $P \leftarrow P'$};
-\node[tile=fingray] (reject) at (7.05, -2.75) {reject};
-\node[draw=fingray!55, fill=fingray!8, rounded corners=3pt, align=left, inner sep=3pt,
-      font=\tiny, text width=6.9cm, anchor=north west] (rule) at (0.1, -3.55)
-  {accept only if the score drops on neither half, rises on at least one, and no task that
-  passed every check before now fails one};
+% Figure: the gated playbook loop of PlaybookLearning, drawn with real content. The proposal keys
+% (key, surface, text, rationale), the surfaces, the two halves (development and validation,
+% split by algorithm) and the accept and reject reasons are those of fin_skills/rsi/core.py and
+% fin_skills/rsi/methods.py. The playbook entries and the proposed edit are an example; the
+% dots stand for tasks and are not results. The proposal budget is a macro from numbers.tex.
+\InputIfFileExists{figures/flatstyle}{}{\input{../latex_acl2027/figures/flatstyle}}%
+\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily]
+\def\T{3.25}\def\B{0.12}\def\Y{3.57}\hyphenpenalty=10000\exhyphenpenalty=10000
+\def\pass#1#2{\fill[fok] ({#1},{#2}) circle (0.055);}
+\def\fail#1#2{\draw[fsoft, line width=0.45pt] ({#1},{#2}) circle (0.05);}
+% ---------------------------------------------------------------- heads
+\node[fnum] at (0.16,\Y) {1}; \node[fhead] at (0.38,\Y) {Playbook};
+\node[fnum] at (3.86,\Y) {2}; \node[fhead] at (4.08,\Y) {The proposer suggests one edit};
+\node[fnum] at (8.31,\Y) {3}; \node[fhead] at (8.53,\Y) {Score both on two halves};
+\node[fnum] at (12.36,\Y) {4}; \node[fhead] at (12.58,\Y) {The no-regression gate};
 
-\draw[flow] (play.east) -- (prop.west);
-\node[lab] at ($(play.east)!0.5!(prop.west) + (0, 0.55)$) {traces,\\no grades};
-\draw[flow] (prop.east) -- (cand.west);
-\draw[flow] (cand.south) -- ++(0, -0.32) -| (halfA.north);
-\draw[flow] (cand.south) -- ++(0, -0.32) -| (halfB.north);
-\draw[flow] (halfA.south) |- ($(gate.north) + (0, 0.25)$) -- (gate.north);
-\draw[flow] (halfB.south) |- ($(gate.north) + (0, 0.25)$) -- (gate.north);
-\node[lab, anchor=east] at ($(halfA.west) + (-0.05, 0)$) {$P$ and $P'$\\scored on};
-\draw[flow, draw=finaqua!75!black] (gate.west) -- node[lab, above=1pt] {yes} (accept.east);
-\draw[flow] (gate.east) -- node[lab, above=1pt] {no} (reject.west);
-\draw[flow, draw=finaqua!75!black] (accept.west) -| node[lab, pos=0.75, left=1pt] {journal\\receipt} (play.south);
+% ---------------------------------------------------------------- 1: playbook
+\draw[fcard] (0,\B) rectangle (3.4,\T);
+\fstrip{0}{3.4}{\T}{playbook P}
+\foreach \y/\k/\t in {0.5/splits/{Apply cumulative split factors once, then take returns.},
+                      1.32/timing/Decide on the previous close.} {
+  \node[anchor=north west, inner sep=0, font=\fcode, text=fkey] at (0.12,\T-\y) {\k\ \textcolor{fsoft}{experience}};
+  \node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=3.1cm, align=left]
+    at (0.12,\T-\y-0.22) {\t};}
+\draw[frule, line width=0.4pt] (0.12,\B+0.72) -- (3.28,\B+0.72);
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fmid, text width=3.1cm, align=left]
+  at (0.12,\B+0.6) {Added to every prompt; frozen before the held-out tasks.};
+
+% ---------------------------------------------------------------- 2: proposer
+\draw[fcard] (3.7,\B) rectangle (8.15,\T);
+\fstrip{3.7}{8.15}{\T}{proposer: one edit as JSON}
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fmid, text width=4.2cm, align=left]
+  at (3.82,\T-0.45) {Reads the development traces: failed checks and their causes, never a grade.};
+\node[anchor=north west, inner sep=0, font=\fcode, text=fink, align=left] at (3.82,\T-0.95) {%
+\{\jk{key}: \js{warmup},\\
+\ \jk{surface}: \js{experience},\\
+\ \jk{text}: \textcolor{fstr}{"Rows before the lookback is}\\
+\ \ \ \ \ \ \ \ \ \textcolor{fstr}{filled hold no position."},\\
+\ \jk{rationale}: \textcolor{fstr}{"finite\_output failed on}\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{fstr}{warm-up rows"}\}};
+\node[anchor=south west, inner sep=0, font=\sffamily\ffive, text=fmid] at (3.82,\B+0.12)
+  {candidate P$'$ = P with this entry added or replaced};
+
+% ---------------------------------------------------------------- 3: two halves
+\draw[fcard] (8.15+0.3,\B) rectangle (12.2,\T);
+\fstrip{8.45}{12.2}{\T}{development and validation tasks}
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fmid, text width=3.55cm, align=left]
+  at (8.57,\T-0.45) {Two disjoint halves of the development tasks, split by algorithm.};
+\node[anchor=west, inner sep=0, font=\sffamily\ffive\bfseries, text=fink] at (9.95,\T-1.12) {P};
+\node[anchor=west, inner sep=0, font=\sffamily\ffive\bfseries, text=fink] at (11.0,\T-1.12) {P$'$};
+\foreach \row/\lab/\a/\b in {0/development/3/3, 1/validation/2/3} {
+  \pgfmathsetmacro\yy{\T-1.42-0.36*\row}
+  \node[anchor=west, inner sep=0, font=\fcode, text=fink] at (8.57,\yy) {\lab};
+  \foreach \i in {1,...,5} {
+    \ifnum\i>\a \fail{9.95+0.17*(\i-1)}{\yy}\else\pass{9.95+0.17*(\i-1)}{\yy}\fi
+    \ifnum\i>\b \fail{11.0+0.17*(\i-1)}{\yy}\else\pass{11.0+0.17*(\i-1)}{\yy}\fi}}
+\node[anchor=west, inner sep=0, font=\sffamily\ffive, text=fmid] at (8.57,\T-2.2)
+  {\tikz[baseline=-0.55ex]\fill[fok] (0,0) circle (0.055);\ task passed its checks and scored};
+\draw[frule, line width=0.4pt] (8.57,\B+0.62) -- (12.08,\B+0.62);
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=3.55cm, align=left]
+  at (8.57,\B+0.5) {Neither half lower, one higher, and no task that passed before now fails.};
+
+% ---------------------------------------------------------------- 4: gate
+\draw[fcard] (12.5,\B) rectangle (17.6,\T);
+\fstrip{12.5}{17.6}{\T}{guard\_rule = no\_regression}
+\node[anchor=north west, fill=fok, text=white, rounded corners=1pt, inner xsep=2pt, inner ysep=1.2pt,
+      font=\sffamily\ffive\bfseries] (acc) at (12.62,\T-0.45) {accepted};
+\node[anchor=west, inner sep=0, font=\fcode, text=fink] at ([xshift=1.2mm]acc.east) {improved without split regression};
+\node[anchor=north west, inner sep=0, font=\sffamily\fsix\bfseries, text=fok] at (12.62,\T-0.85) {P $\leftarrow$ P$'$};
+\node[anchor=north west, fill=fbad!12, text=fbad, rounded corners=1pt, inner xsep=2pt, inner ysep=1.2pt,
+      font=\sffamily\ffive\bfseries] at (12.62,\T-1.3) {rejected};
+\node[anchor=north west, inner sep=0, font=\fcode, text=fmid, align=left] at (12.62,\T-1.62)
+  {candidate regressed on an evaluation split\\[1pt]
+   candidate broke a case that passed its checks\\[1pt]
+   no measured improvement above the fixed threshold};
+\draw[frule, line width=0.4pt] (12.62,\B+0.62) -- (17.48,\B+0.62);
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=4.8cm, align=left]
+  at (12.62,\B+0.5) {Every candidate and verdict is appended to a journal. At most \FitProposals{}
+  proposals per fit.};
+
+% ---------------------------------------------------------------- flows
+\draw[fflow] (3.42,1.7) -- (3.68,1.7);
+\draw[fflow] (8.17,1.7) -- (8.43,1.7);
+\draw[fflow] (12.22,1.7) -- (12.48,1.7);
+\draw[fflow, rounded corners=3pt] (15.05,\B-0.02) -- (15.05,-0.18) -- (1.7,-0.18) -- (1.7,\B-0.02);
+\node[fill=white, inner xsep=2pt, inner ysep=0.5pt, font=\sffamily\ffive, text=fmid] at (8.3,-0.18) {next proposal};
 \end{tikzpicture}

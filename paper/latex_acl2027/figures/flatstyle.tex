@@ -1,0 +1,38 @@
+% Shared style for the flat figures (episode, gate): Helvetica text, Inconsolata code, 5-7 pt,
+% thin rules, white cards, black numbered labels, colour only for pass, fail and the rule card.
+\providecommand{\flatstyleloaded}{}%
+\definecolor{fink}{HTML}{222222}%
+\definecolor{fmid}{HTML}{555555}%
+\definecolor{fsoft}{HTML}{8A8A8A}%
+\definecolor{frule}{HTML}{CFCFCF}%
+\definecolor{fpaper}{HTML}{F5F6F6}%
+\definecolor{fok}{HTML}{23784B}%
+\definecolor{fbad}{HTML}{B83D3F}%
+\definecolor{fkey}{HTML}{1F5F8B}%
+\definecolor{fstr}{HTML}{7A4A00}%
+\providecommand{\ffive}{\fontsize{5.2}{6.3}\selectfont}%
+\providecommand{\fsix}{\fontsize{6}{7.2}\selectfont}%
+\providecommand{\fseven}{\fontsize{7}{8.4}\selectfont}%
+\providecommand{\fcode}{\fontsize{5}{6.4}\fontfamily{zi4}\selectfont}%
+\providecommand{\fok}{\tikz[baseline=-0.55ex]\draw[fok, line width=0.75pt, line cap=round, line join=round]%
+  (-0.06,0.0) -- (-0.015,-0.05) -- (0.07,0.06);}%
+\providecommand{\fno}{\tikz[baseline=-0.55ex]\draw[fbad, line width=0.75pt, line cap=round]%
+  (-0.05,-0.05) -- (0.05,0.05) (-0.05,0.05) -- (0.05,-0.05);}%
+\providecommand{\jk}[1]{\textcolor{fkey}{"#1"}}%
+\providecommand{\js}[1]{\textcolor{fstr}{"#1"}}%
+\tikzset{%
+  fcard/.style={draw=frule, fill=white, rounded corners=1.5pt, line width=0.4pt},%
+  fhead/.style={font=\sffamily\fseven\bfseries, text=fink, anchor=west, inner sep=0},%
+  fnum/.style={circle, fill=fink, text=white, font=\sffamily\fsix\bfseries, inner sep=0,%
+               minimum size=3.1mm},%
+  fflow/.style={-{Latex[length=1.5mm,width=1.2mm]}, line width=0.6pt, draw=fsoft},%
+  fnote/.style={font=\sffamily\ffive, text=fmid, inner sep=0},%
+}%
+% \fstrip{x0}{x1}{ytop}{text}: the grey title strip of a card.
+\providecommand{\fstrip}[4]{%
+  \begin{scope}%
+    \clip[rounded corners=1.5pt] (#1,{#3-0.32}) rectangle (#2,#3);%
+    \fill[frule!55] (#1,{#3-0.32}) rectangle (#2,#3);%
+  \end{scope}%
+  \draw[frule, line width=0.4pt] (#1,{#3-0.32}) -- (#2,{#3-0.32});%
+  \node[anchor=west, font=\fcode, text=fmid, inner sep=0] at ({#1+0.1},{#3-0.16}) {#4};}%

@@ -1,104 +1,96 @@
-% One episode: what a method sees (check() results only) and what it never sees (the
-% hidden grader). Single column. Needs the TikZ libraries shadows.blur and shadings;
-% pictograms come from figures/icons.tex.
-\begin{tikzpicture}[
-  font=\scriptsize,
-  >={Stealth[length=4pt, width=3.8pt, round]},
-  flow/.style={->, line width=0.9pt, line cap=round, draw=#1},
-  flow/.default=fingray!85!black,
-  lab/.style={font=\tiny, text=fingray!95!black, align=center, inner sep=1pt},
-  title/.style={font=\footnotesize\bfseries, anchor=south west, inner sep=0pt},
-  ball/.style={circle, shading=ball, ball color=#1, text=white, font=\tiny\bfseries,
-               inner sep=0pt, minimum size=9pt},
-  ball/.default=finblue,
-  iso/.style={x={(0.95cm,-0.24cm)}, y={(0.62cm,0.32cm)}, z={(0cm,1cm)}},
-  callout/.style={align=left, anchor=west, inner sep=2.2pt, text width=2.9cm, font=\tiny,
-                  text=black!85, fill=white, rounded corners=2.5pt,
-                  blur shadow={shadow blur steps=6, shadow xshift=0.4pt,
-                               shadow yshift=-0.8pt, shadow opacity=22}},
-]
-% ================================================================== (b) one episode
+% Figure: one episode, drawn with real content. The task text is quoted from
+% fin_skills/tasks/prompts.py and the task definition of momentum_a; the rule card and the cause
+% are CARDS["split_once"] and CAUSES["split_representation"] in fin_skills.api.rules. Both
+% programs were run through Judge(momentum_a) on seeds 11, 23, 37 and the real panel
+% (2026-11-05): run 1 fails split_representation only; run 2 passes all three checks and the
+% hidden grader marks it valid. Budget counts are macros from numbers.tex.
+\InputIfFileExists{figures/flatstyle}{}{\input{../latex_acl2027/figures/flatstyle}}%
+\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily]
+\def\T{3.5}\def\B{0.12}\def\Y{3.82}\hyphenpenalty=10000\exhyphenpenalty=10000
+\def\cl#1#2#3#4{% \cl{x}{y}{line number}{code}
+  \node[anchor=west, font=\fcode, text=fsoft, inner sep=0] at (#1,#2) {#3};
+  \node[anchor=west, font=\fcode, text=fink, inner sep=0] at ({#1+0.24},#2) {#4};}
+\def\kw#1{\textcolor{fkey}{\bfseries #1}}
+% ---------------------------------------------------------------- heads
+\node[fnum] at (0.16,\Y) {1}; \node[fhead] at (0.38,\Y) {Task prompt};
+\node[fnum] at (3.81,\Y) {2}; \node[fhead] at (4.03,\Y) {The model writes a program};
+\node[fnum] at (8.06,\Y) {3}; \node[fhead] at (8.28,\Y) {The judge runs the checks};
+\node[fnum] at (11.76,\Y) {4}; \node[fhead] at (11.98,\Y) {Retry, same budget};
+\node[fnum] at (15.51,\Y) {5}; \node[fhead] at (15.73,\Y) {Hidden grader};
 
-\def\pw{6.9}
-% \card{name}{x,y}{colour}{HEADER}{illustration}{caption}
-\newcommand{\card}[6]{%
-  \node[fill=white, rounded corners=3pt, minimum width=1.92cm, minimum height=1.26cm,
-        blur shadow={shadow blur steps=7, shadow xshift=0.5pt, shadow yshift=-1pt,
-                     shadow opacity=28}] (#1) at (#2) {};
-  \begin{scope}
-    \clip[rounded corners=3pt] (#1.south west) rectangle (#1.north east);
-    \shade[left color=#3, right color=#3!75!white] ($(#1.north west) + (0, -0.27)$) rectangle (#1.north east);
-  \end{scope}
-  \draw[#3!55, line width=0.4pt, rounded corners=3pt] (#1.south west) rectangle (#1.north east);
-  \node[font=\tiny\bfseries, text=white, anchor=center] at ($(#1.north) + (0, -0.135)$) {#4};
-  \begin{scope}[shift={($(#1.center) + (0, -0.06)$)}] #5 \end{scope}
-  \node[font=\tiny, text=black!80, anchor=south] at ($(#1.south) + (0, 0.02)$) {#6};}
+% ---------------------------------------------------------------- 1: task
+\draw[fcard] (0,\B) rectangle (3.4,\T);
+\fstrip{0}{3.4}{\T}{task momentum\_a}
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=3.16cm, align=left]
+  at (0.12,\T-0.45) {Write one Python program that defines {\fcode solve(prices, split\_factors)}.
+  \ldots\ \textbf{prices are RAW quotes.} split\_factors are CUMULATIVE \ldots\ The continuous
+  adjusted close is prices * split\_factors. \ldots\ A position on row~$t$ \ldots\ may use closes
+  through row~$t{-}1$ only.};
+\draw[fill=finblue!6, draw=finblue!40, line width=0.4pt, rounded corners=1.2pt] (0.12,\B+0.1) rectangle (3.28,\B+0.98);
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=2.95cm, align=left]
+  at (0.22,\B+0.89) {\textbf{rule card} {\fcode split\_once}\\[1pt]
+  Apply them once: adjusted = raw * split\_factors, then compute returns.};
 
+% ---------------------------------------------------------------- 2: run 1
+\draw[fcard] (3.65,\B) rectangle (7.65,\T);
+\fstrip{3.65}{7.65}{\T}{program, run 1 of \BudgetAttempts}
+\fill[fbad!9] (3.66,\T-1.27) rectangle (7.64,\T-1.03);
+\fill[fbad] (3.66,\T-1.27) rectangle (3.7,\T-1.03);
+\cl{3.77}{\T-0.48}{1}{\kw{import} numpy \kw{as} np}
+\cl{3.77}{\T-0.915}{3}{\kw{def} solve(prices, split\_factors):}
+\cl{3.77}{\T-1.15}{4}{\ \ m = prices.shift(1) / prices.shift(21)}
+\cl{3.77}{\T-1.385}{5}{\ \ w = np.sign(m - 1) / prices.shape[1]}
+\cl{3.77}{\T-1.62}{6}{\ \ \kw{return} w.fillna(0.0)}
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fbad, text width=3.7cm, align=left]
+  at (3.77,\T-1.95) {Line 4 takes momentum on raw quotes, so for twenty rows after each split the
+  signal sees a crash that never happened.};
 
+% ---------------------------------------------------------------- 3: judge
+\draw[fcard] (7.9,\B) rectangle (11.35,\T);
+\fstrip{7.9}{11.35}{\T}{check(program): all the method sees}
+\node[anchor=west, inner sep=0, font=\fcode] at (8.02,\T-0.5) {\fok\ finite\_output};
+\node[anchor=west, inner sep=0, font=\fcode, text=fbad] at (8.02,\T-0.75) {\fno\ \textbf{split\_representation}};
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive\itshape, text=fmid, text width=3.0cm, align=left]
+  at (8.26,\T-0.88) {the output changed when the same economic prices were given as adjusted closes
+  with unit factors, so the split factors are applied more than once or raw and adjusted prices
+  are mixed};
+\node[anchor=west, inner sep=0, font=\fcode] at (8.02,\T-2.42) {\fok\ execution\_lag};
+\draw[frule, line width=0.4pt] (8.02,\B+0.8) -- (11.23,\B+0.8);
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=3.2cm, align=left]
+  at (8.02,\B+0.68) {Sent back: the failed check, its cause and, in the cards arm, the
+  {\fcode split\_once} card. \textbf{Never the grade.}};
 
-\shade[top color=finblue!10, bottom color=finblue!3, rounded corners=7pt, draw=finblue!35,
-       line width=0.5pt] (0, 4.27) rectangle (\pw, 0.95);
-\shade[top color=fingray!17, bottom color=fingray!6, rounded corners=7pt, draw=fingray!45,
-       line width=0.5pt] (0, 0.59) rectangle (\pw, -1.06);
-\node[lab, anchor=south east, font=\tiny\bfseries, text=finblue!75!black] at (\pw-0.12, 1.02)
-  {VISIBLE TO THE METHOD};
-\node[lab, anchor=south west, font=\tiny\bfseries, text=fingray!95!black] at (0.12, -1.0)
-  {HIDDEN FROM METHODS};
+% ---------------------------------------------------------------- 4: run 2
+\draw[fcard] (11.6,\B) rectangle (14.95,\T);
+\fstrip{11.6}{14.95}{\T}{program, run 2 of \BudgetAttempts}
+\fill[fok!10] (11.61,\T-1.27) rectangle (14.94,\T-0.795);
+\fill[fok] (11.61,\T-1.27) rectangle (11.65,\T-0.795);
+\cl{11.72}{\T-0.48}{3}{\kw{def} solve(prices, split\_factors):}
+\cl{11.72}{\T-0.915}{4}{\ \ p = prices * split\_factors}
+\cl{11.72}{\T-1.15}{5}{\ \ m = p.shift(1) / p.shift(21)}
+\node[anchor=west, font=\sffamily\ffive, text=fsoft, inner sep=0] at (11.96,\T-1.45) {lines 1 and 6--7 unchanged};
+\node[anchor=north west, inner sep=0, font=\fcode, align=left] at (11.72,\T-1.75)
+  {\fok\ finite\_output\\[1.2pt]\fok\ split\_representation\\[1.2pt]\fok\ execution\_lag};
+\node[anchor=south west, fill=fok, text=white, rounded corners=1pt, inner xsep=2pt, inner ysep=1.2pt,
+      font=\sffamily\ffive\bfseries] at (11.72,\B+0.14) {accepted};
+\node[anchor=south west, font=\sffamily\ffive, text=fmid, inner sep=0] at (12.72,\B+0.17)
+  {model call 2 of \BudgetCalls};
 
-\card{method}{1.15, 3.5}{finblue}{METHOD}{%
-  \fill[fingray!85!black, rounded corners=1pt] (-0.55, -0.13) rectangle (0.55, 0.2);
-  \foreach \i/\c/\l in {0/finorange/0.5, 1/finaqua/0.75, 2/finblue!60/0.4}
-    \fill[\c] (-0.45, {0.12-\i*0.09}) rectangle ({-0.45+\l}, {0.085-\i*0.09});}{\texttt{solve()}}
-\card{meter}{3.45, 3.5}{finblue}{METER}{%
-  \foreach \a/\b/\c in {180/120/finaqua, 120/60/finorange!70!yellow, 60/0/finorange}
-    \draw[\c, line width=2.2pt] (\a:0.3) arc[start angle=\a, end angle=\b, radius=0.3];
-  \draw[fingray!90!black, line width=0.8pt, line cap=round] (0,0) -- (50:0.26);
-  \fill[fingray!90!black] (0,0) circle (0.045);}{equal budget}
-\card{llm}{5.75, 3.5}{fingray}{YOUR MODEL}{%
-  \node[circle, shading=ball, ball color=fingray!65, minimum size=0.46cm] at (0, 0.02) {};
-  \pic[draw=white, fill=white, line width=0.6pt] at (0, 0.02) {fin robot};}{\texttt{generate()}}
-\card{judge}{1.15, 1.66}{finorange}{JUDGE}{%
-  \foreach \yy/\c/\t in {0.17/finaqua/finite, 0.06/finaqua/split, -0.05/finorange/lag} {
-    \fill[\c] (-0.55, \yy) circle (0.045);
-    \node[font=\fontsize{4}{4}\selectfont\ttfamily, anchor=west, inner sep=0pt] at (-0.47, \yy) {\t};
-    \fill[fingray!25] (0.05, {\yy-0.02}) rectangle (0.55, {\yy+0.02});}}{\texttt{check()}}
-\card{grader}{3.62, -0.22}{fingray!90!black}{HIDDEN GRADER}{%
-  \begin{scope}[iso, scale=0.32, shift={(-0.6, -0.4, -0.55)}]
-    \fill[fingray!80!black] (1,0,0) -- (1,1,0) -- (1,1,1) -- (1,0,1) -- cycle;
-    \fill[fingray!60!black] (0,0,0) -- (1,0,0) -- (1,0,1) -- (0,0,1) -- cycle;
-    \fill[fingray!35] (0,0,1) -- (1,0,1) -- (1,1,1) -- (0,1,1) -- cycle;
-  \end{scope}
-  \pic[draw=white, fill=white, line width=0.5pt, scale=0.8] at (-0.07, -0.05) {fin lock};}{vs.\ reference}
-\card{report}{5.9, -0.22}{finaqua}{BENCHMARK}{%
-  \foreach \i/\h/\c in {0/0.18/fingray!45, 1/0.30/finblue, 2/0.24/finorange, 3/0.38/finaqua}
-    \fill[\c, rounded corners=0.6pt] ({-0.42+\i*0.23}, -0.18) rectangle ({-0.26+\i*0.23}, {-0.18+\h});}{valid, cost}
+% ---------------------------------------------------------------- 5: hidden grader
+\draw[fsoft, line width=0.5pt, dash pattern=on 2pt off 1.5pt] (15.15,\B-0.05) -- (15.15,\T+0.05);
+\node[rotate=90, font=\sffamily\ffive, text=fsoft, fill=white, inner sep=1pt] at (15.15,1.15) {hidden from the method};
+\draw[fcard, fill=fpaper] (15.35,\B) rectangle (17.6,\T);
+\fstrip{15.35}{17.6}{\T}{grade(program)}
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fink, text width=2.02cm, align=left]
+  at (15.46,\T-0.45) {Runs the final program and compares its positions with an independent
+  reference implementation.};
+\node[anchor=west, inner sep=0, font=\sffamily\fseven\bfseries, text=fok] at (15.46,1.45) {\fok\ valid};
+\node[anchor=north west, inner sep=0, font=\sffamily\ffive, text=fmid, text width=2.02cm, align=left]
+  at (15.46,\B+0.74) {Goes to the benchmark report only.};
 
-% the barrier
-\draw[fingray!90!black, line width=1pt, dash pattern=on 4pt off 2.5pt] (0.1, 0.77) -- (\pw-0.1, 0.77);
-\node[ball=fingray!80, minimum size=0.46cm] (barrier) at (\pw - 0.5, 0.77) {};
-\pic[draw=white, fill=white, line width=0.55pt] at (barrier) {fin lock};
-\node[lab, anchor=east, font=\tiny\itshape, fill=white, rounded corners=1.5pt, inner sep=1.5pt]
-  at ($(barrier.west) + (-0.06, 0)$) {no grade crosses this line};
-
-% arrows and steps
-\draw[flow=finblue!80!black] ([yshift=7pt]method.east) -- ([yshift=7pt]meter.west);
-\draw[flow=finblue!80!black] ([yshift=7pt]meter.east) -- ([yshift=7pt]llm.west);
-\draw[flow=finblue!80!black] ([yshift=-7pt]llm.west) -- ([yshift=-7pt]meter.east);
-\draw[flow=finblue!80!black] ([yshift=-7pt]meter.west) -- ([yshift=-7pt]method.east);
-\node[ball] at ($([yshift=7pt]meter.east)!0.5!([yshift=7pt]llm.west) + (0, 0.27)$) {1};
-\node[ball] at ($([yshift=-7pt]llm.west)!0.5!([yshift=-7pt]meter.east) + (0, -0.27)$) {2};
-\draw[flow=finblue!80!black] ([xshift=-10pt]method.south) -- ([xshift=-10pt]judge.north);
-\draw[flow=finorange!85!black] ([xshift=10pt]judge.north) -- ([xshift=10pt]method.south);
-\node[ball] at ($([xshift=-10pt]method.south)!0.5!([xshift=-10pt]judge.north) + (-0.25, 0)$) {3};
-\node[ball=finorange] at ($([xshift=10pt]judge.north)!0.5!([xshift=10pt]method.south) + (0.25, 0)$) {4};
-\node[lab, anchor=west, align=left] at ($(judge.east) + (0.12, 0.05)$)
-  {ran?\ error,\\failed checks\\and their causes};
-\draw[flow=fingray!95!black] (judge.south) |- (grader.west);
-\node[ball=fingray!85] at ($(judge.south |- grader.west) + (-0.25, 0.3)$) {5};
-\node[lab, anchor=south west, align=left] at ($(judge.south |- grader.west) + (0.1, 0.03)$)
-  {final\\program};
-\draw[flow=fingray!95!black] (grader.east) -- (report.west);
-\node[ball=fingray!85] at ($(grader.east)!0.5!(report.west) + (0, 0.27)$) {6};
-
-
+% ---------------------------------------------------------------- flows
+\draw[fflow] (3.42,1.8) -- (3.63,1.8);
+\draw[fflow] (7.67,1.8) -- (7.88,1.8);
+\draw[fflow] (11.37,1.8) -- (11.58,1.8);
+\draw[fflow] (14.97,2.6) -- (15.33,2.6);
 \end{tikzpicture}
