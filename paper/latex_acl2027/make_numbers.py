@@ -4,7 +4,8 @@
 
 Every count in the library, methods and task sections comes from here, so the paper cannot
 drift from the code. The reference-agreement figures are computed, not copied: each task's
-independent reference is compared with the one-step library call on every seed.
+independent reference is compared with the one-step library call on every seed, and on the
+real-price panel, which must be fetched first (python -m fin_skills.tasks real-fetch).
 """
 from __future__ import annotations
 
@@ -26,11 +27,19 @@ def _sci(x: float) -> str:
     return f"{mantissa}\\times10^{{{int(exponent)}}}"
 
 
+def _date(iso: str) -> str:
+    """2022-03-31 -> 31 March 2022."""
+    import datetime
+    d = datetime.date.fromisoformat(iso)
+    return f"{d.day} {d.strftime('%B')} {d.year}"
+
+
 def main() -> None:
     from fin_skills import rsi
     from fin_skills.algorithms import catalog
     from fin_skills.api.rules import CARDS, CAUSES
-    from fin_skills.tasks import library_positions, panel, reference, suite
+    from fin_skills.tasks import library_positions, panel, real, reference, suite
+    from fin_skills.tasks.data import REAL
     from fin_skills.tasks.spec import FORCED_DEV
     import fin_skills.tools as tools
 
@@ -43,9 +52,10 @@ def main() -> None:
     dev_algos = sorted({t.algorithm for t in tasks.dev})
     held_algos = sorted({t.algorithm for t in tasks.heldout})
 
+    real.load()                   # the real panel is part of the reference check; refuse without it
     worst = {"min_variance": 0.0, "other": 0.0}
     for task in tasks.tasks:
-        for seed in SEEDS:
+        for seed in (*SEEDS, REAL):
             raw, factors, _ = panel(seed, rows=task.rows, factors=task.factors,
                                     order=task.order)
             got = library_positions(task, raw, factors).to_numpy()
@@ -85,6 +95,9 @@ def main() -> None:
         "NModels": MODELS,
         "NMainEpisodes": f"{len(rsi.METHODS) * 2 * len(tasks.heldout) * len(SEEDS) * MODELS:,}",
         "NAblationEpisodes": f"{3 * 2 * len(tasks.heldout) * len(SEEDS) * MODELS:,}",
+        "NRealEpisodes": f"{len(rsi.METHODS) * 2 * len(tasks.heldout) * MODELS:,}",
+        "NRealRows": real.ROWS, "NRealSplitRow": real.ANCHOR[1],
+        "RealFirst": _date(real.FIRST), "RealLast": _date(real.LAST),
         "RefGapMinVariance": _sci(worst["min_variance"]),
         "RefGapOther": _sci(worst["other"]),
         "BudgetAttempts": budget.attempts, "BudgetCalls": budget.calls,

@@ -2,7 +2,8 @@
 
     python -m fin_skills.tasks.worker BOX
 
-BOX holds submission.py and request.json ({task_id, seed, library, lag_ks}). The worker
+BOX holds submission.py and request.json ({task_id, seed, library, lag_ks}); the
+seed is an integer or "real" (fin_skills.tasks.real). The worker
 rebuilds the task's data, calls solve() with fresh copies, runs the visible checks and writes
 result.json: executed, error, checks, library trace and the positions themselves. Grading
 against the reference happens in the parent process and never reaches the model.
@@ -63,12 +64,12 @@ def main(box: Path) -> None:
     import fin_skills.algorithms as algorithms
     import fin_skills.algorithms.panel as panel
     from fin_skills.api import get
-    from fin_skills.tasks.data import panel as make_panel
+    from fin_skills.tasks.data import as_seed, panel as make_panel
     from fin_skills.tasks.spec import suite
 
     request = json.loads((box / "request.json").read_text())
     task = suite().get(request["task_id"])
-    raw, factors, adjusted = make_panel(int(request["seed"]), rows=task.rows,
+    raw, factors, adjusted = make_panel(as_seed(request["seed"]), rows=task.rows,
                                         factors=task.factors, order=task.order)
     lag_guard = get("execution_lag")          # bound before the program can touch fin_skills
     source = (box / "submission.py").read_text()

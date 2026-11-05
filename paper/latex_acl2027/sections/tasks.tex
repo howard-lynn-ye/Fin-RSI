@@ -15,7 +15,8 @@ splits at fixed rows: 2-for-1, 3-for-1, 3-for-2 and a 1-for-2 reverse split. The
 \NEFourTasks{} tasks carried over from our earlier study keep \NRowsEFour{} rows, and with them
 only the first two splits, so they reproduce that study's inputs exactly. Variant~a gives cumulative factors in alphabetical column order.
 Variant~b gives event ratios, a shuffled column order and different parameters. Every task
-runs on \NSeeds{} data seeds (Figure~\ref{fig:task}a). Together, the tasks contain the failures we observed in earlier
+runs on \NSeeds{} data seeds (Figure~\ref{fig:task}a), and held-out tasks also run on one real
+panel (below). Together, the tasks contain the failures we observed in earlier
 agent-written programs:
 \begin{itemize}
 \item cumulative factors applied again, or event ratios used as cumulative factors;
@@ -24,6 +25,18 @@ agent-written programs:
 \item the missing first return of \texttt{pct\_change()};
 \item columns assumed to be in alphabetical order.
 \end{itemize}
+
+\paragraph{Real prices.}
+The real panel holds the as-traded daily closes of Amazon, Shopify, Alphabet (class~A) and
+Tesla for the \NRealRows{} sessions from \RealFirst{} to \RealLast{}. All four split in that
+window: 20-for-1, 10-for-1, 20-for-1 and 3-for-1. Amazon's split falls on row
+\NRealSplitRow{}, where asset~A splits in the synthetic panels. Columns carry the tickers, in
+split order for variant~a and shuffled for variant~b, and each variant keeps its factor
+convention. The closes come from Yahoo
+Finance, which serves them split-adjusted. We rebuild the as-traded quotes from a split table
+checked against the companies' announcements, and the rebuilt closes before each split match
+published figures. Yahoo's terms forbid redistribution, so we release the fetch code and the
+file's SHA-256 rather than the prices. The panel has no reverse split and no dividend.
 
 \begin{figure}[t]
 \centering
@@ -63,6 +76,8 @@ graded valid, so no check raises a false alarm;
 check and the grade: trading on the same close, no adjustment, factors cumulated twice
 (position task only), and missing warm-up rows.
 \end{itemize}
+All three also pass on the real panel; the first is run on the held-out tasks, the only ones
+the real panel is used for.
 
 \paragraph{Development and held-out split.}
 The split is by algorithm, so no held-out algorithm appears during development. The
@@ -78,7 +93,9 @@ the accepted-but-wrong rate, model calls, generated tokens, wall time and librar
 
 The main comparison runs \NMethods{} methods $\times$ 2 arms (\texttt{cards},
 \texttt{cards+library}) $\times$ \NHeldTasks{} tasks $\times$ \NSeeds{} seeds $\times$
-\NModels{} models, or \NMainEpisodes{} episodes. The component ablation adds
+\NModels{} models, or \NMainEpisodes{} episodes. The same comparison on the real panel adds
+\NRealEpisodes{} episodes, which are reported separately and never pooled with the synthetic
+seeds. The component ablation adds
 \texttt{NoImprove}, \texttt{CheckFeedback} and \texttt{PlaybookLearning} on the
 \texttt{none} and \texttt{library} arms, a further \NAblationEpisodes{} episodes.
 
