@@ -37,6 +37,12 @@ as A-share 前复权**, which is usually flagged only for Chinese data:
 actually used** (`../../market-data-engineering/SKILL.md` §8), and to reconstruct returns from
 `raw + actions` when reproducibility matters more than convenience.
 
+🚨 **`auto_adjust=False` is not raw either.** It leaves out only the dividend adjustment: OHLC are
+still divided by every split up to today, and volume multiplied by it. Verified 2026-11-05 with
+yfinance 1.7.0: AMZN on 2022-06-03, the session before its 20-for-1 split, reads Close 122.35
+against an as-traded 2,447.00, and Volume 97,604,000. For as-traded prices, multiply every later
+split from `Ticker.splits` back in; `fin_skills.data` does this for `adjustment=RAW`.
+
 ## The three
 
 **Raw / unadjusted (不复权)** — the price that actually traded. Correct for anything that depends on
@@ -77,6 +83,7 @@ disagree on overlapping history.
 |---|---|---|---|
 | yfinance | `yf.download()` | `auto_adjust=True` (since 1.0) | ✅ adjusted — but **no `Adj Close` column** |
 | yfinance | `Ticker.history()` | `auto_adjust=True` (since 0.1.26) | ✅ |
+| yfinance | `yf.download(auto_adjust=False)` | splits adjusted, dividends not | 🚨 **not raw** — splits still divided out |
 | yahooquery | `.history()` | **`adj_ohlc=False`** | ⚠️ **unadjusted — opposite of yfinance** |
 | tiingo | `.get_dataframe([list])` | `metric_name='adjClose'` | ⚠️ adjusted close only, no OHLC |
 | Alpha Vantage (free) | daily | unadjusted (adjusted is premium) | 🚨 split-corrupted |

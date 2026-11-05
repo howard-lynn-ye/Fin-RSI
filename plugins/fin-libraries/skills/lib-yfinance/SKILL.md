@@ -44,6 +44,11 @@ Roughly **40% of its changelog is "fix Yahoo changed X"** — treat schema drift
 `Ticker.history(auto_adjust=True)` has defaulted True **since 0.1.26** — only `download()` differed.
 Always pass `auto_adjust` explicitly so the number does not depend on the installed version.
 
+🚨 **`auto_adjust=False` is not as-traded.** It drops only the dividend adjustment; OHLC are still
+divided by every split up to today and volume multiplied by it. Verified 2026-11-05 on 1.7.0:
+AMZN on 2022-06-03 reads Close 122.35 against an as-traded 2,447.00 (20-for-1 split on
+2022-06-06). For raw quotes, multiply each later split from `Ticker.splits` back in.
+
 ## Signature traps in `download()`
 
 - **`end` is EXCLUSIVE.** Verbatim: *"for end='2023-01-01', the last data point will be on

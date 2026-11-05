@@ -447,6 +447,55 @@ def test_yfinance_refuses_a_caching_session_and_an_unstated_intraday_zone():
         a.bars("AAPL", "2024-01-01", "2024-01-05", adjustment=D.Adjustment.ANCHORED_START)
 
 
+def _amzn_served() -> pd.DataFrame:
+    """What yfinance 1.7.0 served for AMZN with auto_adjust=False (2026-11-05): prices
+    divided by the 20-for-1 split of 2022-06-06, volume multiplied by it."""
+    idx = pd.to_datetime(["2022-06-03", "2022-06-06"])
+    return pd.DataFrame({("open", "AMZN"): [124.20, 125.25], ("high", "AMZN"): [124.40, 128.99],
+                         ("low", "AMZN"): [121.0465, 123.81],
+                         ("close", "AMZN"): [122.35, 124.79],
+                         ("volume", "AMZN"): [97_604_000, 135_269_000]}, index=idx)
+
+
+def _amzn_splits() -> pd.Series:
+    return pd.Series([2.0, 3.0, 2.0, 20.0], index=pd.DatetimeIndex(
+        ["1998-06-02", "1999-01-05", "1999-09-02", "2022-06-06"], tz="America/New_York"))
+
+
+def test_yfinance_raw_is_rebuilt_as_traded_from_the_whole_split_history():
+    from fin_skills.data.adapters.yfinance import _as_traded
+
+    out, applied = _as_traded(_amzn_served(), {"AMZN": _amzn_splits()})
+    assert out.loc["2022-06-03", ("close", "AMZN")] == pytest.approx(2447.00)
+    assert out.loc["2022-06-03", ("open", "AMZN")] == pytest.approx(2484.00)
+    assert out.loc["2022-06-03", ("volume", "AMZN")] == 4_880_200
+    assert out[("volume", "AMZN")].dtype == np.dtype("int64")
+    assert out.loc["2022-06-06"].equals(_amzn_served().loc["2022-06-06"])   # already post-split
+    assert applied == {"AMZN": [("2022-06-06", 20.0)]}      # the 1990s splits predate the bars
+
+
+def test_yfinance_bars_raw_undoes_a_split_after_the_requested_range(monkeypatch):
+    """The split falls after `end`, so only Ticker.splits (not the bars' actions) knows it."""
+    import types
+
+    served = _amzn_served().loc[["2022-06-03"]]
+    flat = pd.DataFrame({k[0].title(): v for k, v in served.items()}, index=served.index)
+    calls = {}
+
+    def download(symbols, **kw):
+        calls["auto_adjust"] = kw["auto_adjust"]
+        return flat
+    fake = types.SimpleNamespace(__version__="0-test", download=download,
+                                 Ticker=lambda t: types.SimpleNamespace(splits=_amzn_splits()))
+    monkeypatch.setitem(sys.modules, "yfinance", fake)
+    raw = get("yfinance").bars("AMZN", "2022-06-01", "2022-06-04",
+                               adjustment=D.Adjustment.RAW)
+    assert calls["auto_adjust"] is False and raw.adjustment is D.Adjustment.RAW
+    assert raw.frame[("close", "AMZN")].iloc[0] == pytest.approx(2447.00)
+    assert raw.frame[("volume", "AMZN")].iloc[0] == 4_880_200
+    assert raw.provenance.request["raw_rebuilt_from_splits"] == {"AMZN": [("2022-06-06", 20.0)]}
+
+
 def test_akshare_normalises_the_chinese_headers_and_refuses_what_it_cannot_do():
     from fin_skills.data.adapters.akshare import _COLUMNS, _normalise
 

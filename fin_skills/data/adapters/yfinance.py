@@ -18,6 +18,16 @@ What this adapter pins, and why each pin exists (verified 2026-09-09):
     stamps between UTC and exchange-local and an unstated zone silently shifts every bar.
   * yfinance's `end` is EXCLUSIVE, which happens to be this layer's half-open contract -
     so it passes through unchanged and the request records that it did.
+  * 🚨 **`auto_adjust=False` is not raw.** It only leaves dividends out: Open, High, Low and
+    Close are still divided by every later split, and Volume multiplied by it, for every
+    split up to today. Checked 2026-11-05 with yfinance 1.7.0: AMZN on 2022-06-03 (the
+    session before its 20-for-1 split) reads Close 122.35 against an as-traded 2,447.00, and
+    Volume 97,604,000, which at 2,447.00 would be $239 billion in one session. So RAW is
+    rebuilt here: each ticker's
+    full split history (`Ticker.splits`, which includes splits after the requested range)
+    is multiplied back into the prices and divided out of the volume. A frame labelled RAW
+    that was really split-adjusted would have every split applied twice by
+    `Bars.readjust()`.
 
 There is no published rate limit anywhere in yfinance or Yahoo's documentation - zero hits
 for 429, limiter or throttl in the whole documentation index - so `rate_limit` is
@@ -64,6 +74,8 @@ DECL = declare.Declaration(
     verified_on="2026-09-09",
     notes=("Apache-2.0 is the CODE licence; Yahoo's own terms describe the data as "
            "intended for personal use, so installing this adapter grants nothing.\n"
+           "auto_adjust=False is split-adjusted, not raw; RAW is rebuilt from the full "
+           "split history (verified 2026-11-05).\n"
            "includes_delisted=False is not a limitation of this adapter - Yahoo returns "
            "today's names, so any universe built here is survivor-only and every result "
            "from it is an upper bound.\n"
@@ -124,6 +136,43 @@ def _actions_frame(raw: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["date", "ratio", "kind", "amount"])
 
 
+def _naive(ts) -> pd.Timestamp:
+    ts = pd.Timestamp(ts)
+    return ts.tz_localize(None) if ts.tzinfo is not None else ts
+
+
+def _as_traded(frame: pd.DataFrame, splits: dict) -> tuple[pd.DataFrame, dict]:
+    """Yahoo's auto_adjust=False bars -> as-traded bars.
+
+    `splits` maps ticker -> Series of split ratios indexed by ex-date, the whole history.
+    A bar dated before an ex-date has its prices multiplied by that ratio and its volume
+    divided by it. Pure and offline. Returns the frame and the splits it applied.
+    """
+    out = frame.copy()
+    idx = out.index.tz_localize(None) if out.index.tz is not None else out.index
+    applied = {}
+    for ticker, series in splits.items():
+        used = []
+        for when, ratio in (series.items() if series is not None else ()):
+            ratio = float(ratio)
+            if not np.isfinite(ratio) or ratio <= 0 or ratio == 1.0:
+                continue
+            before = np.asarray(idx < _naive(when).normalize())
+            if not before.any():
+                continue
+            for field in ("open", "high", "low", "close"):
+                if (field, ticker) in out.columns:
+                    out.loc[before, (field, ticker)] = out.loc[before, (field, ticker)] * ratio
+            if ("volume", ticker) in out.columns:
+                v = out[("volume", ticker)].astype("float64")
+                v[before] = v[before] / ratio
+                out[("volume", ticker)] = (v.round().astype("int64") if v.notna().all()
+                                           else v)
+            used.append((str(_naive(when).date()), ratio))
+        applied[ticker] = used
+    return out, applied
+
+
 class YFinanceAdapter(Base):
     decl = DECL
 
@@ -176,6 +225,13 @@ class YFinanceAdapter(Base):
                 self.limiter.backoff(attempt)
 
         frame = _normalise(raw, syms)
+        if adj is Adjustment.RAW:
+            history = {}
+            for t in syms:
+                self.limiter.acquire()
+                history[t] = yf.Ticker(t).splits
+            frame, applied = _as_traded(frame, history)
+            request["raw_rebuilt_from_splits"] = applied
         actions = _actions_frame(raw) if isinstance(raw, pd.DataFrame) else None
         prov = make_provenance("yfinance", library_version=library_version(yf),
                                request=request, content=frame, terms_url=TERMS,
