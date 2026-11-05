@@ -1,180 +1,145 @@
-% Figure 1: the library at a glance. Information comes in on the left, an agent is composed in
-% the middle (the user's model, one self-improvement method, any checks, skills and investor
-% templates) and the library is used from the right. Badges and labels are counts from the code
-% on 2026-11-05: macros from numbers.tex where one exists, otherwise noted here (8 adapters,
-% 4 discovery sources, 9 collectors in fin_skills.data and fin_skills.collect; 14 bridged
-% libraries in fin_skills.bridges). Needs the TikZ libraries 3d, shadows.blur, fadings, shadings.
+% Figure 1: the library as three floating planes. Bottom, the interfaces that bring
+% information in; middle, an agent composed from the user's model and one choice per tray
+% (one self-improvement method, any checks, skills and investor templates; coloured pieces are
+% the ones chosen, and their threads run into the agent); top, the interfaces it is used
+% through. Counts are macros from numbers.tex. Cabinet projection: x across, y into the page,
+% z up, so text on the front faces is not distorted. Needs the TikZ library 3d.
+\definecolor{ink}{HTML}{2B2D42}
+\definecolor{lil}{HTML}{7D6BB0}
+\definecolor{sla}{HTML}{5F7286}
 \begin{tikzpicture}[
   font=\scriptsize,
-  >={Stealth[length=4pt, width=3.8pt, round]},
-  head/.style={font=\tiny\bfseries, anchor=south west, inner sep=0pt},
-  ball/.style={circle, shading=ball, ball color=#1, inner sep=0pt, minimum size=9pt},
-  ball/.default=finblue,
-  iso/.style={x={(0.95cm,-0.24cm)}, y={(0.62cm,0.32cm)}, z={(0cm,1cm)}},
-  shade/.style={blur shadow={shadow blur steps=6, shadow xshift=0.45pt, shadow yshift=-0.9pt,
-                             shadow opacity=24}},
-  badge/.style={circle, fill=#1, text=white, font=\tiny\bfseries, inner sep=0pt,
-                minimum size=0.36cm},
-  pick/.style={font=\tiny\bfseries, text=#1!75!black, anchor=east, inner sep=0pt},
+  >={Stealth[length=3.6pt, width=3.4pt, round]},
+  cab/.style={x={(1cm,0cm)}, y={(0.5cm,0.28cm)}, z={(0cm,1cm)}},
+  plab/.style={font=\tiny\bfseries, text=ink, anchor=east, inner sep=0pt, align=right},
+  gloss/.style={font=\tiny, text=fingray!90!black, anchor=east, inner sep=0pt, align=right},
+  tlab/.style={font=\tiny, text=ink, anchor=north, inner sep=0pt, align=center},
 ]
-% ================================================================== helpers
-% \tile{x}{y centre}{w}{colour}{icon}{label}{badge}: a card with an accent bar, an icon and a count.
-\newcommand{\tile}[7]{%
-  \path[fill=white, rounded corners=3pt, shade] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
-  \begin{scope}
-    \clip[rounded corners=3pt] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
-    \fill[#4] (#1,{#2+0.42}) rectangle ({#1+0.08},{#2-0.42});
-  \end{scope}
-  \draw[#4!40, rounded corners=3pt, line width=0.4pt] (#1,{#2+0.42}) rectangle ({#1+#3},{#2-0.42});
-  \node[ball=#4, minimum size=0.5cm] at ({#1+0.45},#2) {};
-  \pic[draw=white, fill=white, line width=0.55pt] at ({#1+0.45},#2) {#5};
-  \node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at ({#1+0.83},#2) {#6};
-  \if\relax\detokenize{#7}\relax\else
-    \node[badge=#4!85!black] at ({#1+#3-0.32},#2) {#7};\fi}
-% \track{y bottom}{y top}{colour}: the tinted strip that holds one layer's choices.
-\newcommand{\track}[3]{%
-  \path[fill=#3!6, draw=#3!35, line width=0.4pt, rounded corners=3pt] (8.5,#1) rectangle (12.85,#2);}
-\def\sW{2.75}\def\sD{1.45}\def\sT{0.3}\def\pitch{1.3}
-% \slab{z}{colour}{label}: a shaded slab with its label printed on the front face.
-\newcommand{\slab}[3]{%
-  \begin{scope}[iso]
-    \shade[top color=#2!78!black, bottom color=#2!60!black]
-      (\sW,0,#1) -- (\sW,\sD,#1) -- (\sW,\sD,{#1+\sT}) -- (\sW,0,{#1+\sT}) -- cycle;
-    \shade[top color=#2!92, bottom color=#2!88!black]
-      (0,0,#1) -- (\sW,0,#1) -- (\sW,0,{#1+\sT}) -- (0,0,{#1+\sT}) -- cycle;
-    \shade[left color=#2!22, right color=#2!8]
-      (0,0,{#1+\sT}) -- (\sW,0,{#1+\sT}) -- (\sW,\sD,{#1+\sT}) -- (0,\sD,{#1+\sT}) -- cycle;
-    \draw[#2!60!black, line width=0.4pt, line join=round]
-      (0,0,#1) -- (\sW,0,#1) -- (\sW,\sD,#1) -- (\sW,\sD,{#1+\sT}) -- (0,\sD,{#1+\sT})
-      -- (0,0,{#1+\sT}) -- cycle (0,0,{#1+\sT}) -- (\sW,0,{#1+\sT}) -- (\sW,\sD,{#1+\sT})
-      (\sW,0,{#1+\sT}) -- (\sW,0,#1);
-    \draw[white, opacity=0.7, line width=0.6pt] (0.03,0,{#1+\sT-0.02}) -- (\sW-0.03,0,{#1+\sT-0.02});
-    \begin{scope}[canvas is xz plane at y=0]
-      \node[transform shape, text=white, font=\scriptsize\bfseries] at (\sW/2, {#1+\sT/2}) {#3};
-    \end{scope}
-  \end{scope}}
-% \stand{x}{y}{z}{w}{h}{colour}{content}: a card standing on a top face, shadow cast behind.
-\newcommand{\stand}[7]{%
-  \begin{scope}[iso]
-    \begin{scope}[canvas is xy plane at z=#3]
-      \fill[black, opacity=0.12] (#1, #2) -- ({#1+#4}, #2) -- ({#1+#4+0.14}, {#2+0.26})
-        -- ({#1+0.14}, {#2+0.26}) -- cycle;
-    \end{scope}
-    \begin{scope}[canvas is xz plane at y=#2, shift={(#1, #3)}]
-      \fill[white, rounded corners=1.2pt] (0,0) rectangle (#4, #5);
-      \begin{scope}
-        \clip[rounded corners=1.2pt] (0,0) rectangle (#4, #5);
-        \fill[#6] (0, #5-0.1) rectangle (#4, #5);
-      \end{scope}
-      \draw[#6!75!black, line width=0.35pt, rounded corners=1.2pt] (0,0) rectangle (#4, #5);
-      #7
-    \end{scope}
-  \end{scope}}
+\def\L{14.0}\def\D{2.6}\def\zA{1.85}\def\zB{3.7}
+\def\tA{2.35}\def\tB{4.85}\def\tC{7.35}\def\tD{9.85}
+% \plane{z}{accent}: a thin sheet, its top face, front and right edges.
+\newcommand{\plane}[2]{%
+  \fill[#2!38] (0,0,{#1-0.06}) -- (\L,0,{#1-0.06}) -- (\L,0,#1) -- (0,0,#1) -- cycle;
+  \fill[#2!48] (\L,0,{#1-0.06}) -- (\L,\D,{#1-0.06}) -- (\L,\D,#1) -- (\L,0,#1) -- cycle;
+  \shade[left color=#2!7, right color=#2!14, opacity=0.95]
+    (0,0,#1) -- (\L,0,#1) -- (\L,\D,#1) -- (0,\D,#1) -- cycle;
+  \draw[#2!45, line width=0.35pt, line join=round]
+    (0,0,{#1-0.06}) -- (\L,0,{#1-0.06}) -- (\L,\D,{#1-0.06}) -- (\L,\D,#1) -- (0,\D,#1)
+    -- (0,0,#1) -- cycle (0,0,#1) -- (\L,0,#1) -- (\L,\D,#1);}
+% \block{x}{y}{z}{w}{d}{h}{accent}{front fill}{front content}: a box standing on a plane,
+% with a soft shadow cast back and to the right. Content is drawn in front-face coordinates.
+\newcommand{\block}[9]{%
+  \fill[black, opacity=0.07] ({#1+0.06},{#2+0.08},#3) -- ({#1+#4+0.18},{#2+0.08},#3)
+    -- ({#1+#4+0.18},{#2+#5+0.3},#3) -- ({#1+0.06},{#2+#5+0.3},#3) -- cycle;
+  \filldraw[fill=#7!14, draw=#7!55, line width=0.35pt, line join=round]
+    (#1,#2,{#3+#6}) -- ({#1+#4},#2,{#3+#6}) -- ({#1+#4},{#2+#5},{#3+#6}) -- (#1,{#2+#5},{#3+#6}) -- cycle;
+  \filldraw[fill=#7!30, draw=#7!55, line width=0.35pt, line join=round]
+    ({#1+#4},#2,#3) -- ({#1+#4},{#2+#5},#3) -- ({#1+#4},{#2+#5},{#3+#6}) -- ({#1+#4},#2,{#3+#6}) -- cycle;
+  \filldraw[fill=#8, draw=#7!55, line width=0.35pt, line join=round]
+    (#1,#2,#3) -- ({#1+#4},#2,#3) -- ({#1+#4},#2,{#3+#6}) -- (#1,#2,{#3+#6}) -- cycle;
+  \begin{scope}[canvas is xz plane at y=#2, shift={(#1,#3)}] #9 \end{scope}}
+% \unit{x}{z}{w}{h}{icon}{label}{accent}: an icon and a label on a front face.
+\newcommand{\facelabel}[5]{%
+  \pic[draw=#5!80!black, fill=#5!80!black, line width=0.55pt, scale=0.9] at (0.32, #2/2) {#3};
+  \node[anchor=west, font=\scriptsize\bfseries, text=ink, inner sep=0pt] at (0.58, #2/2) {#4};}
 
-% ================================================================== left: information in
-\node[head, text=finmagenta!80!black] at (0, 5.22) {INFORMATION IN};
-\tile{0}{4.65}{2.8}{finmagenta}{fin chart}{Market data}{8}
-\tile{0}{3.45}{2.8}{finmagenta}{fin search}{Discovery}{4}
-\tile{0}{2.25}{2.8}{finmagenta}{fin feed}{Collectors}{9}
-\tile{0}{1.05}{2.8}{finmagenta}{fin doc}{Retrieval}{}
-\foreach \y in {4.65, 3.45, 2.25, 1.05}
-  \draw[line width=1.5pt, finmagenta!35] (2.8, \y) to[out=0, in=180] (4.0, 2.3);
-\draw[-{Stealth[length=6pt, width=7pt]}, line width=2.4pt, finmagenta!45] (3.95, 2.3) -- (4.56, 2.3);
-
-% ================================================================== middle: compose an agent
-\node[head] at (4.45, 5.22) {COMPOSE AN AGENT};
-\begin{scope}[shift={(4.6, 0.95)}]
-\fill[fingray, opacity=0.35, path fading=circle with fuzzy edge 15 percent]
-  (1.75, -0.5) ellipse (2.1cm and 0.34cm);
-\slab{0}{finblue}{SKILLS}
-\stand{0.22}{0.32}{\sT}{0.6}{0.44}{finblue}{%
-  \foreach \yy in {0.25, 0.17, 0.09} \draw[fingray!60, line width=0.45pt] (0.09,\yy) -- (0.53,\yy);}
-\stand{1.07}{0.32}{\sT}{0.6}{0.44}{finblue}{%
-  \fill[finorange] (0.1,0.05) rectangle (0.19,0.15); \fill[finblue] (0.24,0.05) rectangle (0.33,0.24);
-  \fill[finaqua] (0.38,0.05) rectangle (0.47,0.29);}
-\stand{1.92}{0.32}{\sT}{0.6}{0.44}{finblue}{%
-  \fill[finblue!75] (0.3,0.235) circle (0.055);
-  \fill[finblue!75] (0.17,0.04) arc[start angle=180, end angle=0, radius=0.13] -- cycle;}
-\slab{\pitch}{finorange}{CHECKS}
-\stand{0.62}{0.32}{{\pitch+\sT}}{1.5}{0.44}{finorange}{%
-  \foreach \yy/\c in {0.27/finaqua, 0.16/finaqua, 0.05/finorange} {
-    \fill[\c] (0.12,\yy) circle (0.04); \draw[fingray!60, line width=0.45pt] (0.24,\yy) -- (1.36,\yy);}}
-\slab{2*\pitch}{finaqua}{SELF-IMPROVEMENT}
-\begin{scope}[iso]
-  \begin{scope}[canvas is xy plane at z={2*\pitch+\sT}]
-    \fill[black, opacity=0.1] (\sW/2+0.05, \sD/2-0.06) circle (0.5);
-    \draw[finaqua!70!black, line width=2pt, line cap=round, -{Stealth[length=4.5pt, width=5.5pt]}]
-      ({\sW/2+0.5*cos(20)}, {\sD/2+0.5*sin(20)}) arc[start angle=20, end angle=340, radius=0.5];
-  \end{scope}
-  \foreach \a/\c in {90/finblue, 210/finorange, 330/finaqua}
-    \node[ball=\c, minimum size=6pt] at ({\sW/2+0.5*cos(\a)}, {\sD/2+0.5*sin(\a)}, {2*\pitch+\sT}) {};
-  \foreach \u/\v in {0/0, \sW/0, \sW/\sD}
-    \draw[fingray!50, densely dotted, line width=0.5pt]
-      (\u, \v, \sT) -- (\u, \v, \pitch) (\u, \v, {\pitch+\sT}) -- (\u, \v, {2*\pitch});
-  \foreach \k in {0, 1, 2} \coordinate (r\k) at (\sW, \sD/2, {\k*\pitch+\sT/2});
-  \coordinate (topc) at (\sW/2, \sD/2, {2*\pitch+\sT});
+\begin{scope}[shift={(2.1cm, 0.3cm)}, cab]
+% a soft shadow on the floor under the stack
+\begin{scope}[canvas is xy plane at z=-0.55]
+  \fill[black, opacity=0.10, path fading=circle with fuzzy edge 20 percent]
+    (7.0, 1.3) ellipse (6.9 and 1.5);
 \end{scope}
+% ================================================================== information
+\plane{0}{lil}
+\foreach \x/\ic/\t in {0.4/fin chart/Market data, 3.6/fin search/Discovery,
+                       6.8/fin feed/Collectors, 10.0/fin doc/Retrieval}
+  {\block{\x}{0.8}{0}{2.85}{0.5}{0.62}{lil}{white}{\facelabel{2.85}{0.62}{\ic}{\t}{lil}}}
+% information rises to the agent
+\begin{scope}[canvas is xz plane at y=1.35]
+  \shade[bottom color=lil!45, top color=lil!4, opacity=0.75] (12.85, 0) rectangle (13.4, \zA);
 \end{scope}
 
-% the user's model drives the stack
-\path[fill=white, rounded corners=3pt, shade] (5.25, 5.1) rectangle (7.45, 4.5);
-\draw[fingray!45, rounded corners=3pt, line width=0.4pt] (5.25, 5.1) rectangle (7.45, 4.5);
-\node[ball=fingray!70, minimum size=0.44cm] (rob) at (5.6, 4.8) {};
-\pic[draw=white, fill=white, line width=0.55pt] at (rob) {fin robot};
-\node[anchor=west, font=\scriptsize\bfseries, inner sep=0pt] at (5.92, 4.8) {Your model};
-\draw[->, line width=0.9pt, fingray!80!black] (6.36, 4.5) -- ($(topc) + (0, 0.12)$);
-
-% each layer's choices: filled marks are one agent
-\track{3.02}{3.52}{finaqua}
-\track{1.72}{2.22}{finorange}
-\track{0.25}{1.1}{finblue}
-\foreach \k/\col in {0/finblue, 1/finorange, 2/finaqua} {
-  \draw[\col!75!black, line width=0.5pt] (r\k) -- (r\k -| 8.5, 0);
-  \node[ball=\col, minimum size=4pt] at (r\k) {};}
-% self-improvement: pick one (radio)
+% ================================================================== agent
+\plane{\zA}{fingray}
+\block{0.35}{0.8}{\zA}{1.65}{0.5}{0.55}{fingray}{white}{%
+  \pic[draw=ink!80, fill=ink!80, line width=0.55pt, scale=0.9] at (0.3, 0.275) {fin robot};
+  \node[anchor=west, font=\scriptsize\bfseries, text=ink, inner sep=0pt, align=left] at (0.52, 0.275)
+    {Your\\[-2pt]model};}
+% trays: self-improvement, checks, skills, investor templates
+\foreach \x/\c in {\tA/finaqua, \tB/finorange, \tC/finblue, \tD/finmagenta}
+  {\block{\x}{0.7}{\zA}{2.25}{0.85}{0.1}{\c}{\c!22}{}}
+\pgfmathsetmacro\zT{\zA+0.1}
+% self-improvement: one of seven
+\begin{scope}[canvas is xz plane at y=1.12]
+  \foreach \i in {0,...,6} {
+    \ifnum\i=4 \filldraw[fill=finaqua, draw=finaqua!70!black, line width=0.45pt]
+        ({\tA+0.22+0.3*\i}, {\zT+0.13}) circle (0.11);
+    \else \filldraw[fill=white, draw=fingray!65, line width=0.45pt]
+        ({\tA+0.22+0.3*\i}, {\zT+0.13}) circle (0.11);\fi}
+\end{scope}
+% checks: any of them
 \foreach \i in {0,...,6} {
-  \ifnum\i=4 \node[ball=finaqua, minimum size=0.21cm] at ({8.75+0.34*\i}, 3.27) {};
-  \else \draw[finaqua!70!black, fill=white, line width=0.5pt] ({8.75+0.34*\i}, 3.27) circle (0.1);\fi}
-\node[pick=finaqua] at (12.72, 3.27) {pick 1 of \NMethods{}};
-% checks: pick any (boxes)
-\foreach \i in {0,...,9} {
-  \def\cx{8.75+0.3*\i}
-  \ifnum\i=1 \def\on{1}\else\ifnum\i=4 \def\on{1}\else\ifnum\i=5 \def\on{1}\else\def\on{0}\fi\fi\fi
-  \ifnum\on=1
-    \draw[finorange!70!black, fill=finorange, line width=0.5pt, rounded corners=1pt]
-      ({\cx-0.1}, 1.87) rectangle ({\cx+0.1}, 2.07);
-    \draw[white, line width=0.6pt, line cap=round, line join=round]
-      ({\cx-0.055}, 1.975) -- ({\cx-0.015}, 1.93) -- ({\cx+0.06}, 2.02);
+  \pgfmathsetmacro\bx{\tB+0.12+0.3*\i}
+  \ifnum\i=1 \def\on{1}\else\ifnum\i=3 \def\on{1}\else\ifnum\i=4 \def\on{1}\else\def\on{0}\fi\fi\fi
+  \ifnum\on=0
+    \block{\bx}{1.02}{\zT}{0.2}{0.2}{0.2}{fingray}{white}{}
   \else
-    \draw[finorange!70!black, fill=white, line width=0.5pt, rounded corners=1pt]
-      ({\cx-0.1}, 1.87) rectangle ({\cx+0.1}, 2.07);\fi}
-\node[pick=finorange] at (12.72, 1.97) {any of \NGuards{}};
-% skills: pick any (documents) and investor templates (people)
-\foreach \i in {0,...,7} {
-  \def\cx{8.75+0.3*\i}
+    \block{\bx}{1.02}{\zT}{0.2}{0.2}{0.2}{finorange}{finorange}{%
+      \draw[white, line width=0.55pt, line cap=round, line join=round]
+        (0.05, 0.105) -- (0.09, 0.06) -- (0.155, 0.145);}
+  \fi}
+% skills: any of them
+\foreach \i in {0,...,6} {
+  \pgfmathsetmacro\bx{\tC+0.11+0.3*\i}
   \ifnum\i=0 \def\on{1}\else\ifnum\i=2 \def\on{1}\else\ifnum\i=5 \def\on{1}\else\def\on{0}\fi\fi\fi
-  \ifnum\on=1 \def\fc{finblue}\def\lc{white}\else \def\fc{white}\def\lc{finblue!60}\fi
-  \draw[finblue!70!black, fill=\fc, line width=0.5pt, rounded corners=0.6pt]
-    ({\cx-0.085}, 0.76) rectangle ({\cx+0.085}, 0.98);
-  \draw[\lc, line width=0.45pt] ({\cx-0.045}, 0.90) -- ({\cx+0.045}, 0.90)
-    ({\cx-0.045}, 0.84) -- ({\cx+0.045}, 0.84);}
-\node[pick=finblue] at (12.72, 0.87) {any of \NSkills{}};
-\foreach \i in {0,...,4} {
-  \def\cx{8.75+0.3*\i}
-  \ifnum\i=1 \def\fc{finblue}\else\ifnum\i=3 \def\fc{finblue}\else\def\fc{white}\fi\fi
-  \draw[finblue!70!black, fill=\fc, line width=0.5pt] (\cx, 0.535) circle (0.052);
-  \draw[finblue!70!black, fill=\fc, line width=0.5pt]
-    ({\cx-0.1}, 0.37) arc[start angle=180, end angle=0, radius=0.1] -- cycle;}
-\node[pick=finblue] at (12.72, 0.46) {any of \NLensSkills{} investor templates};
+  \ifnum\on=0 \def\cc{fingray}\def\ff{white}\def\ll{fingray!55}
+  \else \def\cc{finblue}\def\ff{finblue}\def\ll{white}\fi
+  \block{\bx}{1.08}{\zT}{0.22}{0.05}{0.31}{\cc}{\ff}{%
+    \draw[\ll, line width=0.45pt] (0.05,0.21) -- (0.17,0.21) (0.05,0.15) -- (0.17,0.15)
+      (0.05,0.09) -- (0.13,0.09);}}
+% investor templates: any of them
+\begin{scope}[canvas is xz plane at y=1.12]
+  \foreach \i in {0,...,6} {
+    \ifnum\i=1 \def\ff{finmagenta}\def\dd{finmagenta!70!black}\else
+      \ifnum\i=4 \def\ff{finmagenta}\def\dd{finmagenta!70!black}\else
+        \def\ff{white}\def\dd{fingray!65}\fi\fi
+    \pgfmathsetmacro\cx{\tD+0.22+0.3*\i}
+    \filldraw[fill=\ff, draw=\dd, line width=0.45pt]
+      ({\cx-0.1}, \zT) arc[start angle=180, end angle=0, radius=0.1] -- cycle;
+    \filldraw[fill=\ff, draw=\dd, line width=0.45pt] (\cx, {\zT+0.165}) circle (0.055);}
+\end{scope}
+% threads: the model and the chosen pieces run into the agent
+\def\ax{13.125}
+\foreach \x/\y/\z/\c in {1.18/1.05/0.55/ink!55, 3.77/1.12/0.24/finaqua,
+                         5.37/1.12/0.2/finorange, 5.97/1.12/0.2/finorange, 6.27/1.12/0.2/finorange,
+                         7.57/1.1/0.31/finblue, 8.17/1.1/0.31/finblue, 9.07/1.1/0.31/finblue,
+                         10.37/1.12/0.22/finmagenta, 11.27/1.12/0.22/finmagenta}
+  \draw[\c, line width=0.6pt, opacity=0.85]
+    (\x, \y, {\zA+0.1+\z}) .. controls (\x, \y, {\zA+1.0}) and (\ax, 1.15, {\zA+1.3})
+    .. (\ax, 1.15, {\zA+0.86});
+% the agent
+\block{12.35}{0.85}{\zA}{1.55}{0.6}{0.85}{ink}{ink}{%
+  \pic[draw=white, fill=white, line width=0.6pt, scale=1.05] at (0.775, 0.56) {fin robot};
+  \node[font=\scriptsize\bfseries, text=white, inner sep=0pt] at (0.775, 0.22) {Agent};}
+% the agent is used through the top plane
+\begin{scope}[canvas is xz plane at y=1.15]
+  \shade[bottom color=ink!35, top color=ink!4, opacity=0.6] (12.85, {\zA+0.85}) rectangle (13.4, \zB);
+\end{scope}
 
-% ================================================================== right: use it from
-\node[head, text=fingray!95!black] at (14.6, 5.22) {USE IT FROM};
-\tile{14.6}{4.65}{2.8}{fingray}{fin plug}{Agent tools}{\NTools{}}
-\tile{14.6}{3.45}{2.8}{fingray}{fin link}{Bridges}{14}
-\tile{14.6}{2.25}{2.8}{fingray}{fin gauge}{Backtester}{}
-\tile{14.6}{1.05}{2.8}{fingray}{fin code}{Benchmark}{\NTasks{}}
-\draw[line width=2.4pt, fingray!40] (12.95, 2.3) -- (13.4, 2.3);
-\foreach \y in {4.65, 3.45, 2.25, 1.05}
-  \draw[-{Stealth[length=5pt, width=5.5pt]}, line width=1.5pt, fingray!45]
-    (13.35, 2.3) to[out=0, in=180] (14.55, \y);
+% ================================================================== interfaces
+\plane{\zB}{sla}
+\foreach \x/\ic/\t in {0.2/fin plug/MCP, 2.5/fin code/Tool schemas, 4.8/fin doc/Python API,
+                       7.1/fin link/Bridges, 9.4/fin gauge/Backtester, 11.7/fin check/Benchmark}
+  {\block{\x}{0.8}{\zB}{2.1}{0.5}{0.62}{sla}{white}{\facelabel{2.1}{0.62}{\ic}{\t}{sla}}}
+\end{scope}
+
+% ================================================================== labels
+\foreach \z/\n/\g in {0/INFORMATION/what comes in, \zA/AGENT/model and choices,
+                      \zB/INTERFACES/how it is used} {
+  \node[plab] at (1.95, {0.3+\z+0.42}) {\n};
+  \node[gloss] at (1.95, {0.3+\z+0.2}) {\g};}
+% tray captions, under the agent plane's front edge
+\foreach \x/\a/\b in {\tA/Self-improvement/one of \NMethods{}, \tB/Checks/any of \NGuards{},
+                      \tC/Skills/any of \NSkills{}, \tD/Investor templates/any of \NLensSkills{}}
+  \node[tlab] at ({2.1+\x+1.125}, {0.3+\zA-0.12}) {\textbf{\a}\\[-1pt]{\color{fingray!95!black}\b}};
 \end{tikzpicture}
