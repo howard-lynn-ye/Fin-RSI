@@ -1,8 +1,8 @@
-# Figure 2 source
+# Figure 1 source
 
-Figure 2 (the library section; an appendix figure in the FinFM short version) draws Fin-RSI
-the way library papers draw their overview: one container for the library with compartments
-of marks, the ecosystem on either side, and a tick on what a user picks.
+Figure 1 draws what is in Fin-RSI and how an agent uses it: one toolbox with a compartment of
+marks per kind of tool, the agent made of the user's model and the picked pieces, and the
+write-check-improve loop it runs on each task, coloured like the compartments.
 
 ```bash
 python3 compose_kit.py     # writes ../overview.tex (pure TikZ)

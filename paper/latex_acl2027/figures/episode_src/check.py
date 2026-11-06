@@ -1,6 +1,6 @@
-"""Check that Figure 1 (b) shows what the judge really returns.
+"""Check that Figure 2 (b) shows what the judge really returns.
 
-The figure (figures/teaser.tex) quotes run1.py and run2.py and the judge's verdicts for them on
+The figure (figures/episode.tex) quotes run1.py and run2.py and the judge's verdicts for them on
 task momentum_a. This runs both programs through the judge and the hidden grader on every seed
 and on the real panel, and fails if any verdict differs from what the figure shows.
 
