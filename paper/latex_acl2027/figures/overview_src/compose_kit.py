@@ -70,7 +70,8 @@ def main() -> None:
     w(r"  name/.style={anchor=west, inner sep=0, font=\fontsize{7.5}{9}\sffamily\bfseries\selectfont},")
     w(r"  word/.style={inner sep=0, font=\fontsize{7.2}{8.6}\sffamily\selectfont, text=kink!80},")
     w(r"  head/.style={anchor=west, inner sep=0, font=\fontsize{7.8}{9.4}\sffamily\bfseries\selectfont, text=#1},")
-    w(r"  bigarrow/.style={fill=kink!9, draw=none},")
+    w(r"  bigarrow/.style={fill=kink!11, draw=none},")
+    w(r"  verb/.style={inner sep=0, font=\fontsize{7.5}{9}\sffamily\itshape\selectfont, text=kink!65},")
     w(r"]")
     H = 4.45
     w(f"\\useasboundingbox (0,0) rectangle ({f(WIDTH)},{f(H)});")
@@ -116,7 +117,7 @@ def main() -> None:
             w(f"\\pic[draw={col}, fill={col}, line width=0.6pt, scale={f(k)}] at ({f(cx)},{f(cy)}) {{{pic}}};")
 
     # ------------------------------------------------------------------ the toolbox
-    bx, bw, top = 0.02, 8.78, H - 0.34
+    bx, bw, top = 0.02, 8.5, H - 0.34
     w(f"\\draw[kink!70, line width=2.2pt, line cap=round, rounded corners=3pt] ({f(bx + bw / 2 - 1.1)},{f(top)}) -- "
       f"({f(bx + bw / 2 - 1.1)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.1)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.1)},{f(top)});")
     w(f"\\path[fill=white, draw=kink!80, line width=0.9pt, rounded corners=4pt, blur shadow={{shadow blur steps=8, "
@@ -150,7 +151,7 @@ def main() -> None:
     per_row = 20
     for i in range(n("NGuards")):
         r, c = divmod(i, per_row)
-        square(x2 + 0.24 + c * 0.262, r2 - 0.52 - r * 0.28, i in PICK_CHECKS)
+        square(x2 + 0.24 + c * 0.245, r2 - 0.52 - r * 0.28, i in PICK_CHECKS)
     # row 3: self-improvement | engine
     r3 = r2 - h2 - g
     h3 = r3 - pad
@@ -159,15 +160,16 @@ def main() -> None:
         disc(bx + pad + 0.32 + i * 0.34, r3 - 0.64, i == PICK_METHOD)
     xe, we = x2, w2
     comp(xe, r3, we, h3, "fingray", "engine", "")
-    for i, (pic, word) in enumerate((("fin code", "algorithms"), ("fin chart", "data"),
-                                     ("fin gauge", "backtester"), ("fin check", "benchmark"))):
+    for i, (pic, word) in enumerate((("fin sigma", "algorithms"), ("fin db", "data"),
+                                     ("fin gauge", "backtester"), ("fin chart", "benchmark"))):
         cx = xe + 0.75 + i * (we - 1.5) / 3
         icon(cx, r3 - 0.56, "fingray", pic)
-        w(f"\\node[word, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(cx)},{f(r3 - 0.9)}) {{{word}}};")
+        w(f"\\node[word, anchor=base, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(cx)},{f(r3 - 0.98)}) {{{word}}};")
 
     # ------------------------------------------------------------------ your agent
-    ax, aw = bx + bw + 0.5, 2.85
+    ax, aw = bx + bw + 0.72, 2.85
     big(bx + bw + 0.04, ax - 0.04, 2.55)
+    w(f"\\node[verb] at ({f(bx + bw + 0.36)},{f(3.07)}) {{pick}};")
     w(f"\\path[fill=white, draw=kink!35, line width=0.5pt, rounded corners=3pt, blur shadow={{shadow blur steps=6, "
       f"shadow yshift=-0.8pt, shadow opacity=14}}] ({f(ax)},1.2) rectangle ({f(ax + aw)},{f(top)});")
     w(f"\\node[head=kink] at ({f(ax + 0.14)},{f(top - 0.24)}) {{your agent}};")
@@ -178,38 +180,41 @@ def main() -> None:
     w(f"\\node[font=\\fontsize{{9}}{{10}}\\sffamily\\bfseries\\selectfont, text=kink!45] at ({f(mx)},{f(my - 0.47)}) {{+}};")
     py = my - 0.82                             # the picks, larger
     nsp = PER_PLUGIN[PICK_PLUGIN]
+    row = nsp * 0.07 + 0.08 + 0.4 + 0.42 * len(PICK_CARDS) - 0.2       # spines, gap, cards
+    x0 = ax + (aw - row) / 2
     for i in range(nsp):
-        spine(ax + 0.2 + i * 0.07, py - 0.2, True, h=0.42, wd=0.042)
-    cxs = ax + 0.2 + nsp * 0.07 + 0.08
+        spine(x0 + i * 0.07, py - 0.2, True, h=0.42, wd=0.042)
+    cxs = x0 + nsp * 0.07 + 0.08
     for i in range(len(PICK_CARDS)):
         card(cxs + 0.2 + i * 0.42, py + 0.01, True)
     qy = py - 0.52
-    disc(ax + 0.36, qy, True, k=1.2)
     for i in range(len(PICK_CHECKS)):
-        square(ax + 0.8 + i * 0.34, qy, True, s=0.12)
+        square(x0 + 0.12 + i * 0.34, qy, True, s=0.12)
+    disc(x0 + 0.12 + len(PICK_CHECKS) * 0.34 + 0.12, qy, True, k=1.2)
     # reached from
-    for i, (pic, word) in enumerate((("fin plug", "MCP"), ("fin doc", "Python"), ("fin code", "schemas"))):
+    for i, (pic, word) in enumerate((("fin plug", "MCP"), ("fin term", "Python"), ("fin braces", "schemas"))):
         cx = ax + 0.4 + i * (aw - 0.8) / 2
         icon(cx, 0.72, "kuse", pic, r=0.19, k=0.8)
-        w(f"\\node[word, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(cx)},{f(0.37)}) {{{word}}};")
+        w(f"\\node[word, anchor=base, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(cx)},{f(0.29)}) {{{word}}};")
     w(f"\\draw[kink!30, line width=0.6pt] ({f(ax + 0.12)},1.04) -- ({f(ax + aw - 0.12)},1.04);")
     w(f"\\node[word, fill=white, inner xsep=2pt, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont, text=kuse] "
       f"at ({f(ax + aw / 2)},1.04) {{use it from}};")
 
     # ------------------------------------------------------------------ on each task
-    lx = ax + aw + 0.5
+    lx = ax + aw + 0.72
     big(ax + aw + 0.04, lx - 0.04, 2.55)
+    w(f"\\node[verb] at ({f(ax + aw + 0.36)},{f(3.07)}) {{run}};")
     w(f"\\node[head=kink] at ({f(lx + 0.02)},{f(top - 0.24)}) {{on each task}};")
     arrow = "-{Latex[length=1.6mm,width=1.4mm]}"
-    xw, xc, xi, xd = lx + 0.38, lx + 1.6, lx + 0.99, WIDTH - 0.34
+    xw, xc, xi, xd = lx + 0.34, lx + 1.5, lx + 0.92, WIDTH - 0.32
     yt, yb = top - 1.15, top - 2.5
     icon(xw, yt, "finblue", "fin code", r=0.3, k=1.05, solid=True)
     icon(xc, yt, "finorange", "fin check", r=0.3, k=1.05, solid=True)
     icon(xi, yb, "finaqua", "fin loop", r=0.3, k=1.05, solid=True)
     icon(xd, yt, "kink", "fin doc", r=0.3, k=1.05, solid=True)
     for x, y, word in ((xw, yt, "write"), (xc, yt, "check"), (xd, yt, "deliver")):
-        w(f"\\node[word] at ({f(x)},{f(y + 0.5)}) {{{word}}};")
-    w(f"\\node[word] at ({f(xi)},{f(yb - 0.5)}) {{improve}};")
+        w(f"\\node[word, anchor=base] at ({f(x)},{f(y + 0.42)}) {{{word}}};")
+    w(f"\\node[word, anchor=base] at ({f(xi)},{f(yb - 0.6)}) {{improve}};")
     w(f"\\draw[{arrow}, kink!45, line width=0.8pt] ({f(xw + 0.34)},{f(yt)}) -- ({f(xc - 0.34)},{f(yt)});")
     w(f"\\draw[{arrow}, gbad!80, line width=0.8pt] ({f(xc - 0.1)},{f(yt - 0.36)}) -- ({f(xi + 0.24)},{f(yb + 0.27)});")
     w(f"\\draw[{arrow}, finaqua!85!black, line width=0.8pt] ({f(xi - 0.24)},{f(yb + 0.27)}) -- ({f(xw + 0.1)},{f(yt - 0.36)});")
@@ -226,8 +231,8 @@ def main() -> None:
     for i in range(n("BudgetAttempts")):
         on = i < 2                                 # two used, as in Figure 2
         w(f"\\path[fill={'kink!55' if on else 'white'}, draw=kink!55, line width=0.5pt] "
-          f"({f(lx + 0.24 + i * 0.22)},0.72) circle (0.07);")
-    w(f"\\node[word, anchor=west, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(lx + 0.84)},0.72) {{equal budget: {n("BudgetAttempts")} runs}};")
+          f"({f(lx + 0.12 + i * 0.22)},0.72) circle (0.07);")
+    w(f"\\node[word, anchor=west, font=\\fontsize{{7}}{{8.4}}\\sffamily\\selectfont] at ({f(lx + 0.72)},0.72) {{equal budget: {n("BudgetAttempts")} runs}};")
     w(r"\end{tikzpicture}")
     k = next(i for i, line in enumerate(L) if line.startswith(r"\begin{tikzpicture}"))
     L[:k] = [line + "%" for line in L[:k]]
