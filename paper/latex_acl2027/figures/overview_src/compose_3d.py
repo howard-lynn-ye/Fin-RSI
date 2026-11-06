@@ -293,8 +293,8 @@ def main() -> None:
     lx_, ly_ = bez(0.5)
     w(f"\\node[verb, anchor=north east] at ({f(lx_ - 0.12)},{f(ly_ - 0.1)}) {{pick}};")
     # use it from
-    w(f"\\node[fig note, fill=white, inner xsep=2pt] at ({f(cx)},0.92) {{use it from}};")
     w(f"\\draw[figline, line width=0.6pt] ({f(cx - rx)},0.92) -- ({f(cx + rx)},0.92);")
+    w(f"\\node[fig note, fill=white, inner xsep=2pt] at ({f(cx)},0.92) {{use it from}};")
     for i, (pic, word) in enumerate((("lu plug", "MCP"), ("lu square-terminal", "Python"), ("lu braces", "schemas"))):
         ix = cx - 1.0 + i * 1.0
         w(f"\\path[fill=figmid!14] ({f(ix)},0.55) circle (0.17);")
