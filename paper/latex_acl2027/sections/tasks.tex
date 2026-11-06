@@ -29,7 +29,8 @@ agent-written programs:
 \paragraph{Real prices.}
 The real panel holds the as-traded daily closes of Amazon, Shopify, Alphabet (class~A) and
 Tesla for the \NRealRows{} sessions from \RealFirst{} to \RealLast{}. All four split in that
-window: 20-for-1, 10-for-1, 20-for-1 and 3-for-1 (Figure~\ref{fig:real}). Amazon's split falls on row
+window: 20-for-1, 10-for-1, 20-for-1 and 3-for-1 (Appendix Figure~\ref{fig:real}).
+Amazon's split falls on row
 \NRealSplitRow{}, where asset~A splits in the synthetic panels. Columns carry the tickers, in
 split order for variant~a and shuffled for variant~b, and each variant keeps its factor
 convention. The closes come from Yahoo
@@ -37,25 +38,6 @@ Finance, which serves them split-adjusted. We rebuild the as-traded quotes from 
 checked against the companies' announcements, and the rebuilt closes before each split match
 published figures. Yahoo's terms forbid redistribution, so we release the fetch code and the
 file's SHA-256 rather than the prices. The panel has no reverse split and no dividend.
-
-\begin{figure*}[t]
-\centering
-\includegraphics{figures/real_panel}
-\caption{The real-price panel: raw quotes (as traded) and adjusted closes, each indexed to
-100 at the first close, on a log scale. A program that ignores the split factors sees a
-one-day loss of 67\% to 95\%.}
-\label{fig:real}
-\end{figure*}
-
-\begin{figure}[t]
-\centering
-\includegraphics{figures/task_checks}
-\caption{\texttt{execution\_lag} catches a look-ahead without an expected output. Prices of the
-seed-11 panel are perturbed from row $k=64$ as the guard perturbs them. The library's lagged
-inverse-volatility positions first move at row 65 and pass; the same positions read on the close
-they trade over move at row 64 and fail.}
-\label{fig:task}
-\end{figure}
 
 \paragraph{References.}
 Each task has an independent reference written with numpy, which does not call \lib{}. On
@@ -73,7 +55,8 @@ The judge runs each program in a separate process with a memory limit and a 120-
 timeout. In our runs the process is also confined on Linux with Landlock and seccomp, which
 restrict its file-system and network access. Without library access, the judge refuses
 \texttt{import fin\_skills}. It applies the three checks of \S\ref{sec:checks}, perturbing
-from rows 32 and 64 for \texttt{execution\_lag} (Figure~\ref{fig:task}). The grader is separate code that never
+from rows 32 and 64 for \texttt{execution\_lag} (Figure~\ref{fig:episode}c). The grader is
+separate code that never
 appears in a prompt. A program is \emph{valid} only if it ran, passed every check, and
 matches the reference within an absolute tolerance of $10^{-8}$ ($10^{-5}$ for
 \texttt{min\_variance}). A program that passes every check but is wrong is \emph{accepted but

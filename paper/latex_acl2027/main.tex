@@ -16,7 +16,8 @@
 \input{figures/episode_caption}
 \input{figures/overview_caption}
 % Draft markers. \pending{} marks text that waits for the experiments; remove before submission.
-\newcommand{\pending}[1]{{\color{red}[#1]}}
+% \leavevmode: a colour special between a heading and its text would allow a break there.
+\newcommand{\pending}[1]{\leavevmode{\color{red}[#1]}}
 \newcommand{\lib}{\textsc{Fin-RSI}}
 
 \title{\lib: An Agent-Native Library of Financial Skills, Checks,\\and Self-Improvement}
@@ -57,19 +58,28 @@ valid program; accepted-but-wrong rate; library use. Component ablation
 
 % Result figures: make_results.py, from the benchmark's episode records. Until the runs exist
 % they are drawn from null generated records and stamped PLACEHOLDER (figures/results_source.txt).
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics{figures/results_main}
-\caption{\pending{Takeaway sentence after the runs. Layout drawn from null placeholder records;
-no number in it is a result.} Valid rate, pooled over the \NModels{} models and paired on model,
-task and seed. (a)~Each method minus \texttt{NoImprove}, without (grey circles) and with (blue
-squares) the library. (b)~The library: \texttt{cards+library} minus \texttt{cards}, per method.
-Bars are 95\% bootstrap intervals that resample held-out tasks; filled markers have
-Holm-adjusted $p<0.05$ over all comparisons in (a) and (b). (c)~Valid rate against generated
-tokens per episode, with the Pareto frontier (dashed); dotted extensions add each learning
-method's development tokens, spread over its held-out episodes.}
+\includegraphics{figures/results_effects}
+\caption{\pending{Takeaway sentence after the runs. Layout drawn from invented placeholder
+records; no number in it is a result.} Valid rate, pooled over the \NModels{} models and paired
+on model, task and seed. (a)~Each method minus \texttt{NoImprove}, without (grey circles) and
+with (blue squares) the library, the markers of Figure~\ref{fig:arms}. (b)~The library:
+\texttt{cards+library} minus \texttt{cards}, per method. Bars are 95\% bootstrap intervals that
+resample held-out tasks; filled markers have Holm-adjusted $p<0.05$ over all comparisons in (a)
+and (b).}
 \label{fig:results}
-\end{figure*}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics{figures/results_cost}
+\caption{\pending{Takeaway sentence after the runs; placeholder layout.} Valid rate against
+generated tokens per episode, one point per method and arm; a line joins a method's two arms.
+Dashed: the Pareto frontier. Dotted extensions add each learning method's development tokens,
+spread over its held-out episodes.}
+\label{fig:cost}
+\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -100,5 +110,14 @@ were written for (accepted-but-wrong rate); open-weight models only; one attempt
 one-step library call that solves them. Each algorithm has two tasks (variants a and b).}
 \label{tab:tasks}
 \end{table}
+
+\begin{figure*}[h]
+\centering
+\includegraphics{figures/real_panel}
+\caption{The real-price panel: raw quotes (as traded) and adjusted closes, each indexed to
+100 at the first close, on a log scale. A program that ignores the split factors sees a
+one-day loss of 67\% to 95\%.}
+\label{fig:real}
+\end{figure*}
 
 \end{document}

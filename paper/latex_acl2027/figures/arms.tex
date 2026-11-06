@@ -1,58 +1,64 @@
-% Figure: the skill arms (rsi.ARMS) and the method contrasts of the component ablation, in
-% pictures. A blue card stands for the rule cards and a dark square for the library interface;
-% faint means the arm leaves it out. Bold frames are the arms of the main comparison.
+% Figure: the skill arms (rsi.ARMS: name -> (library, cards)) as a 2 x 2 table, and the method
+% contrasts within one arm. Drawn at the ACL column width (7.7 cm), never scaled.
+% Bold cells are the arms of the main comparison (rsi.bench: cards, cards+library); their
+% markers are the ones the results figure uses for the two arms (make_results.py, ARM_MARK).
 \InputIfFileExists{figures/glyphs}{}{\input{../latex_acl2027/figures/glyphs}}%
 \begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily]
-\def\lib#1#2{% \lib{centre}{on 1 / off 0}: the library, a code square
+\def\libsq#1#2{% \libsq{centre}{on 1 / off 0}: the library interface, a code square
   \begin{scope}[shift={#1}]
-    \ifnum#2=1 \path[fill=gink, rounded corners=1.5pt, gshade] (-0.2,-0.2) rectangle (0.2,0.2);
-      \pic[draw=white, line width=0.6pt, scale=0.72] at (0,0) {lu code};
-    \else \draw[gline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, rounded corners=1.5pt] (-0.2,-0.2) rectangle (0.2,0.2);\fi
+    \ifnum#2=1 \path[fill=figink, fig item, fig shadow] (-0.17,-0.17) rectangle (0.17,0.17);
+      \pic[draw=white, line width=0.6pt, scale=0.62] at (0,0) {lu code};
+    \else \draw[figline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, fig item]
+      (-0.17,-0.17) rectangle (0.17,0.17);\fi
   \end{scope}}
-\def\crd#1#2{% \crd{centre}{on 1 / off 0}: the rule cards
-  \ifnum#2=1 \gcard{#1}\else
-  \begin{scope}[shift={#1}]\draw[gline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, rounded corners=1pt] (-0.22,-0.16) rectangle (0.22,0.16);\end{scope}\fi}
-\def\arm#1#2#3#4#5{% \arm{x}{y}{cards}{library}{main 1/0}
-  \ifnum#5=1 \path[fill=white, draw=gink, line width=0.9pt, rounded corners=2pt, gshade] ({#1-0.75},{#2-0.36}) rectangle ({#1+0.75},{#2+0.36});
-  \else \path[fill=white, draw=gline, line width=0.5pt, rounded corners=2pt, gshade] ({#1-0.75},{#2-0.36}) rectangle ({#1+0.75},{#2+0.36});\fi
-  \crd{({#1-0.3},#2)}{#3} \lib{({#1+0.32},#2)}{#4}}
-\tikzset{both/.style={gflow, {Latex[length=1.6mm,width=1.4mm]}-{Latex[length=1.6mm,width=1.4mm]}}}
+\def\nocard#1{% the rule card left out
+  \draw[figline, line width=0.6pt, dash pattern=on 1.5pt off 1pt, fig item]
+    ($#1+(-0.22,-0.16)$) rectangle ($#1+(0.22,0.16)$);}
+% \cell{centre x}{centre y}{arm name}{main 1 / ablation only 0}
+\def\cell#1#2#3#4{%
+  \ifnum#4=1
+    \path[fill=white, draw=figink, line width=0.9pt, fig card, fig shadow]
+      ({#1-1.36},{#2-0.4}) rectangle ({#1+1.36},{#2+0.4});
+    \node[fig code, font=\figCodeFont\bfseries, anchor=west] at ({#1-0.98},#2) {#3};
+  \else
+    \path[fill=white, draw=figline, line width=0.5pt, fig card]
+      ({#1-1.36},{#2-0.4}) rectangle ({#1+1.36},{#2+0.4});
+    \node[fig code, text=figmid, anchor=west] at ({#1-0.98},#2) {#3};
+  \fi}
 % ---------------------------------------------------------------- (a) skill arms
-\node[gword, anchor=west, font=\sffamily\glab\bfseries] at (0,3.85) {(a) Skill arms};
-\node[gnote] at (2.6,3.48) {no library}; \node[gnote] at (5.0,3.48) {library};
-\node[gnote, anchor=east] at (1.7,2.95) {no cards}; \node[gnote, anchor=east] at (1.7,1.75) {rule cards};
-\arm{2.6}{2.95}{0}{0}{0} \arm{5.0}{2.95}{0}{1}{0}
-\arm{2.6}{1.75}{1}{0}{1} \arm{5.0}{1.75}{1}{1}{1}
-\draw[both] (3.4,2.95) -- (4.2,2.95);
-\draw[both] (3.4,1.75) -- (4.2,1.75);
-\draw[both] (2.6,2.55) -- (2.6,2.15);
-\draw[both] (5.0,2.55) -- (5.0,2.15);
-\draw[gink, line width=0.9pt, rounded corners=1pt] (4.42,3.78) rectangle ++(0.16,0.14);
-\node[gnote, anchor=west] at (4.66,3.85) {main comparison};
+\node[fig title, anchor=base west] at (0,4.32) {(a) Skill arms: two switches};
+\def\ca{3.2}\def\cb{6.0}\def\ra{3.07}\def\rb{2.15}% column and row centres
+\libsq{(\ca-0.62,3.83)}{0} \node[fig label, anchor=west] at (\ca-0.38,3.83) {no library};
+\libsq{(\cb-0.45,3.83)}{1} \node[fig label, anchor=west] at (\cb-0.21,3.83) {library};
+\nocard{(0.8,\ra+0.2)} \node[fig label] at (0.8,\ra-0.2) {no cards};
+\gcard{(0.8,\rb+0.2)} \node[fig label] at (0.8,\rb-0.2) {rule cards};
+\cell{\ca}{\ra}{none}{0} \cell{\cb}{\ra}{library}{0}
+\cell{\ca}{\rb}{cards}{1} \cell{\cb}{\rb}{cards+library}{1}
+% the results figure's markers for the two arms of the main comparison
+\fill[fingray] (\ca-1.15,\rb) circle (0.075);
+\fill[finblue] ({\cb-1.15-0.07},{\rb-0.07}) rectangle ++(0.14,0.14);
+% legend
+\path[fill=white, draw=figink, line width=0.9pt, rounded corners=1pt]
+  (1.84,1.36) rectangle ++(0.3,0.2);
+\node[fig note, anchor=west] at (2.2,1.46) {main comparison};
+\path[fill=white, draw=figline, line width=0.5pt, rounded corners=1pt]
+  (4.64,1.36) rectangle ++(0.3,0.2);
+\node[fig note, anchor=west] at (5.0,1.46) {ablation only};
 % ---------------------------------------------------------------- (b) method contrasts
-\node[gword, anchor=west, font=\sffamily\glab\bfseries] at (0,0.95) {(b) Within one arm};
-\begin{scope}[shift={(0.9,0.05)}]
-  \gpage{(0,0)}{0.5}{0.62}{white}
-\end{scope}
-\node[gword, font=\figCodeFont] at (0.9,-0.55) {NoImprove};
-\node[gnote] at (0.9,-0.8) {one program};
-\begin{scope}[shift={(3.65,0.05)}]
-  \gpage{(0,0)}{0.5}{0.62}{white}
-  \draw[-{Latex[length=1.4mm,width=1.2mm]}, gbad!75, line width=0.8pt, dash pattern=on 2pt off 1.3pt] (0.3,0.12) .. controls (0.75,0.55) and (-0.75,0.55) .. (-0.3,0.12);
-  \gcheck{(0.46,-0.18)}{0}
-\end{scope}
-\node[gword, font=\figCodeFont] at (3.65,-0.55) {CheckFeedback};
-\node[gnote] at (3.65,-0.8) {retries on failed checks};
-\begin{scope}[shift={(6.33,0.05)}]
-  \gpage{(0.08,0.05)}{0.5}{0.62}{white}
-  \gpage{(0,0)}{0.5}{0.62}{white}
-  \gbar{-0.15}{-0.12}{0.3}{gok}
-  \draw[-{Latex[length=1.4mm,width=1.2mm]}, gbad!75, line width=0.8pt, dash pattern=on 2pt off 1.3pt] (0.3,0.12) .. controls (0.75,0.55) and (-0.75,0.55) .. (-0.3,0.12);
-\end{scope}
-\node[gword, font=\figCodeFont] at (6.33,-0.55) {PlaybookLearning};
-\node[gnote] at (6.33,-0.8) {and keeps a playbook};
-\draw[gflow] (1.45,0.05) -- (3.1,0.05);
-\draw[gflow] (4.2,0.05) -- (5.8,0.05);
-\node[gnote] at (2.27,0.66) {+ checks};
-\node[gnote] at (5.0,0.66) {+ self-improvement};
+\node[fig title, anchor=base west] at (0,0.8) {(b) Within one arm};
+% \method{x}{icon}{name}{what it does}
+\def\method#1#2#3#4{%
+  \path[fill=white, draw=figline, line width=0.5pt, fig box, fig shadow]
+    ({#1-0.34},-0.34) rectangle ({#1+0.34},0.34);
+  \pic[draw=figink, scale=1.3] at (#1,0) {lu #2};
+  \node[fig code] at (#1,-0.6) {#3};
+  \node[fig note] at (#1,-0.87) {#4};}
+\method{1.0}{code}{NoImprove}{one program}
+\method{3.58}{refresh-cw}{CheckFeedback}{retries on failed checks}
+\gcheck{(3.88,0.31)}{0}
+\method{6.22}{book-open}{PlaybookLearning}{learns a playbook}
+\draw[fig flow] (1.48,0) -- (3.1,0);
+\draw[fig flow] (4.06,0) -- (5.72,0);
+\node[fig note] at (2.29,0.2) {+ checks};
+\node[fig note] at (4.89,0.2) {+ playbook};
 \end{tikzpicture}

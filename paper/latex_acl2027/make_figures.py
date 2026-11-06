@@ -4,10 +4,7 @@
 
 figures/episode_split.pdf: Figure 2 (a), see episode_split(). Needs the fetched real panel.
 
-figures/task_checks.pdf: the execution_lag check on two inverse-volatility programs of the
-    seed-11 panel: the library's lagged positions and the same positions read on the close they
-    trade over. Prices from row k onward are perturbed exactly as the guard perturbs them;
-    a cell is filled where a position moved.
+figures/episode_lag.tex: Figure 2 (c) as TikZ data, see episode_lag(). Synthetic panel only.
 
 figures/real_panel.pdf: the real-price panel (fin_skills.tasks.real), one small multiple per
     stock: raw quote and adjusted close, both indexed to 100 at the first close, on a log
@@ -22,12 +19,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.patches import Patch, Rectangle  # noqa: E402
+from matplotlib.patches import Rectangle  # noqa: E402
 import numpy as np  # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "figures"
 SEED, ASSET, K, WINDOW = 11, "C", 64, 20
-SHOW = range(56, 73)                       # rows drawn in panel (b)
+SHOW = range(56, 73)                       # rows drawn in Figure 2 (c)
 # Colours: figures/figstyle.tex, read by figstyle.py (reference palette, validated).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from figstyle import BLUE, GRID, INK, INK2, MUTED, ORANGE, RC, SHORT, UNMOVED  # noqa: E402,F401
@@ -42,6 +39,7 @@ def perturb(frame, k: int):
 
 
 STYLE = RC                                 # figstyle.py: the shared figure style
+META = {"CreationDate": None}               # no timestamp, so a rerun does not change the PDFs
 
 
 def real_panel_figure() -> None:
@@ -93,7 +91,7 @@ def real_panel_figure() -> None:
                loc="upper right", bbox_to_anchor=(0.995, 1.13), ncol=2, frameon=False,
                fontsize=7, handlelength=1.6, labelcolor=INK)
     OUT.mkdir(exist_ok=True)
-    fig.savefig(OUT / "real_panel.pdf", bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(OUT / "real_panel.pdf", bbox_inches="tight", pad_inches=0.02, metadata=META)
     fig.savefig(OUT / "real_panel.png", dpi=200, bbox_inches="tight", pad_inches=0.02)
     print("real panel", raw.index[0].date(), raw.index[-1].date())
 
@@ -182,15 +180,23 @@ def episode_split() -> None:
         f"\\newcommand{{\\EpisodeShort}}{{{short}}}% sessions run 1 is short after the split\n"
         f"\\newcommand{{\\EpisodeWrong}}{{{int(wrong.sum())}}}% of them, the reference is long\n")
     OUT.mkdir(exist_ok=True)
-    fig.savefig(OUT / "episode_split.pdf", bbox_inches="tight", pad_inches=0.01)
+    fig.savefig(OUT / "episode_split.pdf", bbox_inches="tight", pad_inches=0.01, metadata=META)
     fig.savefig(OUT / "episode_split.png", dpi=300, bbox_inches="tight", pad_inches=0.01)
 
 
-def main() -> None:
+def episode_lag() -> None:
+    """Figure 2 (c): what the execution_lag check sees, written as TikZ data for episode.tex.
+
+    Two inverse-volatility programs on the seed-11 panel: the library's lagged positions and
+    the same positions read on the close they trade over. Prices from row K on are perturbed
+    as the guard perturbs them (both of assert_lagged's perturbations); a cell is marked where
+    a position moved. The verdicts are the guard's own, asserted against the cells.
+    """
     from fin_skills.algorithms import positions
+    from fin_skills.api import get
     from fin_skills.tasks import panel
 
-    raw, factors, adjusted = panel(SEED)
+    raw, factors, _ = panel(SEED)
 
     def lagged(prices):
         return positions("inverse_volatility", prices, factors, window=WINDOW)
@@ -198,49 +204,38 @@ def main() -> None:
     def same_close(prices):                # decides row t with the close of row t
         return lagged(prices).shift(-1).fillna(0.0)
 
-    moved = {}
-    for name, fn in (("lagged (correct)", lagged), ("same close (defect)", same_close)):
-        delta = (fn(raw) - fn(perturb(raw, K))).abs().max(axis=1).to_numpy()
-        moved[name] = delta > 1e-8
+    scaled = raw.copy()
+    scaled.iloc[K:] = scaled.iloc[K:].to_numpy() * 2.0
+    rows = {}
+    for name, fn in (("A", lagged), ("B", same_close)):
+        moved = np.zeros(len(raw), dtype=bool)
+        for other in (scaled, perturb(raw, K)):
+            moved |= (fn(raw) - fn(other)).abs().max(axis=1).to_numpy() > 1e-8
+        passed = bool(get("execution_lag").run(fn=fn, df=raw.copy(), k=K, tol=1e-8).passed)
+        assert passed == (not moved[:K + 1].any()), (name, passed)
+        rows[name] = (moved, passed)
+    assert rows["A"][1] and not rows["B"][1]
+    first = {n: int(np.flatnonzero(m)[0]) for n, (m, _) in rows.items()}
+    assert first == {"A": K + 1, "B": K}, first      # the figure's labels: k + 1 and k
+    print("episode (c): k", K, "first moved row", first)
 
-    plt.rcParams.update(STYLE)
-    fig, b = plt.subplots(1, 1, figsize=(1.95, 1.0))  # with its labels, one ACL column
-    names = list(moved)[::-1]              # correct program on top
-    b.add_patch(Rectangle((K - 0.5, -0.55), 1.0, 2.1, facecolor=ORANGE, alpha=0.12,
-                          edgecolor="none", zorder=0))
-    for y, name in enumerate(names):
-        for x in SHOW:
-            hit = moved[name][x]
-            color = (ORANGE if x <= K else BLUE) if hit else UNMOVED
-            b.add_patch(Rectangle((x - 0.45, y - 0.4), 0.9, 0.8, facecolor=color,
-                                  edgecolor="none"))
-    b.plot([K - 0.5, K - 0.5], [-0.55, 1.5], color=INK2, lw=0.8)
-    b.text(SHOW.stop - 0.4, 1.78, f"prices perturbed from row k = {K}", ha="right",
-           va="center", color=INK2, fontsize=7)
-    for y, name in enumerate(names):
-        verdict = "fails" if moved[name][K] else "passes"
-        b.text(SHOW.stop - 0.2, y, verdict, va="center", ha="left", color=INK, fontsize=7,
-               fontweight="bold" if verdict == "fails" else "normal")
-    b.set_xlim(SHOW.start - 0.6, SHOW.stop - 0.4)
-    b.set_ylim(-0.6, 2.05)
-    b.set_yticks(range(len(names)), names)
-    b.set_xticks([x for x in SHOW if x % 4 == 0])
-    b.tick_params(axis="y", length=0)
-    b.set_xlabel("row", labelpad=1)
-    for side in ("top", "right", "left"):
-        b.spines[side].set_visible(False)
-    b.legend(handles=[Patch(color=ORANGE, label="moved at or before k: check fails"),
-                      Patch(color=BLUE, label="moved after k: allowed"),
-                      Patch(color=UNMOVED, label="unchanged")],
-             loc="upper left", bbox_to_anchor=(-0.74, -0.5), ncol=1, frameon=False,
-             fontsize=7, handlelength=1.0, columnspacing=0.8, labelcolor=INK)
+    def cells(moved):                      # 0 unchanged, 1 moved after k, 2 moved by row k
+        return ",".join(str(0 if not moved[x] else (2 if x <= K else 1)) for x in SHOW)
 
-    OUT.mkdir(exist_ok=True)
-    fig.savefig(OUT / "task_checks.pdf", bbox_inches="tight", pad_inches=0.02)
-    fig.savefig(OUT / "task_checks.png", dpi=200, bbox_inches="tight", pad_inches=0.02)
-    first = {n: int(np.flatnonzero(moved[n])[0]) for n in names}
-    print("first moved row", first)
+    (OUT / "episode_lag.tex").write_text(
+        "% GENERATED by make_figures.py (episode_lag) - do not edit by hand.\n"
+        f"% Seed {SEED} panel, inverse_volatility (window {WINDOW}), rows {SHOW.start}.."
+        f"{SHOW.stop - 1}.\n"
+        f"\\def\\LagK{{{K - SHOW.start}}}% first perturbed row, counted from the first drawn\n"
+        f"\\def\\LagRows{{{len(SHOW)}}}%\n"
+        f"\\def\\LagCellsA{{{cells(rows['A'][0])}}}% lagged: 0 same, 1 moved after k, "
+        "2 moved by k\n"
+        f"\\def\\LagCellsB{{{cells(rows['B'][0])}}}% same close\n")
+
+
+def main() -> None:
     episode_split()
+    episode_lag()
     real_panel_figure()
 
 
