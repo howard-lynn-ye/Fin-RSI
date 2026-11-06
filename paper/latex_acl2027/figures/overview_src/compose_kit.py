@@ -1,211 +1,190 @@
-"""Figure 1: Fin-RSI as a toolbox, drawn the way library papers draw their overview (PyG,
-AgentScope, TDC, DGL-Go): one large container for the library, compartments of equal-size name
-chips, the ecosystem outside it, and a check mark on what a user picks.
+"""Figure 1: Fin-RSI as a toolbox, in shapes rather than words.
 
-Writes ../overview.tex (pure TikZ). Every name is a real adapter, collector, method, guard,
-plugin or investor template; counts and "+N" come from ../../numbers.tex and the code.
+The library is one container with a handle. Each compartment holds one glyph per item, in the real
+counts: discs for the self-improvement methods (pick one), squares for the checks and person marks
+for the investor templates (pick any), and one spine per skill, grouped by plugin. The pieces one
+agent picks are filled; on the right they reappear beside the user's model as that agent. Words are
+only the compartment names and the few labels around the box.
+
+Writes ../overview.tex (pure TikZ). Counts come from ../../numbers.tex and catalog/index.json.
 
     python3 compose_kit.py
 """
 from __future__ import annotations
 
+import collections
+import json
 import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
 NUM = {m[1]: m[2] for m in re.finditer(r"\\newcommand\{\\(\w+)\}\{([^}]*)\}",
                                         (HERE.parent.parent / "numbers.tex").read_text())}
 n = lambda k: int(NUM[k].replace(",", ""))
-
-CH = 0.095          # cm per character of the chip font (Inconsolata at 5.4 pt is 0.5 em wide)
-CH_SANS = 0.108     # cm per character, generous average, Helvetica at 5.6 pt
-CPAD = 0.1          # cm of padding each side of a chip
-CHIP_H = 0.27       # cm
-GAP = 0.07          # cm between chips
-ROW = 0.335         # cm between chip rows
-MARK = 0.17         # cm taken by a radio or check mark
+IDX = json.loads((ROOT / "catalog" / "index.json").read_text())
+PER_PLUGIN = collections.Counter(s["plugin"] for s in IDX["skills"])
 
 L: list[str] = []
 w = L.append
 f = lambda v: f"{v:.3f}"
 
-
-def tex(s: str) -> str:
-    return s.replace("_", r"\_").replace("&", r"\&")
-
-
-def chip_w(text: str, mark: bool, sans: bool = False) -> float:
-    return len(text) * (CH_SANS if sans else CH) + 2 * CPAD + (MARK if mark else 0)
+# one agent's picks (the same agent as in the episode figure)
+PICK_METHOD = 4                      # PlaybookLearning, the fifth of rsi.METHODS
+PICK_CHECKS = {1, 8, 22}             # positions only; the names live in the caption
+PICK_PLUGIN = "fin-core"
+PICK_TEMPLATE = 13
 
 
-def rows_needed(width, items, mark=None, sans=False):
-    x, rows = 0.0, 1
-    for text, _ in items:
-        cw = chip_w(text, bool(mark) and not text.startswith("+"), sans or text.startswith("+"))
-        if x + cw > width + 1e-6:
-            x, rows = 0.0, rows + 1
-        x += cw + GAP
-    return rows
-
-
-def comp_height(wdt, items, mark=None, sans=False):
-    return 0.5 + rows_needed(wdt - 0.28, items, mark, sans) * ROW + 0.06
-
-
-def chips(x0, y0, width, items, col, mark=None, sans=False):
-    """Lay out chips left to right, wrapping at width. items: (text, chosen). mark: radio, check
-    or None. Returns the y of the last row."""
-    x, y = x0, y0
-    for text, on in items:
-        cw = chip_w(text, bool(mark) and not text.startswith("+"), sans or text.startswith("+"))
-        if x + cw > x0 + width + 1e-6:
-            x, y = x0, y - ROW
-        more = text.startswith("+")
-        style = ("more" if more else f"on={col}" if on else f"off={col}")
-        font = r"\kitsans" if (sans or more) else r"\kitmono"
-        label = tex(text)
-        if mark and not more:
-            glyph = (r"\kitradio" if mark == "radio" else r"\kitcheck") + ("on" if on else "off")
-            label = f"{glyph}\\hspace{{0.45mm}}{label}"
-        w(f"\\node[chip, {style}, minimum width={f(cw)}cm, font={font}] at ({f(x + cw / 2)},{f(y)}) {{{label}}};")
-        x += cw + GAP
-    return y
-
-
-def compartment(x, y_top, wdt, hgt, col, title, note, items, mark=None, sans=False):
-    hgt = hgt or comp_height(wdt, items, mark, sans)
-    w(f"\\path[fill={col}!7, draw={col}!38, line width=0.45pt, rounded corners=2.5pt] "
+def comp(x, y_top, wdt, hgt, col, title, count):
+    w(f"\\path[fill={col}!6, draw={col}!35, line width=0.45pt, rounded corners=2.5pt] "
       f"({f(x)},{f(y_top - hgt)}) rectangle ({f(x + wdt)},{f(y_top)});")
-    w(f"\\node[anchor=west, font=\\kittitle, text={col}!75!black, inner sep=0] at ({f(x + 0.14)},{f(y_top - 0.21)}) {{{title}}};")
-    if note:
-        w(f"\\node[anchor=east, font=\\kitnote, text={col}!60!black, inner sep=0] at ({f(x + wdt - 0.14)},{f(y_top - 0.21)}) {{{note}}};")
-    chips(x + 0.14, y_top - 0.55, wdt - 0.28, items, col, mark, sans)
-
-
-def more(total: int, shown: int, word: str = "") -> tuple[str, bool]:
-    return (f"+{total - shown}{(' ' + word) if word else ''}", False)
+    w(f"\\node[name] at ({f(x + 0.13)},{f(y_top - 0.2)}) {{\\textcolor{{{col}!75!black}}{{{title}}}"
+      f"\\hspace{{1.2mm}}\\textcolor{{{col}!55!black}}{{\\fontseries{{m}}\\selectfont {count}}}}};")
 
 
 def main() -> None:
-    methods = ["NoImprove", "SelfDebug", "CheckFeedback", "Reflexion", "PlaybookLearning", "Team", "Evolve"]
-    checks = ["execution_lag", "adjustment_check", "warmup_probe", "assert_causal", "survivorship_audit",
-              "safe_asof"]
-    chosen_checks = {"execution_lag", "adjustment_check", "warmup_probe"}
-    plugins = ["fin-core", "fin-market-data", "fin-strategies", "fin-ml", "fin-china", "fin-crypto"]
-    people = ["Buffett", "Munger", "Graham", "Soros", "Druckenmiller", "Simons", "Seykota", "Duan Yongping"]
-
+    assert sum(PER_PLUGIN.values()) == n("NSkills") and len(PER_PLUGIN) == n("NPlugins")
     w("% GENERATED by figures/overview_src/compose_kit.py - do not edit by hand.")
-    w("% Figure 1: Fin-RSI as a toolbox; checked chips are one agent's picks.")
+    w("% Figure 1: Fin-RSI as a toolbox; one glyph per item, filled glyphs are one agent's picks.")
     w(r"\definecolor{kink}{HTML}{1F2335}\definecolor{kdat}{HTML}{6B5CA5}\definecolor{kuse}{HTML}{4C6378}")
-    w(r"\providecommand{\kitmono}{\fontsize{5.4}{6.4}\fontfamily{zi4}\selectfont}")
-    w(r"\providecommand{\kitsans}{\fontsize{5.6}{6.6}\sffamily\selectfont}")
-    w(r"\providecommand{\kittitle}{\fontsize{6.6}{7.8}\sffamily\bfseries\selectfont}")
-    w(r"\providecommand{\kitnote}{\fontsize{5.6}{6.6}\sffamily\selectfont}")
-    w(r"\providecommand{\kitradioon}{\tikz[baseline=-0.6ex]{\draw[white, line width=0.45pt] (0,0) circle (0.055); \fill[white] (0,0) circle (0.027);}}")
-    w(r"\providecommand{\kitradiooff}{\tikz[baseline=-0.6ex]\draw[kink!40, line width=0.45pt] (0,0) circle (0.055);}")
-    w(r"\providecommand{\kitcheckon}{\tikz[baseline=-0.6ex]{\fill[white, rounded corners=0.3pt] (-0.055,-0.055) rectangle (0.055,0.055);"
-      r"\draw[kink, line width=0.5pt, line cap=round, line join=round] (-0.035,0) -- (-0.008,-0.03) -- (0.04,0.035);}}")
-    w(r"\providecommand{\kitcheckoff}{\tikz[baseline=-0.6ex]\draw[kink!40, line width=0.45pt, rounded corners=0.3pt] (-0.055,-0.055) rectangle (0.055,0.055);}")
+    w(r"\definecolor{koff}{HTML}{CBD2DC}")
     w(r"\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily,")
-    w(f"  chip/.style={{rounded corners=1.3pt, minimum height={CHIP_H}cm, inner xsep=0pt, inner ysep=0pt, line width=0.4pt}},")
-    w(r"  on/.style={fill=#1, draw=#1!85!black, text=white},")
-    w(r"  off/.style={fill=white, draw=#1!30, text=kink!85},")
-    w(r"  more/.style={fill=none, draw=kink!25, dash pattern=on 1.2pt off 0.8pt, text=kink!55},")
-    w(r"  head/.style={font=\fontsize{7.2}{8.6}\sffamily\bfseries\selectfont, text=kink, inner sep=0},")
+    w(r"  name/.style={anchor=west, inner sep=0, font=\fontsize{6.6}{7.8}\sffamily\bfseries\selectfont},")
+    w(r"  word/.style={inner sep=0, font=\fontsize{6.3}{7.4}\sffamily\selectfont, text=kink!80},")
+    w(r"  head/.style={anchor=west, inner sep=0, font=\fontsize{7.2}{8.6}\sffamily\bfseries\selectfont, text=#1},")
     w(r"  bigarrow/.style={fill=kink!9, draw=none},")
     w(r"]")
-    BB = len(L)
-    L.append("")                                                    # bounding box, filled in below
+    H = 5.05
+    w(f"\\useasboundingbox (0,0) rectangle (17.5,{f(H)});")
 
-    # ------------------------------------------------------------------ the toolbox (sizes first)
-    iw, bw = 3.25, 8.7
-    aw = 17.5 - iw - bw - 2 * 0.55
-    cw2 = (bw - 0.45) / 2
-    meth = [(m, m == "PlaybookLearning") for m in methods]
-    chk = [(c, c in chosen_checks) for c in checks] + [more(n("NGuards"), len(checks))]
-    skl = [(p, p == "fin-core") for p in plugins] + [more(n("NPlugins"), len(plugins), "plugins")]
-    ppl = [(p, p == "Buffett") for p in people] + [more(n("NLensSkills"), len(people))]
-    engine = [f"{n('NAlgorithms')} algorithms", f"{n('NCards')} rule cards", "backtester",
-              f"{n('NBridgeLibraries')} bridges", f"benchmark, {n('NTasks')} tasks"]
-    h1 = max(comp_height(cw2, meth, "radio"), comp_height(cw2, chk, "check"))
-    h2 = max(comp_height(cw2, skl, "check"), comp_height(cw2, ppl, "check", True))
-    h3 = comp_height(bw - 0.3, [(e, False) for e in engine], sans=True)
-    top = 0.15 + h3 + 0.13 + h2 + 0.13 + h1 + 0.15 + 0.5          # box height
-    H = top + 0.32                                                  # with the handle
+    # glyphs
+    def disc(x, y, on, k=1.0):
+        if on:
+            w(f"\\fill[finaqua] ({f(x)},{f(y)}) circle ({f(0.13 * k)}); \\fill[white] ({f(x)},{f(y)}) circle ({f(0.05 * k)});")
+        else:
+            w(f"\\draw[koff, line width=0.6pt] ({f(x)},{f(y)}) circle (0.12);")
 
-    # ------------------------------------------------------------------ information
-    ix = 0.0
-    adapters = ["yfinance", "akshare", "ccxt", "EDGAR", "FRED", "Stooq", "Tiingo", "Alpha Vantage"]
-    collectors = ["RSS", "GDELT", "SEC filings", "US House", "CFTC", "AAII", "UMich", "Bluesky", "web pages"]
-    retrieval = ["search", "as of a date", "RAG", "timeline", "dossier"]
-    w(f"\\path[fill=kdat!4, draw=kdat!30, line width=0.45pt, rounded corners=3pt] ({f(ix)},0) rectangle ({f(ix + iw)},{f(top)});")
-    w(f"\\node[head, anchor=west, text=kdat!85!black] at ({f(ix + 0.15)},{f(top - 0.26)}) {{Information in}};")
-    groups = [("market data", adapters), ("collectors", collectors), ("retrieval", retrieval)]
-    hs = [comp_height(iw - 0.24, [(t, False) for t in g], sans=True) for _, g in groups]
-    spare = (top - 0.52 - 0.12) - sum(hs) - 0.12 * (len(hs) - 1)
-    yt = top - 0.52
-    for (title, items), hh in zip(groups, hs):
-        hh += spare / len(hs)
-        compartment(ix + 0.12, yt, iw - 0.24, hh, "kdat", title, "" if title == "retrieval" else str(len(items)),
-                    [(t, False) for t in items], sans=True)
-        yt -= hh + 0.12
+    def square(x, y, on, s=0.085):
+        if on:
+            k = s / 0.085
+            w(f"\\fill[finorange, rounded corners=0.6pt] ({f(x - s)},{f(y - s)}) rectangle ({f(x + s)},{f(y + s)});")
+            w(f"\\draw[white, line width={f(0.55 * k)}pt, line cap=round, line join=round] ({f(x - 0.045 * k)},{f(y)}) -- "
+              f"({f(x - 0.012 * k)},{f(y - 0.035 * k)}) -- ({f(x + 0.05 * k)},{f(y + 0.04 * k)});")
+        else:
+            w(f"\\draw[koff, line width=0.5pt, rounded corners=0.6pt] ({f(x - s + 0.01)},{f(y - s + 0.01)}) rectangle ({f(x + s - 0.01)},{f(y + s - 0.01)});")
 
-    # ------------------------------------------------------------------ the toolbox
-    bx = ix + iw + 0.55
-    w(f"\\draw[kink!70, line width=2.2pt, line cap=round, rounded corners=3pt] ({f(bx + bw / 2 - 1.0)},{f(top)}) -- "
-      f"({f(bx + bw / 2 - 1.0)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.0)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.0)},{f(top)});")
-    w(f"\\path[fill=white, draw=kink!75, line width=0.9pt, rounded corners=4pt, blur shadow={{shadow blur steps=8, "
-      f"shadow yshift=-1pt, shadow opacity=20}}] ({f(bx)},0) rectangle ({f(bx + bw)},{f(top)});")
-    w(f"\\begin{{scope}}\\clip[rounded corners=4pt] ({f(bx)},0) rectangle ({f(bx + bw)},{f(top)});")
-    w(f"\\fill[kink] ({f(bx)},{f(top - 0.5)}) rectangle ({f(bx + bw)},{f(top)});\\end{{scope}}")
-    w(f"\\node[anchor=west, font=\\fontsize{{8.4}}{{10}}\\sffamily\\bfseries\\selectfont, text=white, inner sep=0] "
-      f"at ({f(bx + 0.22)},{f(top - 0.25)}) {{Fin-RSI}};")
-    w(f"\\node[anchor=east, font=\\kitnote, text=white!80!kink, inner sep=0] at ({f(bx + bw - 0.22)},{f(top - 0.25)}) "
-      f"{{pick the tools a task needs}};")
-    cx = bx + 0.15
-    r1 = top - 0.65
-    compartment(cx, r1, cw2, h1, "finaqua", "Self-improvement", f"pick 1 of {n('NMethods')}", meth, mark="radio")
-    compartment(cx + cw2 + 0.15, r1, cw2, h1, "finorange", "Checks", f"any of {n('NGuards')}", chk, mark="check")
-    r2 = r1 - h1 - 0.13
-    compartment(cx, r2, cw2, h2, "finblue", "Skills", f"{n('NSkills')} skills", skl, mark="check")
-    compartment(cx + cw2 + 0.15, r2, cw2, h2, "finmagenta", "Investor templates", f"any of {n('NLensSkills')}", ppl,
-                mark="check", sans=True)
-    r3 = r2 - h2 - 0.13
-    compartment(cx, r3, bw - 0.3, h3, "fingray", "Engine", "", [(e, False) for e in engine], sans=True)
+    def spine(x, y, on, h=0.42, wd=0.034):
+        col = "finblue" if on else "koff"
+        w(f"\\fill[{col}] ({f(x)},{f(y)}) rectangle ({f(x + wd)},{f(y + h)});")
 
-    # ------------------------------------------------------------------ your agent
-    ax = bx + bw + 0.55
-    use = [(u, False) for u in ("MCP", "OpenAI tools", "Anthropic tools", "Python API")]
-    hu = max(comp_height(aw, use, sans=True), h3 + 0.15)
-    w(f"\\path[fill=white, draw=kink!30, line width=0.45pt, rounded corners=3pt] ({f(ax)},{f(hu + 0.15)}) rectangle ({f(ax + aw)},{f(top)});")
-    w(f"\\node[head, anchor=west] at ({f(ax + 0.15)},{f(top - 0.26)}) {{Your agent}};")
-    yy = top - 0.72
-    w(f"\\path[fill=kink] ({f(ax + 0.33)},{f(yy)}) circle (0.19);")
-    w(f"\\pic[draw=white, fill=white, line width=0.5pt, scale=0.8] at ({f(ax + 0.33)},{f(yy)}) {{fin robot}};")
-    w(f"\\node[anchor=west, font=\\kitmono, text=kink, inner sep=0] at ({f(ax + 0.62)},{f(yy + 0.08)}) {{generate(messages)}};")
-    w(f"\\node[anchor=west, font=\\kitnote, text=kink!55, inner sep=0] at ({f(ax + 0.62)},{f(yy - 0.13)}) {{your model, any provider}};")
-    w(f"\\draw[kink!15, line width=0.4pt] ({f(ax + 0.15)},{f(yy - 0.34)}) -- ({f(ax + aw - 0.15)},{f(yy - 0.34)});")
-    kit = [("finaqua", ["PlaybookLearning"], "radio"), ("finorange", ["execution_lag", "adjustment_check", "warmup_probe"], "check"),
-           ("finblue", ["fin-core"], "check"), ("finmagenta", ["Buffett"], "check")]
-    y = yy - 0.68
-    for col, names, mk in kit:
-        y = chips(ax + 0.15, y, aw - 0.3, [(t, True) for t in names], col, mark=mk, sans=(col == "finmagenta")) - ROW * 1.45
-    compartment(ax, hu, aw, hu, "kuse", "Use it from", "", use, sans=True)
-    w(f"\\draw[-{{Latex[length=1.6mm,width=1.4mm]}}, kink!45, line width=0.8pt] ({f(ax + aw / 2)},{f(hu + 0.15)}) -- ({f(ax + aw / 2)},{f(hu + 0.02)});")
+    def person(x, y, on, k=1.0):
+        col = "finmagenta" if on else "koff"
+        w(f"\\fill[{col}] ({f(x)},{f(y + 0.05 * k)}) circle ({f(0.045 * k)});")
+        w(f"\\fill[{col}] ({f(x - 0.07 * k)},{f(y - 0.06 * k)}) arc[start angle=180, end angle=0, radius={f(0.07 * k)}] -- cycle;")
 
-    # ------------------------------------------------------------------ big arrows
-    def big(x0, x1, yc, hh=0.55):
+    # ------------------------------------------------------------------ information in
+    w(f"\\node[head=kdat!85!black] at (0,{f(H - 0.25)}) {{information}};")
+    for i, (icon, word) in enumerate((("fin chart", "prices"), ("fin doc", "filings"), ("fin feed", "news"),
+                                      ("fin search", "search"))):
+        y = H - 0.95 - i * 0.82
+        w(f"\\path[fill=kdat!12] (0.24,{f(y)}) circle (0.23);")
+        w(f"\\pic[draw=kdat, fill=kdat, line width=0.6pt, scale=0.95] at (0.24,{f(y)}) {{{icon}}};")
+        w(f"\\node[word, anchor=west] at (0.58,{f(y)}) {{{word}}};")
+
+    def big(x0, x1, yc, hh=0.5):
         w(f"\\path[bigarrow] ({f(x0)},{f(yc - hh / 2)}) -- ({f(x1 - 0.2)},{f(yc - hh / 2)}) -- ({f(x1 - 0.2)},{f(yc - hh / 2 - 0.15)}) "
           f"-- ({f(x1)},{f(yc)}) -- ({f(x1 - 0.2)},{f(yc + hh / 2 + 0.15)}) -- ({f(x1 - 0.2)},{f(yc + hh / 2)}) -- ({f(x0)},{f(yc + hh / 2)}) -- cycle;")
-    big(ix + iw + 0.04, bx - 0.04, top / 2)
-    big(bx + bw + 0.04, ax - 0.04, top / 2 + 0.4)
-    L[BB] = f"\\useasboundingbox (0,0) rectangle (17.5,{f(H)});"
-    print(f"figure 17.5 x {H:.2f} cm")
+
+    # ------------------------------------------------------------------ the toolbox
+    bx, bw, top = 2.25, 9.6, H - 0.34
+    big(1.55, bx - 0.08, 2.3)
+    w(f"\\draw[kink!70, line width=2.2pt, line cap=round, rounded corners=3pt] ({f(bx + bw / 2 - 1.1)},{f(top)}) -- "
+      f"({f(bx + bw / 2 - 1.1)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.1)},{f(top + 0.28)}) -- ({f(bx + bw / 2 + 1.1)},{f(top)});")
+    w(f"\\path[fill=white, draw=kink!80, line width=0.9pt, rounded corners=4pt, blur shadow={{shadow blur steps=8, "
+      f"shadow yshift=-1pt, shadow opacity=20}}] ({f(bx)},0) rectangle ({f(bx + bw)},{f(top)});")
+    w(f"\\begin{{scope}}\\clip[rounded corners=4pt] ({f(bx)},0) rectangle ({f(bx + bw)},{f(top)});")
+    w(f"\\fill[kink] ({f(bx)},{f(top - 0.46)}) rectangle ({f(bx + bw)},{f(top)});\\end{{scope}}")
+    w(f"\\node[anchor=west, font=\\fontsize{{8.4}}{{10}}\\sffamily\\bfseries\\selectfont, text=white, inner sep=0] "
+      f"at ({f(bx + 0.22)},{f(top - 0.23)}) {{Fin-RSI}};")
+
+    g, pad = 0.14, 0.15
+    # row 1: self-improvement | checks
+    r1, h1 = top - 0.46 - g, 1.0
+    w1 = 2.55
+    comp(bx + pad, r1, w1, h1, "finaqua", "self-improvement", n("NMethods"))
+    for i in range(n("NMethods")):
+        disc(bx + pad + 0.3 + i * 0.33, r1 - 0.66, i == PICK_METHOD)
+    w2 = bw - 2 * pad - w1 - g
+    x2 = bx + pad + w1 + g
+    comp(x2, r1, w2, h1, "finorange", "checks", n("NGuards"))
+    per_row = 20
+    for i in range(n("NGuards")):
+        r, c = divmod(i, per_row)
+        square(x2 + 0.24 + c * 0.3, r1 - 0.5 - r * 0.28, i in PICK_CHECKS)
+    # row 2: skills, one spine per skill, grouped by plugin
+    r2, h2 = r1 - h1 - g, 0.98
+    ws = bw - 2 * pad
+    comp(bx + pad, r2, ws, h2, "finblue", "skills", n("NSkills"))
+    pitch, gap = 0.058, 0.082
+    width = n("NSkills") * pitch + (n("NPlugins") - 1) * gap
+    x = bx + pad + (ws - width) / 2
+    for plugin in IDX["plugins"]:
+        for _ in range(PER_PLUGIN[plugin]):
+            spine(x, r2 - 0.86, plugin == PICK_PLUGIN)
+            x += pitch
+        x += gap
+    # row 3: investor templates | engine
+    r3 = r2 - h2 - g
+    h3 = r3 - pad
+    wt = 4.6
+    comp(bx + pad, r3, wt, h3, "finmagenta", "investor templates", n("NLensSkills"))
+    for i in range(n("NLensSkills")):
+        r, c = divmod(i, 25)
+        person(bx + pad + 0.22 + c * 0.173, r3 - 0.5 - r * 0.215, i == PICK_TEMPLATE)
+    xe, we = bx + pad + wt + g, ws - wt - g
+    comp(xe, r3, we, h3, "fingray", "engine", "")
+    for i, (icon, word) in enumerate((("fin chart", "algorithms"), ("fin gauge", "backtester"),
+                                      ("fin link", "bridges"), ("fin check", "benchmark"))):
+        cx = xe + 0.5 + i * (we - 0.6) / 4
+        w(f"\\path[fill=fingray!14] ({f(cx)},{f(r3 - 0.62)}) circle (0.2);")
+        w(f"\\pic[draw=fingray, fill=fingray, line width=0.6pt, scale=0.85] at ({f(cx)},{f(r3 - 0.62)}) {{{icon}}};")
+        w(f"\\node[word, font=\\fontsize{{5.6}}{{6.6}}\\sffamily\\selectfont] at ({f(cx)},{f(r3 - 0.98)}) {{{word}}};")
+
+    # ------------------------------------------------------------------ your agent
+    ax = bx + bw + 0.6
+    big(bx + bw + 0.06, ax - 0.06, 2.95)
+    aw = 17.5 - ax
+    w(f"\\path[fill=white, draw=kink!35, line width=0.5pt, rounded corners=3pt, blur shadow={{shadow blur steps=6, "
+      f"shadow yshift=-0.8pt, shadow opacity=14}}] ({f(ax)},1.45) rectangle ({f(ax + aw)},{f(top)});")
+    w(f"\\node[head=kink] at ({f(ax + 0.16)},{f(top - 0.26)}) {{your agent}};")
+    my = (top + 1.45) / 2 - 0.1
+    w(f"\\path[fill=kink] ({f(ax + 0.55)},{f(my)}) circle (0.33);")
+    w(f"\\pic[draw=white, fill=white, line width=0.65pt, scale=1.25] at ({f(ax + 0.55)},{f(my)}) {{fin robot}};")
+    w(f"\\node[word] at ({f(ax + 0.55)},{f(my - 0.5)}) {{your model}};")
+    w(f"\\node[font=\\fontsize{{9}}{{10}}\\sffamily\\bfseries\\selectfont, text=kink!45] at ({f(ax + 1.2)},{f(my)}) {{+}};")
+    # the picks, larger
+    px = ax + 1.6
+    disc(px + 0.17, my + 0.42, True, k=1.35)
+    for i in range(3):
+        square(px + 0.66 + i * 0.36, my + 0.42, True, s=0.13)
+    person(px + 1.95 + 0.05, my + 0.4, True, k=1.7)
+    for i in range(PER_PLUGIN[PICK_PLUGIN]):
+        spine(px + 0.02 + i * 0.118, my - 0.5, True, h=0.62, wd=0.06)
+    # use it from
+    w(f"\\path[fill=kuse!6, draw=kuse!30, line width=0.45pt, rounded corners=3pt] ({f(ax)},0) rectangle ({f(ax + aw)},1.27);")
+    w(f"\\node[head=kuse!90!black] at ({f(ax + 0.16)},1.04) {{use it from}};")
+    for i, (icon, word) in enumerate((("fin plug", "MCP"), ("fin code", "tool schemas"), ("fin doc", "Python"))):
+        cx = ax + 0.55 + i * (aw - 0.8) / 2.6
+        w(f"\\path[fill=kuse!13] ({f(cx)},0.55) circle (0.2);")
+        w(f"\\pic[draw=kuse, fill=kuse, line width=0.6pt, scale=0.85] at ({f(cx)},0.55) {{{icon}}};")
+        w(f"\\node[word, font=\\fontsize{{5.6}}{{6.6}}\\sffamily\\selectfont] at ({f(cx)},0.2) {{{word}}};")
+    w(f"\\draw[-{{Latex[length=1.6mm,width=1.4mm]}}, kink!40, line width=0.8pt] ({f(ax + aw / 2)},1.45) -- ({f(ax + aw / 2)},1.3);")
     w(r"\end{tikzpicture}")
     k = next(i for i, line in enumerate(L) if line.startswith(r"\begin{tikzpicture}"))
-    L[:k] = [line + "%" for line in L[:k]]                          # no stray spaces before the picture
-    (HERE.parent / "overview.tex").write_text("\n".join(L) + "\n")
-    print("written", len(L), "lines")
+    L[:k] = [line + "%" for line in L[:k]]
+    (HERE.parent / "overview.tex").write_text("\n".join(l for l in L if l is not None) + "\n")
+    print(f"figure 17.5 x {H:.2f} cm")
 
 
 if __name__ == "__main__":
