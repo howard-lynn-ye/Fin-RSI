@@ -16,6 +16,7 @@ figures/real_panel.pdf: the real-price panel (fin_skills.tasks.real), one small 
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import matplotlib
 
@@ -27,10 +28,9 @@ import numpy as np  # noqa: E402
 OUT = Path(__file__).resolve().parent / "figures"
 SEED, ASSET, K, WINDOW = 11, "C", 64, 20
 SHOW = range(56, 73)                       # rows drawn in panel (b)
-# Reference palette, categorical slots 1-3 (validated all-pairs, light surface).
-BLUE, ORANGE = "#2a78d6", "#eb6834"
-INK, INK2, MUTED, GRID, UNMOVED = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e1", "#f1f0ed"
-SHORT = "#b6bdc9"                          # = gline!80!gmid in figures/glyphs.tex
+# Colours: figures/figstyle.tex, read by figstyle.py (reference palette, validated).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from figstyle import BLUE, GRID, INK, INK2, MUTED, ORANGE, RC, SHORT, UNMOVED  # noqa: E402,F401
 
 
 def perturb(frame, k: int):
@@ -41,14 +41,7 @@ def perturb(frame, k: int):
     return out
 
 
-# One sans family for every figure: TeX Gyre Heros is the Helvetica the TikZ figures use
-# (\sffamily under the times package). Nothing smaller than 7 pt at print size.
-STYLE = {
-    "font.family": "TeX Gyre Heros", "mathtext.fontset": "custom",
-    "mathtext.rm": "TeX Gyre Heros", "mathtext.it": "TeX Gyre Heros:italic", "font.size": 7.5,
-    "axes.edgecolor": MUTED, "axes.labelcolor": INK2, "xtick.color": INK2,
-    "ytick.color": INK2, "axes.linewidth": 0.6, "xtick.major.width": 0.6,
-    "ytick.major.width": 0.6, "pdf.fonttype": 42}
+STYLE = RC                                 # figstyle.py: the shared figure style
 
 
 def real_panel_figure() -> None:
