@@ -1,8 +1,8 @@
-"""Check that the episode figure shows what the judge really returns.
+"""Check that Figure 1 (b) shows what the judge really returns.
 
-The figure quotes run1.py and run2.py and the judge's verdicts for them on task momentum_a. This
-runs both programs through the judge and the hidden grader on every seed and on the real panel,
-and fails if any verdict differs from what the figure shows.
+The figure (figures/teaser.tex) quotes run1.py and run2.py and the judge's verdicts for them on
+task momentum_a. This runs both programs through the judge and the hidden grader on every seed
+and on the real panel, and fails if any verdict differs from what the figure shows.
 
     python3 check.py        (needs FIN_TASKS_REAL_PANEL or the cached real panel)
 """

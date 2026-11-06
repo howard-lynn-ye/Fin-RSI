@@ -2,7 +2,7 @@
 \usepackage[review]{acl}
 \usepackage[T1]{fontenc}
 \usepackage{times,amsmath,amssymb,booktabs,graphicx,url,multirow,array,xcolor}
-\usepackage{listings}
+\usepackage{listings,capt-of}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows,shapes.geometric,3d,shadows.blur,fadings,shadings}
 % Reference palette (categorical slots 1-3) and text grey.
@@ -17,6 +17,8 @@
 \lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
         showstringspaces=false,frame=none,xleftmargin=0pt}
 \input{numbers}
+\input{figures/teaser_numbers}
+\input{figures/teaser_caption}
 % Draft markers. \pending{} marks text that waits for the experiments; remove before submission.
 \newcommand{\pending}[1]{{\color{red}[#1]}}
 \newcommand{\lib}{\textsc{Fin-RSI}}
@@ -26,26 +28,24 @@
 \date{}
 
 \begin{document}
+% Figure 1 sits under the title, across both columns (acl.sty's \maketitle is \twocolumn[...]).
+\twocolumn[{%
+\renewcommand\twocolumn[1][]{#1}%
 \maketitle
+\begin{center}
+\input{figures/teaser}
+\vspace{-1mm}
+\captionof{figure}{\TeaserCaption}
+\label{fig:teaser}
+\end{center}
+\vspace{2mm}
+}]
 
 \begin{abstract}
 \input{sections/abstract}
 \end{abstract}
 
 \input{sections/intro}
-
-\begin{figure*}[t]
-\centering
-\resizebox{\textwidth}{!}{\input{figures/overview}}
-\caption{\lib{} at a glance, one mark per item in the real counts: the \NMethods{}
-self-improvement methods (pick one), the \NGuards{} checks, the \NSkills{} skills grouped by their
-\NPlugins{} plugins and the \NLensSkills{} investor templates (pick any), over an engine of
-algorithms, a reference backtester, bridges to other libraries and the benchmark. Filled marks
-are one agent's picks (\texttt{PlaybookLearning}; \texttt{execution\_lag},
-\texttt{adjustment\_check} and \texttt{warmup\_probe}; the \texttt{fin-core} plugin; one
-template), which with the user's own model make the agent on the right.}
-\label{fig:overview}
-\end{figure*}
 
 \input{sections/related}
 \input{sections/library}
@@ -58,6 +58,31 @@ template), which with the user's own model make the agent on the right.}
 intervals; paired differences against \texttt{NoImprove} and between arms (Holm); cost per
 valid program; accepted-but-wrong rate; library use. Component ablation
 (\S\ref{sec:arms}). Development cost of the learning methods.}
+
+% Result figures: make_results.py, from the benchmark's episode records. Until the runs exist
+% they are drawn from null generated records and stamped PLACEHOLDER (figures/results_source.txt).
+\begin{figure*}[t]
+\centering
+\includegraphics{figures/results_main}
+\caption{\pending{Takeaway sentence after the runs. Layout drawn from null placeholder records;
+no number in it is a result.} Valid rate, pooled over the \NModels{} models and paired on model,
+task and seed. (a)~Each method minus \texttt{NoImprove}, without (grey circles) and with (blue
+squares) the library. (b)~The library: \texttt{cards+library} minus \texttt{cards}, per method.
+Bars are 95\% bootstrap intervals that resample held-out tasks; filled markers have
+Holm-adjusted $p<0.05$ over all comparisons in (a) and (b). (c)~Valid rate against generated
+tokens per episode, with the Pareto frontier (dashed); dotted extensions add each learning
+method's development tokens, spread over its held-out episodes.}
+\label{fig:results}
+\end{figure*}
+
+\begin{figure}[t]
+\centering
+\includegraphics{figures/results_outcomes}
+\caption{\pending{Takeaway sentence after the runs; placeholder layout.} Where episodes end, per
+method, without and with the library: valid; accepted but wrong (every check passed, the answer
+is wrong, which the checks cannot see); rejected by a check; or no runnable program.}
+\label{fig:outcomes}
+\end{figure}
 
 \section{Discussion and limitations}
 \pending{Mostly synthetic panels (one real window of four stocks, forward splits only) and a fixed set of pitfalls; checks can only reject the failures they
