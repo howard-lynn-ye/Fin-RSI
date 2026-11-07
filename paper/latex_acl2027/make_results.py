@@ -45,7 +45,8 @@ import numpy as np  # noqa: E402
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "figures"
 sys.path.insert(0, str(HERE))
-from make_figures import BLUE, GRID, INK, INK2, META, MUTED, ORANGE, STYLE  # noqa: E402
+from make_figures import (BLUE, GRID, INK, INK2, META, MUTED, ORANGE, SHORT,  # noqa: E402
+                          STYLE)
 
 METHODS = ("no_improve", "self_debug", "check_feedback", "reflexion", "playbook", "team", "evolve")
 LABEL = dict(no_improve="NoImprove", self_debug="SelfDebug", check_feedback="CheckFeedback",
@@ -171,9 +172,9 @@ def rate(rows_by_key: dict, tasks, rng) -> dict:
 
 
 # ---------------------------------------------------------------- drawing
-def stamp(ax) -> None:
+def stamp(ax, size: float = 13) -> None:
     ax.text(0.5, 0.5, "PLACEHOLDER\nnot results", transform=ax.transAxes, ha="center",
-            va="center", rotation=22, fontsize=13, fontweight="bold", color="#c0392b",
+            va="center", rotation=22, fontsize=size, fontweight="bold", color="#c0392b",
             alpha=0.28, zorder=10, linespacing=1.0)
 
 
@@ -252,8 +253,8 @@ def effects_figure(comps, placeholder_data: bool) -> None:
                handlelength=1.5, columnspacing=1.0, handletextpad=0.5, labelcolor=INK,
                borderaxespad=0.1)
     if placeholder_data:
-        for ax in (axa, axb):
-            stamp(ax)
+        stamp(axa)
+        stamp(axb, 9)
     OUT.mkdir(exist_ok=True)
     fig.savefig(OUT / "results_effects.pdf", metadata=META)
     fig.savefig(OUT / "results_effects.png", dpi=250)
@@ -262,6 +263,7 @@ def effects_figure(comps, placeholder_data: bool) -> None:
 def place_labels(fig, ax, pts, dev) -> None:
     """Name each method once, next to one of its two points, where the name covers the least
     of the points, lines and names already placed. Greedy, in method order; no leader lines."""
+    from matplotlib.patheffects import withStroke
     from matplotlib.transforms import Bbox
     fig.canvas.draw()
     r = fig.canvas.get_renderer()
@@ -304,7 +306,8 @@ def place_labels(fig, ax, pts, dev) -> None:
         mine = [(a, pts[(m, a)]) for a in ARMS if (m, a) in pts]
         if not mine:
             continue
-        t = ax.text(0, 0, LABEL[m], fontsize=7, color=INK, ha="left", va="bottom", zorder=4)
+        t = ax.text(0, 0, LABEL[m], fontsize=7, color=INK, ha="left", va="bottom", zorder=4,
+                    path_effects=[withStroke(linewidth=2.2, foreground="white")])
         ext = t.get_window_extent(r)
         w, h = ext.width, ext.height
         cands = []                                       # (preference, x0, y0) in pixels
@@ -341,7 +344,7 @@ def cost_figure(cells, fits, tasks, placeholder_data: bool) -> None:
     for m in METHODS:                                    # the two arms of a method, joined
         pair = [pts[(m, a)] for a in ARMS if (m, a) in pts]
         if len(pair) == 2:
-            ax.plot(*zip(*pair), color=GRID, lw=2.0, solid_capstyle="round", zorder=1)
+            ax.plot(*zip(*pair), color=SHORT, lw=1.3, solid_capstyle="round", zorder=2)
     for (m, arm), (tok, v) in pts.items():
         ax.plot(tok, v, ARM_MARK[arm], ms=4.2, mew=1.0, mec=ARM_COLOR[arm],
                 mfc=ARM_COLOR[arm], zorder=3)
