@@ -15,7 +15,8 @@ figures/results_effects.pdf (one column)
       together). Filled markers: Holm-adjusted p < 0.05 over every comparison in (a) and (b).
 figures/results_cost.pdf (one column)
   Valid rate against generated tokens per episode (log scale): one point per method and arm,
-  the two arms of a method joined by a line and labelled directly, with the Pareto frontier.
+  an arrow from each method without the library to the same method with it, names placed
+  directly next to the points, and the Pareto frontier.
   With --fits, a dotted extension adds each learning method's development tokens spread over
   its held-out episodes.
 figures/results_outcomes.pdf (one column)
@@ -202,17 +203,19 @@ def comparisons(cells, tasks) -> list:
     return comps
 
 
-def arm_handles(extra=()):
+def arm_handles(extra=(), lines: bool = True, sizes=None):
     from matplotlib.lines import Line2D
-    return [Line2D([], [], color=ARM_COLOR[a], marker=ARM_MARK[a], ms=4.2, lw=1.0,
-                   mfc=ARM_COLOR[a], label=ARM_LABEL[a]) for a in ARMS] + list(extra)
+    sizes = sizes or {a: 4.2 for a in ARMS}
+    return [Line2D([], [], color=ARM_COLOR[a], marker=ARM_MARK[a], ms=sizes[a],
+                   lw=1.0 if lines else 0, mfc=ARM_COLOR[a], label=ARM_LABEL[a])
+            for a in ARMS] + list(extra)
 
 
 def effects_figure(comps, placeholder_data: bool) -> None:
     plt.rcParams.update(STYLE)
-    W, H = 3.0, 2.42                                     # inches; ACL column is 3.03 in
+    W, H = 3.0, 2.3                                      # inches; ACL column is 3.03 in
     fig = plt.figure(figsize=(W, H))
-    bottom, top = 0.36, H - 0.56
+    bottom, top = 0.36, H - 0.43
 
     def axes(left, width):
         return fig.add_axes([left / W, bottom / H, width / W, (top - bottom) / H])
@@ -244,7 +247,7 @@ def effects_figure(comps, placeholder_data: bool) -> None:
     forest(axb, "b", {"cards+library": 0.0}, False)
     axb.set_xlabel("library effect (pp)", labelpad=1.5)
     for x, text in ((0.02, "(a) Each method vs. NoImprove"), (2.2, "(b) The library")):
-        fig.text(x / W, (top + 0.07) / H, text, fontsize=7.5, fontweight="bold", color=INK,
+        fig.text(x / W, (top + 0.05) / H, text, fontsize=7.5, fontweight="bold", color=INK,
                  ha="left", va="bottom")
     from matplotlib.lines import Line2D
     fig.legend(handles=arm_handles([Line2D([], [], color=INK2, marker="o", ms=4.2, lw=0,
@@ -329,9 +332,10 @@ def place_labels(fig, ax, pts, dev) -> None:
 def cost_figure(cells, fits, tasks, placeholder_data: bool) -> None:
     rng = np.random.default_rng(1)
     plt.rcParams.update(STYLE)
-    W, H = 3.0, 2.3
+    W, H = 3.0, 2.55
     fig = plt.figure(figsize=(W, H))
     ax = fig.add_axes([0.42 / W, 0.36 / H, 2.52 / W, (H - 0.36 - 0.42) / H])
+    size = {"cards": 3.4, "cards+library": 4.6}         # the library arm leads, the other trails
     pts = {}                                             # (method, arm) -> (tokens, valid %)
     dev = {}                                             # (method, arm) -> tokens per episode
     for (m, arm), rows in cells.items():
@@ -341,18 +345,19 @@ def cost_figure(cells, fits, tasks, placeholder_data: bool) -> None:
                  if f["method"] == m and f["arm"] == arm]
         if spent:
             dev[(m, arm)] = sum(spent) / max(1, len(rows))
-    for m in METHODS:                                    # the two arms of a method, joined
-        pair = [pts[(m, a)] for a in ARMS if (m, a) in pts]
-        if len(pair) == 2:
-            ax.plot(*zip(*pair), color=SHORT, lw=1.3, solid_capstyle="round", zorder=2)
+    for m in METHODS:                                    # arrow: what adding the library does
+        if all((m, a) in pts for a in ARMS):
+            ax.annotate("", xy=pts[(m, "cards+library")], xytext=pts[(m, "cards")], zorder=2,
+                        arrowprops=dict(arrowstyle="-|>,head_length=0.32,head_width=0.16",
+                                        color=SHORT, lw=1.1, shrinkA=2.2, shrinkB=3.4))
     for (m, arm), (tok, v) in pts.items():
-        ax.plot(tok, v, ARM_MARK[arm], ms=4.2, mew=1.0, mec=ARM_COLOR[arm],
+        ax.plot(tok, v, ARM_MARK[arm], ms=size[arm], mew=0.8, mec=ARM_COLOR[arm],
                 mfc=ARM_COLOR[arm], zorder=3)
         if (m, arm) in dev:                              # development tokens per episode
             end = tok + dev[(m, arm)]
-            ax.plot([tok, end], [v, v], color=ARM_COLOR[arm], lw=0.7, ls=(0, (1, 1.5)),
-                    zorder=1)
-            ax.plot(end, v, "|", ms=4.5, mew=1.0, color=ARM_COLOR[arm], zorder=3)
+            ax.plot([tok, end], [v, v], color=ARM_COLOR[arm], lw=0.6, ls=(0, (1, 1.6)),
+                    alpha=0.6, zorder=1)
+            ax.plot(end, v, "|", ms=3.6, mew=0.8, color=ARM_COLOR[arm], alpha=0.8, zorder=3)
     xmax = max(tok + dev.get(k, 0.0) for k, (tok, _) in pts.items())
     front, best = [], -1.0
     for tok, v in sorted(pts.values(), key=lambda p: (p[0], -p[1])):
@@ -385,7 +390,8 @@ def cost_figure(cells, fits, tasks, placeholder_data: bool) -> None:
     if fits:
         extra.append(Line2D([], [], color=INK2, marker="|", ms=4.5, lw=0.7, ls=(0, (1, 1.5)),
                             label="+ development tokens"))
-    fig.legend(handles=arm_handles(extra), loc="upper left", bbox_to_anchor=(0.0, 1.0), ncol=2,
+    fig.legend(handles=arm_handles(extra, lines=False, sizes=size), loc="upper left",
+               bbox_to_anchor=(0.0, 1.0), ncol=2,
                frameon=False, fontsize=7, handlelength=1.5, columnspacing=1.0,
                handletextpad=0.5, labelcolor=INK, borderaxespad=0.1)
     if placeholder_data:
