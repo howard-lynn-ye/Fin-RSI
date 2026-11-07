@@ -1,0 +1,33 @@
+% Glyphs for the method figures (episode, gate, arms). Pictures first, words only as labels.%
+% Colours, text styles, lines, corners, shadows and arrows come from figures/figstyle.tex,%
+% icons from figures/lucide.tex. Load figstyle if the document has not.%
+\ifcsname figTitleFont\endcsname\else\InputIfFileExists{figures/figstyle}{}{\input{../latex_acl2027/figures/figstyle}}\fi%
+% \gpage{centre}{w}{h}{fill}: a page with a folded corner.%
+\providecommand{\gpage}[4]{%
+  \begin{scope}[shift={#1}]%
+    \path[fill=#4, draw=gline, line width=0.5pt, line join=round, gshade]%
+      ({-#2/2},{-#3/2}) -- ({#2/2},{-#3/2}) -- ({#2/2},{#3/2-0.2}) -- ({#2/2-0.2},{#3/2}) -- ({-#2/2},{#3/2}) -- cycle;%
+    \draw[gline, line width=0.5pt, line join=round, fill=gline!40] ({#2/2-0.2},{#3/2}) -- ({#2/2-0.2},{#3/2-0.2}) -- ({#2/2},{#3/2-0.2});%
+  \end{scope}}%
+% \gbar{x0}{y}{length}{colour}: one line of text or code, drawn as a rounded bar.%
+\providecommand{\gbar}[4]{\draw[#4, line width=2.4pt, line cap=round] (#1,#2) -- ({#1+#3},#2);}%
+% \gcheck{centre}{state}: a check that passed (1) or failed (0), Lucide check or x on a disc.%
+\providecommand{\gcheck}[2]{%
+  \ifnum#2=1 \fill[figok] #1 circle (0.13);%
+    \pic[draw=white, line width=0.85pt, scale=0.62] at #1 {lu check};%
+  \else \fill[figbad] #1 circle (0.13);%
+    \pic[draw=white, line width=0.85pt, scale=0.62] at #1 {lu x};\fi}%
+% \gcard{centre}: a rule card, small and blue.%
+\providecommand{\gcard}[1]{%
+  \begin{scope}[shift={#1}]%
+    \path[fill=finblue!12, draw=finblue!70, line width=0.55pt, fig item, gshade] (-0.22,-0.16) rectangle (0.22,0.16);%
+    \draw[finblue!70, line width=0.9pt, line cap=round] (-0.13,0.05) -- (0.13,0.05) (-0.13,-0.05) -- (0.06,-0.05);%
+  \end{scope}}%
+% \glock{centre}: a padlock (Lucide lock) on a white disc, so it can sit on a line.%
+\providecommand{\glock}[1]{%
+  \fill[white] #1 circle (0.19);%
+  \pic[draw=figink!80, line width=0.95pt, scale=1.05] at #1 {lu lock};}%
+% \gbot{centre}{radius}: the model, a dark disc with the Lucide bot icon.%
+\providecommand{\gbot}[2]{%
+  \path[fill=figink, fig shadow] #1 circle (#2);%
+  \pic[draw=white, line width=0.75pt, scale={4.2*#2}] at #1 {lu bot};}%

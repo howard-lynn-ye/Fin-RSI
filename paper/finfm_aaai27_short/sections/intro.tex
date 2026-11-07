@@ -1,0 +1,35 @@
+\section{Introduction}
+\label{sec:intro}
+
+Financial research code fails silently. A program that applies stock splits twice, decides
+a position with the close it trades over, or leaves warm-up rows missing still runs and
+still returns a backtest (Figure~\ref{fig:episode}). Language-model agents now write such code
+\citep{zhang2024finagent,bigeard2025finance}, and they make these mistakes: in our earlier
+audit, all 24 programs a 14B coding model wrote re-applied split factors that the prompt
+defined as already cumulative.
+
+An agent would need three things to avoid them: knowledge of the failure modes, checks that
+detect each failure without an expected output, and a way to turn check results into better
+programs. All three exist, but separately. Skill documents and tool collections give
+knowledge; testing utilities give checks; self-improvement methods each come with their own
+tasks, feedback and budgets
+\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,agrawal2026gepa}, so their
+results cannot be compared. Intrinsic self-correction without an external signal rarely
+helps \citep{huang2024cannot}, and financial benchmarks score answers or returns
+\citep{xie2024finben,chen2025stockbench}; a return can reward a wrong program on a
+favourable price path, and repeated trials make such false discoveries likely
+\citep{bailey2017pbo}.
+
+\lib{} puts all three behind interfaces an agent can call (Figure~\ref{fig:overview}).
+PyOD put outlier detectors behind one interface \citep{zhao2019pyod}, which let ADBench
+compare them on equal terms \citep{han2022adbench}. \lib{} does the same for
+self-improvement: every method gets the same judge and the same metered budget. A user
+connects a model once, as one \texttt{generate(messages)} callable. Our contributions:
+\begin{itemize}
+\item an agent-native library of skills, checks and tools (\S\ref{sec:library});
+\item \NMethods{} self-improvement methods behind one interface with equal budgets
+(\S\ref{sec:methods});
+\item \NTasks{} financial programming tasks with independent references, a hidden grader, an
+algorithm-level held-out split, real-price panels and an ablation that separates skills,
+checks and self-improvement (\S\ref{sec:tasks}).
+\end{itemize}

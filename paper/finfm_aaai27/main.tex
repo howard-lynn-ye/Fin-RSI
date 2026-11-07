@@ -15,18 +15,18 @@
 \setlength{\pdfpageheight}{11in} % fixed
 \usepackage{amsmath,amssymb,booktabs,array,listings}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows}
-\definecolor{finblue}{HTML}{2A78D6}
-\definecolor{finorange}{HTML}{EB6834}
-\definecolor{fingray}{HTML}{52514E}
-\definecolor{finaqua}{HTML}{1BAF7A}
-\input{../latex_acl2027/figures/icons}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows,shapes.geometric,3d,shadows.blur,fadings,shadings}
+\input{../latex_acl2027/figures/figstyle}% colours, text, lines, icons of every figure
 \input{../latex_acl2027/numbers}
+\input{../latex_acl2027/figures/episode_numbers}
+\input{../latex_acl2027/figures/episode_caption}
+\input{../latex_acl2027/figures/overview_caption}
 \graphicspath{{../latex_acl2027/}}
 \makeatletter\def\input@path{{../latex_acl2027/}}\makeatother % shared tables
 \lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
         showstringspaces=false,frame=none,xleftmargin=0pt}
-\newcommand{\pending}[1]{{\color{red}[#1]}}
+% \leavevmode: a colour special between a heading and its text would allow a break there.
+\newcommand{\pending}[1]{\leavevmode{\color{red}[#1]}}
 \providecommand{\href}[2]{#2} % aaai2027.bst emits \href; AAAI forbids hyperref
 \newcommand{\lib}{\textsc{Fin-RSI}}
 \setcounter{secnumdepth}{2}
@@ -44,13 +44,8 @@
 
 \begin{figure*}[t]
 \centering
-\input{../latex_acl2027/figures/overview}
-\caption{\lib{} at a glance. (a) The three layers and how an agent reaches them: tools for any
-agent framework, a Python API, and one \texttt{generate} callable for the user's model.
-(b) One episode: (1)~each prompt and (2)~each program pass through the meter; (3)~the method
-sends code to the judge and (4)~sees only what \texttt{check()} returns. (5)~After
-\texttt{solve()} returns, the hidden grader runs on the final program, and (6)~its verdict
-goes only to the benchmark report.}
+\input{../latex_acl2027/figures/overview3d}
+\caption{\OverviewCaption}
 \label{fig:overview}
 \end{figure*}
 
@@ -74,5 +69,14 @@ goes only to the benchmark report.}
 one-step library call that solves them. Each algorithm has two tasks (variants a and b).}
 \label{tab:tasks}
 \end{table}
+
+\begin{figure*}[h]
+\centering
+\includegraphics{figures/real_panel}
+\caption{The real-price panel: raw quotes (as traded) and adjusted closes, each indexed to
+100 at the first close, on a log scale. A program that ignores the split factors sees a
+one-day loss of 67\% to 95\%.}
+\label{fig:real}
+\end{figure*}
 
 \end{document}

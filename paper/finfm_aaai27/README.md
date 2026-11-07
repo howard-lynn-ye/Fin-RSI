@@ -1,5 +1,9 @@
 # FinFM @ AAAI-27 submission (benchmark track)
 
+**Fallback.** On 2026-11-05 the submission switched to the 4-page short paper in
+`../finfm_aaai27_short/`. This 7-page version is kept in case the main results are complete for
+three or more models by about 18 November.
+
 Workshop: FinFM, Foundation Models and Generative AI for Finance, at AAAI-27 (Montréal,
 22 or 23 February 2027). Submission deadline 20 November 2026, 23:59 AoE; notification
 2 December 2026. Non-archival; concurrent review elsewhere is allowed (check ARR's own

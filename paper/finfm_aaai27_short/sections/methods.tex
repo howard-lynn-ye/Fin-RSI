@@ -1,0 +1,59 @@
+\section{Self-improvement behind one interface}
+\label{sec:methods}
+
+Every method is a class with one constructor and three calls:
+\begin{lstlisting}[language=Python]
+m = rsi.Reflexion(library=True)
+m.fit(generate, tasks.dev)
+ep = m.solve(generate, task, seed=11)
+ep.accepted, ep.code, ep.usage
+m.state()
+\end{lstlisting}
+\texttt{state()} returns what the method learned and is hashed into every episode record;
+\texttt{fit()} does nothing for a method that does not learn. \texttt{rsi.benchmark()} fits each method once on the
+development tasks and runs it on every held-out task and seed.
+
+\begin{figure*}[t]
+\centering
+\input{../latex_acl2027/figures/episode}
+\caption{\EpisodeCaption}
+\label{fig:episode}
+\end{figure*}
+
+\paragraph{What a method sees.}
+\texttt{solve()} gets the task text and a judge on which it can only call
+\texttt{check(code)}. That returns whether the program ran, its error, each check's result
+and the causes of the failed ones, never the grade (Figure~\ref{fig:episode}b). Learning
+methods may use development grades to keep or reject a candidate, but no text a model reads
+contains a grade.
+
+\paragraph{Equal budgets.}
+A meter refuses any call beyond the budget and records which limit stopped the episode.
+Each episode gets \BudgetAttempts{} program executions, \BudgetCalls{} model calls
+(reflections and reviews included) and \BudgetTokens{} generated tokens. Learning methods
+also get \FitEpisodes{} development episodes, \FitProposals{} proposals, \FitCalls{} calls
+and \FitTokens{} tokens.
+
+\paragraph{Methods.}
+The \NMethods{} methods (Appendix Table~\ref{tab:methods}) keep the mechanism each is known
+for: \texttt{NoImprove} (one program); \texttt{SelfDebug}, which returns only errors
+\citep{chen2024selfdebug}; \texttt{CheckFeedback}, which returns the failed checks with
+causes and cards; \texttt{Reflexion}, which adds a written reflection before each retry
+\citep{shinn2023reflexion}; \texttt{Team}, with one reviewer per rule family;
+\texttt{Evolve}, which evolves a prompt addendum on development tasks
+\citep{agrawal2026gepa}; and \texttt{PlaybookLearning}
+\citep{zhao2024expel,suzgun2026dynamic}. The playbook proposer sees development traces
+without grades, and one proposal edits one entry. A candidate is accepted only if its score
+does not drop on either of two disjoint halves of the development tasks, rises on one, and
+no task that passed every check before now fails one (the \emph{no-regression} rule;
+Appendix Figure~\ref{fig:gate}).
+
+\paragraph{Skill arms.}
+Two switches split the skills: \texttt{cards} adds the task's rule cards to the prompt and
+the feedback; \texttt{library} adds the interface text and allows
+\texttt{import fin\_skills}. Their \NArms{} combinations (\texttt{none}, \texttt{cards},
+\texttt{library}, \texttt{cards+library}) all keep the task definition and see the failed
+checks with their causes. Within an arm, \texttt{NoImprove} versus \texttt{CheckFeedback}
+measures the checks and \texttt{CheckFeedback} versus \texttt{PlaybookLearning} measures
+self-improvement; for one method, comparing arms measures the skills (Appendix
+Figure~\ref{fig:arms}).

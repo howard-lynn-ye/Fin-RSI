@@ -1,0 +1,45 @@
+\section{The \lib{} library}
+\label{sec:library}
+
+\lib{} is a Python package whose base install needs only numpy, pandas and scipy.
+
+\paragraph{Skills.}
+\NSkills{} skill documents in \NPlugins{} plugins follow the Agent Skills specification
+\citep{agentskills}, with \NReferenceFiles{} reference files and \NScripts{} runnable
+scripts. A skill records the defaults, licence changes and silent failure modes that a
+model's training prior gets wrong; each claim is dated and marked by how it was verified.
+A further \NFederatedPacks{} federated packs (\NFederatedSkills{} skills, off by default, not
+verified here) include \NLensSkills{} investor templates built on named investors' approaches.
+A catalog of \NAlgorithms{} algorithms covers \NAlgorithmTasks{} task types (\NNative{}
+native, \NAdapters{} adapters to \NOptionalLibraries{} optional libraries, reported as
+missing rather than replaced when absent). \texttt{positions()} takes raw quotes and split
+factors, applies the factors once and returns positions decided on the previous close;
+\texttt{rolling()} does the same for volatility, risk and forecasts. Between documents and
+code sit \NCards{} rule cards in \NCardFamilies{} families (timing, corporate actions, data
+hygiene; Appendix Table~\ref{tab:cards}). A card holds a short rule, the skill passage it
+comes from, the checks that verify it and, where one exists, the library call that follows
+it. A task declares traits such as \emph{split factors} and receives only the cards they
+select.
+
+\paragraph{Checks.}
+The library has \NGuards{} guards behind one interface, which returns whether the guard
+passed, a message and warnings; \NGuardsExported{} take JSON inputs and are exported as
+tools. For generated programs, three property checks need no expected output:
+\begin{itemize}
+\item \texttt{finite\_output}: no missing or infinite values;
+\item \texttt{split\_representation}: re-run on the same economic prices, given as adjusted
+closes with unit factors, the output must not change ($10^{-8}$);
+\item \texttt{execution\_lag}: perturb prices from row $k$ on; no position up to row $k$ may
+move (Figure~\ref{fig:episode}c). A rule that trades on the close it reads fails, although it
+passes a plain causality test.
+\end{itemize}
+These are metamorphic relations \citep{segura2016metamorphic} for financial code. Each check
+carries a \emph{cause}, one sentence on what it observed, and \texttt{explain()} pairs it
+with the cards that address it. We count the cause as part of the check and the card as
+part of the skills.
+
+\paragraph{Agent interfaces.}
+One registry yields \NTools{} tools under the same names as a Model Context Protocol server
+\citep{mcp2026spec} and as OpenAI and Anthropic tool schemas: read and search skills, run
+algorithms, run guards. \texttt{agents.Team} turns the user's \texttt{generate} callable into
+a writer and one reviewer per rule family; only the checks decide acceptance.
