@@ -30,7 +30,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-import re
 import tempfile
 from typing import Callable, Sequence
 
@@ -40,16 +39,10 @@ from fin_skills.tasks.spec import Task
 
 from .meter import Budget, BudgetExceeded, FitBudget, Meter, ModelRefusal
 from .core import InvalidProposal
+from .fences import extract, reply_format
 
-FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
 FIT_START = datetime(2026, 11, 3, tzinfo=timezone.utc)
 RETRY = "Return the complete corrected program in one python fence."
-
-
-def extract(text: str) -> str:
-    """The first complete python fence; the whole reply when there is none."""
-    match = FENCE.search(text)
-    return (match.group(1) if match else text).strip() + "\n"
 
 
 def _sha(value) -> str:
@@ -67,6 +60,7 @@ class Step:
     feedback: str = ""
     library_calls: int = 0
     attempt_index: int = -1
+    reply_format: str = ""            # fenced | unclosed_fence | no_fence; "" when no reply
 
 
 @dataclass
@@ -156,8 +150,9 @@ class BaseRSI:
         if not meter.can_attempt():
             raise BudgetExceeded("attempts", meter.attempts + 1, meter.max_attempts)
         text = meter(history, role=role)
-        code = extract(text)
-        return text, self._check_program(meter, judge, code, episode)
+        seen = self._check_program(meter, judge, extract(text), episode)
+        episode.steps[-1].reply_format = reply_format(text)
+        return text, seen
 
     def _check_program(self, meter, judge, code, episode):
         """One common execution/recording boundary for writers and team callbacks."""

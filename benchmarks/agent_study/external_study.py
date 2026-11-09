@@ -81,8 +81,16 @@ def interface_text():
     return (f"from fin_skills import algorithms\nalgorithms.run{inspect.signature(algorithms.run)}\n"
             f"algorithms.catalog{inspect.signature(algorithms.catalog)}\n"
             "Use NumPy/pandas/SciPy directly where the task has no matching library method.\n"
-            "Available algorithm metadata (runtime status is not accuracy evidence):\n" +
-            json.dumps(algorithms.catalog(), sort_keys=True, ensure_ascii=False))
+            "Algorithms that run here (metadata, not accuracy evidence):\n" +
+            json.dumps(runnable(), sort_keys=True, ensure_ascii=False))
+
+
+def runnable():
+    """Catalog entries whose handler and optional package are present. An entry with status
+    missing_dependency or catalog_only only raises when called; listing it invited calls to
+    change_points (ruptures is not installed in the study runtime)."""
+    from fin_skills import algorithms
+    return [c for c in algorithms.catalog() if c["status"] == "ready"]
 
 
 class ExternalOneShot(BaseRSI):

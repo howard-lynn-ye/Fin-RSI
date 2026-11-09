@@ -67,3 +67,23 @@ def test_external_real_scalar_transport_and_post_selection_grade(tmp_path, monke
     assert report.complete and len(report.rows) == 2
     assert all(row["valid"] and row["first_valid"] for row in report.rows)
     assert report.contrasts(draws=40)[0]["effect"] == 0
+
+
+def test_interface_lists_only_algorithms_that_run_here():
+    from fin_skills import algorithms
+    status = {c["id"]: c["status"] for c in algorithms.catalog()}
+    listed = {c["id"] for c in study.runnable()}
+    assert listed and all(status[i] == "ready" for i in listed)
+    text = study.interface_text()
+    for entry in algorithms.catalog():
+        if entry["status"] != "ready":
+            assert f'"id": "{entry["id"]}"' not in text
+
+
+def test_reply_format_is_recorded_per_step(tmp_path, monkeypatch):
+    replies = iter(["The answer is 25 percent.", "```Python\n20 / 80\n```"])
+    monkeypatch.setattr(study, "evaluate_scalar", lambda *a, **k: dict(executed=True, value=.25))
+    report = study.run(lambda messages: next(replies), tasks(), out=tmp_path / "e.jsonl",
+                       model_id="fixture", seeds=(11,), execution_mode="trusted-fixtures")
+    formats = sorted(step["reply_format"] for row in report.rows for step in row["steps"])
+    assert formats == ["fenced", "no_fence"]

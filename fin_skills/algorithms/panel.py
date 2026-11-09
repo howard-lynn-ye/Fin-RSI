@@ -131,7 +131,9 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
 
     The returned frame has exactly the input index and columns. Its attrs record the
     algorithm, lag, warm-up rows and parameters. Errors from the algorithm are raised, not
-    turned into zeros.
+    turned into zeros. So is a result with no decision on any row (a window shorter than
+    the algorithm needs, or a panel shorter than its warm-up), which would otherwise be all
+    zeros.
     """
     from . import _DEFAULT
     reg = registry if registry is not None else _DEFAULT
@@ -157,6 +159,12 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
                              "asset_returns only")
         returns = close.pct_change(fill_method=None).iloc[1:]
         need = _needed(spec, window, params)
+        if window is not None and window < need:
+            # Every decision would see fewer returns than the algorithm needs, so no row could
+            # ever be decided and the result would be warm-up (zeros) throughout.
+            raise ValueError(f"window={window} is shorter than the {need} returns "
+                             f"{algorithm_id} needs (its minimum or lookback); pass "
+                             f"window >= {need} or window=None")
         first = None
         for t in range(len(index)):
             end = t - lag                      # last close the decision may read
@@ -206,7 +214,12 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
                          f"{spec.task!r} ({algorithm_id})")
 
     leading = out.notna().any(axis=1).to_numpy()
-    warm_rows = int(np.argmax(leading)) if leading.any() else len(out)
+    if not leading.any():
+        # All warm-up: with warmup="zero" this would be a frame of zeros that looks like a
+        # valid flat book.
+        raise ValueError(f"{algorithm_id} made no decision on any of the {len(out)} rows: "
+                         f"the panel is shorter than its warm-up plus lag={lag}")
+    warm_rows = int(np.argmax(leading))
     started = out.notna().cummax()               # per column: has a decision been made yet
     if (out.isna() & started).to_numpy().any():
         raise ValueError(f"{algorithm_id} produced missing positions after its warm-up rows")

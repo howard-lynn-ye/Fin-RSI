@@ -167,6 +167,17 @@ def test_lag_two_and_nan_warmup():
     assert nan.attrs["warmup_rows"] == 61
 
 
+def test_no_decision_on_any_row_raises_instead_of_returning_zeros():
+    raw, factors, _ = _data()
+    # cross_sectional_momentum needs 60 returns; a 20-return window can never decide.
+    with pytest.raises(ValueError, match="window=20 is shorter than the 60 returns"):
+        positions("cross_sectional_momentum", raw, factors, window=20)
+    with pytest.raises(ValueError, match="made no decision on any of the 40 rows"):
+        positions("inverse_volatility", raw.iloc[:40], factors.iloc[:40], window=60)
+    decided = positions("cross_sectional_momentum", raw, factors, window=60)
+    assert decided.abs().to_numpy().sum() > 0
+
+
 def test_rebalance_every_holds_targets_between_rebalances():
     raw, factors, _ = _data()
     w = positions("inverse_volatility", raw, factors, window=60, rebalance_every=5)
