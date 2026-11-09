@@ -38,7 +38,8 @@ from fin_skills.tasks import Judge, messages as task_messages, library_text, sys
 from fin_skills.tasks import task_prompt
 from fin_skills.tasks.spec import Task
 
-from .meter import Budget, BudgetExceeded, FitBudget, Meter
+from .meter import Budget, BudgetExceeded, FitBudget, Meter, ModelRefusal
+from .core import InvalidProposal
 
 FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
 FIT_START = datetime(2026, 11, 3, tzinfo=timezone.utc)
@@ -65,6 +66,7 @@ class Step:
     error: str = ""
     feedback: str = ""
     library_calls: int = 0
+    attempt_index: int = -1
 
 
 @dataclass
@@ -124,13 +126,15 @@ class BaseRSI:
     def solve(self, generate, task: Task, *, seed: int, budget: Budget = Budget()) -> Episode:
         if not self.fitted:
             raise RuntimeError(f"{self.name} learns on dev tasks: call fit() before solve()")
-        meter = Meter(generate, budget)
-        judge = Judge(task, seed=seed, library=self.library, meter=meter)
+        meter = Meter(generate, budget, seed=seed)
+        judge = self.make_judge(task, seed=seed, meter=meter)
         episode = Episode(self.name, task.id, int(seed), self.library)
         try:
             self._solve(meter, _View(judge), task, seed, episode)
         except BudgetExceeded as exc:
             episode.status = f"budget:{exc.limit}"
+        except ModelRefusal:
+            episode.status = "model_refusal"
         episode.usage = meter.usage()
         episode.state_sha256 = _sha(self.state())
         episode._judge = judge                     # for the runner's grade; not for methods
@@ -141,6 +145,10 @@ class BaseRSI:
         return {}
 
     # shared pieces -----------------------------------------------------------------------
+    def make_judge(self, task, *, seed, meter):
+        """Output-type extension point; every judge exposes the same check/grade boundary."""
+        return Judge(task, seed=seed, library=self.library, meter=meter)
+
     def _messages(self, task, seed, extra=""):
         return task_messages(task, seed=seed, library=self.library, extra_system=extra)
 
@@ -149,11 +157,17 @@ class BaseRSI:
             raise BudgetExceeded("attempts", meter.attempts + 1, meter.max_attempts)
         text = meter(history, role=role)
         code = extract(text)
+        return text, self._check_program(meter, judge, code, episode)
+
+    def _check_program(self, meter, judge, code, episode):
+        """One common execution/recording boundary for writers and team callbacks."""
+        if not meter.can_attempt():
+            raise BudgetExceeded("attempts", meter.attempts + 1, meter.max_attempts)
         seen = judge.check(code)
         episode.steps.append(Step(len(episode.steps) + 1, code, seen.executed, seen.accepted,
                                   dict(seen.checks), seen.error[:2000],
-                                  library_calls=seen.library_calls))
-        return text, seen
+                                  library_calls=seen.library_calls, attempt_index=seen.attempt_index))
+        return seen
 
     def _check_feedback(self, seen) -> str:
         if not seen.executed:
@@ -208,6 +222,23 @@ class CheckFeedback(BaseRSI):
         self._loop(meter, judge, task, seed, episode)
 
 
+class RepeatedSampling(BaseRSI):
+    """Optional compute control: fresh independent attempts, same first-accepted selector.
+
+    No failures, checks or previous programs are shown to the next writer. This comparator
+    is available for a new frozen protocol; it does not expand the seven-method default.
+    """
+    name = "repeated_sampling"
+
+    def _solve(self, meter, judge, task, seed, episode):
+        while meter.can_attempt():
+            _, seen = self._attempt(meter, judge, self._messages(task, seed), episode)
+            if seen.accepted:
+                episode.status = "accepted"
+                return
+        episode.status = "exhausted"
+
+
 REFLECT = ("You wrote the program below and it failed. In at most five sentences, explain what "
            "caused the failure and what you will change. Do not write code.")
 
@@ -247,12 +278,7 @@ class Team(BaseRSI):
         from .wiring import Attempt
 
         def run_checks(code):
-            if not meter.can_attempt():
-                raise BudgetExceeded("attempts", meter.attempts + 1, meter.max_attempts)
-            seen = judge.check(code)
-            episode.steps.append(Step(len(episode.steps) + 1, code, seen.executed,
-                                      seen.accepted, dict(seen.checks), seen.error[:2000],
-                                      library_calls=seen.library_calls))
+            seen = self._check_program(meter, judge, code, episode)
             return Attempt(task_id=task.id, code=code, executed=seen.executed,
                            error=seen.error, checks=dict(seen.checks))
 
@@ -279,19 +305,26 @@ class _Learner(BaseRSI):
 
     def _dev_episode(self, fit_meter, task, seed, episode_budget, extra):
         """One CheckFeedback episode on a dev task, graded (allowed: dev tasks only)."""
-        meter = Meter(fit_meter.respond, episode_budget)
+        if hasattr(fit_meter._generate, "seed"):
+            fit_meter._generate.seed = seed
+        meter = Meter(fit_meter.respond, episode_budget, seed=seed)
         judge = Judge(task, seed=seed, library=self.library, meter=meter)
         episode = Episode(self.name, task.id, int(seed), self.library)
+        self.fit_usage["episodes"] += 1  # Reserve the episode before any charged request.
         try:
             self._loop(meter, _View(judge), task, seed, episode, extra=extra)
         except BudgetExceeded as exc:
+            episode.status = f"budget:{exc.limit}"
             spent = fit_meter.budget
             if (fit_meter.calls >= spent.calls
                     or fit_meter.generated_tokens >= spent.generated_tokens):
                 raise                            # the fit budget itself is spent
-            episode.status = f"budget:{exc.limit}"   # only this episode's limit
+        except ModelRefusal:
+            episode.status = "model_refusal"
+        finally:
+            statuses = self.fit_usage.setdefault("episode_statuses", {})
+            statuses[episode.status] = statuses.get(episode.status, 0) + 1
         episode.valid = bool(episode.steps) and judge.grade(episode.code)
-        self.fit_usage["episodes"] += 1
         return episode
 
     def _spend(self, fit_meter, budget):
@@ -313,6 +346,8 @@ class PlaybookLearning(_Learner):
 
     def fit(self, generate, dev_tasks, *, budget=FitBudget(), seeds=(11,),
             episode_budget=Budget()):
+        if len(seeds) != 1:
+            raise ValueError("PlaybookLearning requires exactly one declared fit seed")
         from .core import Policy
         from .wiring import Attempt, loop_from_checks, observe
         dev_tasks = list(dev_tasks)
@@ -322,7 +357,7 @@ class PlaybookLearning(_Learner):
                                  if t.algorithm not in validation_algorithms],
                  "validation": [t.id for t in dev_tasks if t.algorithm in validation_algorithms]}
         by_id = {t.id: t for t in dev_tasks}
-        fit_meter = Meter(generate, budget, attempts=None)
+        fit_meter = Meter(generate, budget, attempts=None, seed=int(seeds[0]))
         seed = int(seeds[0])
 
         def to_attempt(ep):
@@ -357,6 +392,11 @@ class PlaybookLearning(_Learner):
                     break
         except BudgetExceeded:
             decisions.append("fit_budget_exhausted")
+            self.fit_usage["stopped_reason"] = "budget_exhausted"
+        except (ModelRefusal, InvalidProposal) as exc:
+            reason = "model_refusal" if isinstance(exc, ModelRefusal) else "invalid_proposal"
+            decisions.append("fit_" + reason)
+            self.fit_usage["stopped_reason"] = reason
         final = (FIT_START + timedelta(minutes=budget.proposals + 2)).isoformat()
         loop.freeze(as_of=final)
         self.addendum = loop.instructions(as_of=final)
@@ -388,14 +428,22 @@ class Evolve(_Learner):
 
     def _score(self, episodes):
         valid = sum(bool(e.valid) for e in episodes)
-        checks = [ok for e in episodes if e.steps for ok in e.steps[-1].checks.values()]
-        return (valid, sum(checks) / len(checks) if checks else 0.0)
+        # Every planned development episode keeps its weight. Refusing to deliver a
+        # program cannot improve a candidate by removing a low-scoring denominator.
+        shares = []
+        for episode in episodes:
+            last = episode.steps[-1] if episode.steps else None
+            shares.append(sum(last.checks.values()) / len(last.checks)
+                          if last and last.executed and last.checks else 0.0)
+        return (valid, sum(shares) / len(shares) if shares else 0.0)
 
     def fit(self, generate, dev_tasks, *, budget=FitBudget(), seeds=(11,),
             episode_budget=Budget()):
+        if len(seeds) != 1:
+            raise ValueError("Evolve requires exactly one declared fit seed")
         dev_tasks = sorted(dev_tasks, key=lambda t: t.id)
         batch = dev_tasks[:self.minibatch]
-        fit_meter = Meter(generate, budget, attempts=None)
+        fit_meter = Meter(generate, budget, attempts=None, seed=int(seeds[0]))
         seed = int(seeds[0])
 
         def evaluate(addendum):
@@ -411,16 +459,18 @@ class Evolve(_Learner):
             best_score = self._score(best_eps)
             self.history.append(dict(generation=0, score=best_score, accepted=True))
             for g in range(1, min(self.generations, budget.proposals) + 1):
-                failures = [f"- {e.task_id}: " + (e.steps[-1].feedback or e.steps[-1].error
-                                                  or "failed checks")[:400]
-                            for e in best_eps if not e.valid and e.steps]
+                failures = [f"- {e.task_id}: " + ((e.steps[-1].feedback or e.steps[-1].error
+                                                  or "failed checks") if e.steps else e.status)[:400]
+                            for e in best_eps if not e.valid]
                 if not failures:
                     break
                 candidate = fit_meter([dict(role="system", content=MUTATE),
                                        dict(role="user", content="Current instructions:\n"
                                             + (best or "(none)") + "\n\nRecent failures:\n"
                                             + "\n".join(failures))],
-                                      role="proposer").strip()[:1200]
+                                      role="proposer").strip()
+                if not candidate or len(candidate) > 1200:
+                    raise InvalidProposal("instructions must contain 1 to 1200 characters")
                 eps = evaluate(candidate)
                 score = self._score(eps)
                 improved = score > best_score
@@ -428,8 +478,13 @@ class Evolve(_Learner):
                 if improved:
                     best, best_eps, best_score = candidate, eps, score
         except BudgetExceeded:
+            self.fit_usage["stopped_reason"] = "budget_exhausted"
             self.history.append(dict(generation=None, score=None, accepted=False,
                                      note="fit budget exhausted"))
+        except (ModelRefusal, InvalidProposal) as exc:
+            reason = "model_refusal" if isinstance(exc, ModelRefusal) else "invalid_proposal"
+            self.fit_usage["stopped_reason"] = reason
+            self.history.append(dict(generation=None, score=None, accepted=False, note=reason))
         self.addendum = best
         self.fit_usage.update(calls=fit_meter.calls, generated_tokens=fit_meter.generated_tokens)
         self.fitted = True

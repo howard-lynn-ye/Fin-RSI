@@ -195,6 +195,10 @@ class Decision:
     candidate_version: str | None = None
 
 
+class InvalidProposal(ValueError):
+    """Model-supplied proposal violates its schema; evaluator faults are not this type."""
+
+
 class JSONProposer:
     """Adapter for a caller-owned text generator. Never selects a model/provider."""
 
@@ -469,18 +473,21 @@ class RSILoop:
             try:
                 raw = self._proposer(context)
                 if not isinstance(raw, str) or len(raw) > 16384:
-                    raise ValueError("proposal response must be text of at most 16384 characters")
+                    raise InvalidProposal("proposal response must be text of at most 16384 characters")
                 journal.append("proposal_response", dict(raw=raw, parent=active.version))
-                cleaned = raw.strip()
-                if cleaned.startswith("```json\n") and cleaned.endswith("\n```"):
-                    cleaned = cleaned[8:-4]
-                change = json.loads(cleaned)
-                if not isinstance(change, dict) or set(change) != {"key", "surface", "text", "rationale"}:
-                    raise ValueError("proposal must contain only key, surface, text, rationale")
-                _text(change["rationale"], "rationale", 2000)
-                entry = Entry(change["key"], change["surface"], change["text"])
-                candidate = Playbook(tuple(e for e in active.entries if e.key != entry.key) + (entry,))
-                self._bound(candidate)
+                try:
+                    cleaned = raw.strip()
+                    if cleaned.startswith("```json\n") and cleaned.endswith("\n```"):
+                        cleaned = cleaned[8:-4]
+                    change = json.loads(cleaned)
+                    if not isinstance(change, dict) or set(change) != {"key", "surface", "text", "rationale"}:
+                        raise ValueError("proposal must contain only key, surface, text, rationale")
+                    _text(change["rationale"], "rationale", 2000)
+                    entry = Entry(change["key"], change["surface"], change["text"])
+                    candidate = Playbook(tuple(e for e in active.entries if e.key != entry.key) + (entry,))
+                    self._bound(candidate)
+                except (ValueError, TypeError) as error:
+                    raise InvalidProposal(str(error)) from error
                 # Whitespace-only edits and previously attempted content are stagnation.
                 norm = lambda book: [(e.key, e.surface, " ".join(e.text.split())) for e in book.entries]
                 seen = [active] + [_book(e["data"]["playbook"]) for e in journal.events

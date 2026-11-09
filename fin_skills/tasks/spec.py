@@ -7,7 +7,7 @@ so the qualification tests can compare the two.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 import random
@@ -41,12 +41,26 @@ class Task:
         if self.factors not in FACTOR_KINDS:
             raise ValueError(f"{self.id}: factors must be one of {FACTOR_KINDS}")
 
+    def manifest(self) -> dict:
+        """The complete task contract; no behavioural fields are omitted from its hash."""
+        body = asdict(self)
+        body["traits"] = sorted(self.traits)
+        body["order"] = list(self.order)
+        return json.loads(json.dumps(body, sort_keys=True, allow_nan=False))
+
+    @classmethod
+    def from_manifest(cls, body: dict) -> "Task":
+        fields = set(cls.__dataclass_fields__)
+        if not isinstance(body, dict) or set(body) != fields:
+            raise ValueError("task manifest must contain exactly the complete Task fields")
+        values = json.loads(json.dumps(body, allow_nan=False))
+        values["traits"] = frozenset(values["traits"])
+        values["order"] = tuple(values["order"])
+        return cls(**values)
+
     @property
     def sha256(self) -> str:
-        body = dict(id=self.id, algorithm=self.algorithm, definition=self.definition,
-                    parameters=self.parameters, rows=self.rows, factors=self.factors,
-                    order=list(self.order), tolerance=self.tolerance)
-        return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+        return hashlib.sha256(json.dumps(self.manifest(), sort_keys=True).encode()).hexdigest()
 
 
 FACTOR_TEXT = {

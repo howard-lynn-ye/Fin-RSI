@@ -93,7 +93,9 @@ def test_methods_on_a_lookahead_bug(cls, status, steps, valid):
     method = cls(library=True)
     episode = method.solve(model, HELDOUT, seed=11, budget=rsi.Budget())
     assert episode.status == status and len(episode.steps) == steps
+    assert [step.attempt_index for step in episode.steps] == list(range(steps))
     assert episode.__dict__["_judge"].grade(episode.code) is valid
+    assert episode.__dict__["_judge"].grade_attempt(episode.steps[-1].attempt_index) is valid
     assert episode.valid is None                        # methods never fill in the grade
     if cls is rsi.Reflexion:
         assert episode.usage["roles"] == ["writer", "reflection", "writer"]
@@ -126,7 +128,9 @@ def test_learners_keep_a_lesson_that_helps(cls):
     assert LESSON in method.addendum and method.fit_usage["episodes"] > 0
     episode = method.solve(model, HELDOUT, seed=11)
     assert episode.status == "accepted" and len(episode.steps) == 1
+    assert episode.steps[0].attempt_index == 0
     assert episode.__dict__["_judge"].grade(episode.code)
+    assert episode.__dict__["_judge"].grade_attempt(episode.steps[0].attempt_index)
     assert method.state() and episode.state_sha256
 
 
@@ -149,11 +153,13 @@ def test_learner_must_be_fitted_and_fit_budget_is_enforced():
 def test_benchmark_grades_after_solving_and_reports(tmp_path):
     out = tmp_path / "episodes.jsonl"
     model = LessonModel(learns_from_feedback=True)
-    report = rsi.benchmark([rsi.NoImprove, rsi.CheckFeedback], model,
+    report = rsi.benchmark([rsi.NoImprove, rsi.CheckFeedback, rsi.Team], model,
                            TASKS, seeds=(11,), library=(True,), heldout=[HELDOUT], out=out)
     rows = [json.loads(line) for line in out.read_text().splitlines()]
-    assert [r["method"] for r in rows] == ["no_improve", "check_feedback"]
-    assert [r["valid"] for r in rows] == [False, True]
+    assert [r["method"] for r in rows] == ["no_improve", "check_feedback", "team"]
+    assert [r["valid"] for r in rows] == [False, True, True]
+    assert rows[-1]["first_valid"] is False
+    assert [s["attempt_index"] for s in rows[-1]["steps"]] == [0, 1]
     summary = {s["method"]: s for s in report.summary(draws=200)}
     assert summary["check_feedback"]["valid"] == 1.0 and summary["no_improve"]["valid"] == 0.0
     assert "check_feedback" in report.table()

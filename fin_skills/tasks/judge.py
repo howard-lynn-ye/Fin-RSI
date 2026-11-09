@@ -13,11 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import hashlib
 import json
-import os
-from pathlib import Path
-import subprocess
-import sys
-import tempfile
 
 import numpy as np
 
@@ -30,6 +25,10 @@ LAG_KS = (32, 64)
 TIMEOUT = 120
 
 
+class EvaluationInfrastructureError(RuntimeError):
+    """No model-quality verdict is available; stop rather than teaching the model to repair it."""
+
+
 @dataclass(frozen=True)
 class Visible:
     """What a method may see about one execution."""
@@ -39,6 +38,7 @@ class Visible:
     error: str = ""
     checks: dict = field(default_factory=dict)
     library_calls: int = 0
+    attempt_index: int = -1
 
     @property
     def accepted(self) -> bool:
@@ -66,24 +66,8 @@ def reference(task: Task, seed: int) -> np.ndarray:
 
 
 def _run_worker(code: str, request: dict, timeout: int) -> dict:
-    with tempfile.TemporaryDirectory(prefix="fin-task-") as td:
-        box = Path(td)
-        (box / "submission.py").write_text(code)
-        (box / "request.json").write_text(json.dumps(request))
-        env = dict(os.environ, OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1",
-                   MKL_NUM_THREADS="1", PYTHONHASHSEED="0")
-        try:
-            proc = subprocess.run([sys.executable, "-B", "-m", "fin_skills.tasks.worker",
-                                   str(box)], capture_output=True, text=True, timeout=timeout,
-                                  env=env)
-        except subprocess.TimeoutExpired:
-            return dict(executed=False, error=dict(type="TimeoutExpired",
-                                                   message=f"{timeout} s limit"))
-        if not (box / "result.json").exists():
-            return dict(executed=False, infrastructure_error=True,
-                        error=dict(type="WorkerCrash", message=f"returncode {proc.returncode}",
-                                   traceback=proc.stderr[-3000:]))
-        return json.loads((box / "result.json").read_text())
+    from .execution import evaluate
+    return evaluate(code, request, timeout)
 
 
 class Judge:
@@ -92,21 +76,25 @@ class Judge:
         self.task, self.seed, self.library = task, int(seed), bool(library)
         self.meter, self.lag_ks, self.timeout = meter, tuple(lag_ks), timeout
         self.records: list[dict] = []
-        self._positions: dict[str, list] = {}
+        self._attempt_positions: list = []
 
     def check(self, code: str) -> Visible:
         """One attempt: charged to the meter, recorded, and returned without any grade."""
         if self.meter is not None:
             self.meter.charge_attempt()
+        from fin_skills.rsi.meter import event
+        event("program_started", code=code, task_sha256=self.task.sha256, data_seed=self.seed)
         return self._execute(code)
 
     def _execute(self, code: str) -> Visible:
-        request = dict(task_id=self.task.id, seed=self.seed, library=self.library,
+        request = dict(task=self.task.manifest(), task_sha256=self.task.sha256,
+                       seed=self.seed, library=self.library,
                        lag_ks=list(self.lag_ks))
         result = _run_worker(code, request, self.timeout)
+        from fin_skills.rsi.meter import event
+        event("program_completed", task_sha256=self.task.sha256, result=result)
         key = hashlib.sha256(code.encode()).hexdigest()
-        if result.get("executed"):
-            self._positions[key] = result.pop("positions")
+        positions = result.pop("positions") if result.get("executed") else None
         error = result.get("error") or {}
         text = ""
         if error:
@@ -115,11 +103,15 @@ class Judge:
                 text += "\n" + error["traceback"][-1500:]
         seen = Visible(code=code, executed=bool(result.get("executed")), error=text,
                        checks=dict(result.get("checks") or {}),
-                       library_calls=int(result.get("library_calls") or 0))
+                       library_calls=int(result.get("library_calls") or 0),
+                       attempt_index=len(self.records))
         self.records.append(dict(sha256=key, executed=seen.executed, checks=seen.checks,
                                  error=text[:400], library_calls=seen.library_calls,
                                  trace=result.get("trace", []),
                                  infrastructure_error=bool(result.get("infrastructure_error"))))
+        self._attempt_positions.append(positions)
+        if result.get("infrastructure_error"):
+            raise EvaluationInfrastructureError(text)
         return seen
 
     def grade(self, code: str) -> bool:
@@ -127,12 +119,17 @@ class Judge:
         key = hashlib.sha256(code.encode()).hexdigest()
         if not any(r["sha256"] == key for r in self.records):
             self._execute(code)                 # grading is not one of the method's attempts
-        if key not in self._positions:
-            return False
-        record = next(r for r in reversed(self.records) if r["sha256"] == key)
+        index = next(i for i in reversed(range(len(self.records))) if self.records[i]["sha256"] == key)
+        return self.grade_attempt(index)
+
+    def grade_attempt(self, index: int) -> bool:
+        """Grade one immutable execution, even when later attempts repeat the same code."""
+        if type(index) is not int or not 0 <= index < len(self.records):
+            raise ValueError("unknown execution attempt")
+        record = self.records[index]
         if not (record["executed"] and record["checks"] and all(record["checks"].values())):
             return False
-        got = np.asarray(self._positions[key], dtype=float)
+        got = np.asarray(self._attempt_positions[index], dtype=float)
         want = reference(self.task, self.seed)
         return got.shape == want.shape and bool(np.allclose(got, want, atol=self.task.tolerance,
                                                             rtol=0))
