@@ -32,7 +32,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-import re
 import tempfile
 from typing import Callable, Sequence
 
@@ -41,9 +40,9 @@ from fin_skills.tasks import task_prompt
 from fin_skills.tasks.data import as_seed
 from fin_skills.tasks.spec import Task
 
+from .fences import extract
 from .meter import Budget, BudgetExceeded, FitBudget, Meter
 
-FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
 FIT_START = datetime(2026, 11, 3, tzinfo=timezone.utc)
 RETRY = "Return the complete corrected program in one python fence."
 # Skills ablation arms: name -> (library, cards).
@@ -53,12 +52,6 @@ ARMS = {"none": (False, False), "cards": (False, True), "library": (True, False)
 
 def arm_name(library: bool, cards: bool) -> str:
     return {v: k for k, v in ARMS.items()}[(bool(library), bool(cards))]
-
-
-def extract(text: str) -> str:
-    """The first complete python fence; the whole reply when there is none."""
-    match = FENCE.search(text)
-    return (match.group(1) if match else text).strip() + "\n"
 
 
 def _sha(value) -> str:
