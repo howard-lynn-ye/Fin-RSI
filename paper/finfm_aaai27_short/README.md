@@ -22,9 +22,9 @@ Portal: https://openreview.net/group?id=AAAI.org%2F2027%2FWorkshop%2FFinFM
 Since 2026-11-10 the text describes the study that actually ran (section 5, "Study
 protocol": tracks P, E and S, frozen on 2026-11-08), not the earlier four-arm design. Its
 numbers are in `study_numbers.tex`, read from the frozen plan. Technical content (sections
-1-6, with Figures 1-2) now ends near the bottom of the left column of page 4, which leaves
-about half a page for the results. If the results need more, move Figure 2 to the appendix
-(about 0.4 page). The method table, rule cards and task table are in the appendix; the
+1-6, with Figures 1-2) now ends a quarter of the way down the right column of page 4, which
+leaves about a third of a page for the results. They will need more, so plan to move
+Figure 2 to the appendix (about 0.4 page). The method table, rule cards and task table are in the appendix; the
 skill-arm figure is commented out here because that ablation was not run.
 
 Numbers, figures and tables come from `../latex_acl2027/` (`make_numbers.py`), so the three
@@ -39,3 +39,12 @@ the same SHA-256 values as in `../finfm_aaai27/README.md`.
 cd paper/finfm_aaai27_short
 latexmk -pdf main.tex
 ```
+
+## Citations of the organisers' work (added 2026-11-10)
+
+The co-chairs named in the call are Yichen Li, Stefan Zohren, Yoontae Hwang and Qingsong Wen.
+Nine of their papers are cited where they bear on the text, each checked against arXiv, the
+publisher or the ACL/ICLR/KDD record: two surveys of language models in finance and the
+position paper on evaluation bias (introduction), Time-LLM, the time-series foundation-model
+survey and the LLM portfolio paper (introduction), and three Oxford papers on momentum,
+changepoints and portfolio optimisation (task suite).
