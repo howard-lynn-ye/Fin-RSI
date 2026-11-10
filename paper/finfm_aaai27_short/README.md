@@ -19,9 +19,13 @@ Portal: https://openreview.net/group?id=AAAI.org%2F2027%2FWorkshop%2FFinFM
 
 ## Layout
 
-Technical content (sections 1-5, with Figures 1-2) currently ends at the bottom of page 3,
-which leaves one page for the results. If the results need more, move Figure 2 to the
-appendix (about 0.4 page). The method table, rule cards and task table are in the appendix.
+Since 2026-11-10 the text describes the study that actually ran (section 5, "Study
+protocol": tracks P, E and S, frozen on 2026-11-08), not the earlier four-arm design. Its
+numbers are in `study_numbers.tex`, read from the frozen plan. Technical content (sections
+1-6, with Figures 1-2) now ends near the bottom of the left column of page 4, which leaves
+about half a page for the results. If the results need more, move Figure 2 to the appendix
+(about 0.4 page). The method table, rule cards and task table are in the appendix; the
+skill-arm figure is commented out here because that ablation was not run.
 
 Numbers, figures and tables come from `../latex_acl2027/` (`make_numbers.py`), so the three
 versions cannot disagree. The condensed text is in `sections/`.
