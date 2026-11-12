@@ -1,172 +1,118 @@
-"""Run one submitted program on one task in its own process.
+"""Execute one input in a disposable process without any evaluator or reference answers.
 
-    python -m fin_skills.tasks.worker BOX
-
-BOX holds submission.py and request.json ({task_id, seed, library, lag_ks}); the
-seed is an integer or "real" (fin_skills.tasks.real). The worker
-rebuilds the task's data, calls solve() with fresh copies, runs the visible checks and writes
-result.json: executed, error, checks, library trace and the positions themselves. Grading
-against the reference happens in the parent process and never reaches the model.
-
-This is NOT a security sandbox by itself. It caps address space and output, and the parent
-enforces a timeout. Set FIN_TASKS_CONFINE="module:function" to apply a confinement hook
-(for example benchmarks.agent_study.linux_sandbox:confine on Linux) before the program runs;
-the hook receives (box, readonly_paths) and returns a JSON-serializable description.
-FIN_TASKS_READONLY (os.pathsep-separated) adds read-only roots to that list.
+Run this file directly: importing tasks.__init__ would load the grader. OS confinement
+comes from FIN_TASKS_CONFINE; without it this is a trusted local fixture runner only.
 """
-from __future__ import annotations
-
 import builtins
+import ast
 import importlib
 import io
 import json
 import os
 from pathlib import Path
 import sys
-import time
 import traceback
 
-OUTPUT_CAP = 65536
-ADDRESS_SPACE = 16 << 30
 
-
-class _Capped(io.TextIOBase):
-    def __init__(self):
-        self.size = 0
-
-    def writable(self):
-        return True
-
+class Sink(io.TextIOBase):
     def write(self, text):
-        self.size += len(text)
         return len(text)
-
-
-def _error(exc: BaseException) -> dict:
-    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-    return dict(type=type(exc).__name__, message=str(exc)[:2000], traceback=tb[-3000:])
-
-
-def _guarded_import(blocked: str):
-    real = builtins.__import__
-
-    def guarded(name, globals=None, locals=None, fromlist=(), level=0):
-        if level == 0 and (name == blocked or name.startswith(blocked + ".")):
-            raise ImportError(f"{blocked} is not available for this task")
-        return real(name, globals, locals, fromlist, level)
-    return guarded
-
-
-def main(box: Path) -> None:
-    import numpy as np
-    import pandas as pd
-    import scipy.optimize  # noqa: F401  (import before any confinement)
-    import fin_skills.algorithms as algorithms
-    import fin_skills.algorithms.panel as panel
-    from fin_skills.api import get
-    from fin_skills.tasks.data import as_seed, panel as make_panel
-    from fin_skills.tasks.spec import suite
-
-    request = json.loads((box / "request.json").read_text())
-    task = suite().get(request["task_id"])
-    raw, factors, adjusted = make_panel(as_seed(request["seed"]), rows=task.rows,
-                                        factors=task.factors, order=task.order)
-    lag_guard = get("execution_lag")          # bound before the program can touch fin_skills
-    source = (box / "submission.py").read_text()
-    trace = []
-    real = dict(run=algorithms.run, positions=panel.positions, adjust=panel.adjust_prices,
-                rolling=panel.rolling)
-
-    def run(algorithm_id, data, **parameters):
-        trace.append(dict(kind="algorithm", name=algorithm_id, via="run"))
-        return real["run"](algorithm_id, data, **parameters)
-
-    def positions(algorithm_id, prices, split_factors=None, **options):
-        trace.append(dict(kind="algorithm", name=algorithm_id, via="positions"))
-        return real["positions"](algorithm_id, prices, split_factors, **options)
-
-    def rolling(algorithm_id, prices, split_factors=None, **options):
-        trace.append(dict(kind="algorithm", name=algorithm_id, via="rolling"))
-        return real["rolling"](algorithm_id, prices, split_factors, **options)
-
-    def adjust_prices(prices, split_factors=None, **options):
-        trace.append(dict(kind="adjust_prices"))
-        return real["adjust"](prices, split_factors, **options)
-
-    algorithms.run, algorithms.positions, algorithms.adjust_prices = run, positions, adjust_prices
-    algorithms.rolling = panel.rolling = rolling
-    panel.positions, panel.adjust_prices = positions, adjust_prices
-
-    confinement = {}
-    hook = os.environ.get("FIN_TASKS_CONFINE")
-    if hook:
-        module, _, name = hook.partition(":")
-        readonly = [Path(sys.prefix), Path(sys.base_prefix), Path("/usr"), Path("/lib"),
-                    Path("/lib64"), Path(algorithms.__file__).parents[1]]
-        # Extra read-only roots, e.g. a shared runtime whose site-packages sit outside
-        # sys.prefix, so a confined program can still import scipy submodules lazily.
-        readonly += [Path(p) for p in os.environ.get("FIN_TASKS_READONLY", "").split(os.pathsep)
-                     if p]
-        confinement = getattr(importlib.import_module(module), name)(box, readonly)
-    try:
-        import resource
-        resource.setrlimit(resource.RLIMIT_AS, (ADDRESS_SPACE, ADDRESS_SPACE))
-    except (ImportError, ValueError, OSError):
+    def flush(self):
         pass
 
-    namespace = {"__name__": "submission"}
-    if not request["library"]:
-        namespace["__builtins__"] = dict(vars(builtins),
-                                         __import__=_guarded_import("fin_skills"))
-    result = dict(executed=False, trace=trace, confinement=confinement)
-    sys.stdout, sys.stderr = _Capped(), _Capped()
-    started = time.perf_counter()
 
-    def call(p, f):
-        out = solve(p.copy(), f.copy())
-        if not isinstance(out, pd.DataFrame):
-            raise TypeError(f"solve must return a pandas DataFrame, got {type(out).__name__}")
-        if not out.index.equals(p.index) or list(out.columns) != list(p.columns):
-            raise ValueError("solve must return exactly the input index and columns, in order")
-        return out.astype(float)
-
+def main(box):
+    import numpy as np
+    import pandas as pd
+    request = json.loads((box / "input.json").read_text(encoding="utf-8"))
+    source = (box / "submission.py").read_text(encoding="utf-8")
+    hook = None
+    if os.environ.get("FIN_TASKS_CONFINE"):
+        module, _, name = os.environ["FIN_TASKS_CONFINE"].partition(":")
+        hook = getattr(importlib.import_module(module), name)
+    if request["require_confinement"] and hook is None:
+        raise RuntimeError("OS confinement is required")
+    public, private = Path(request["public_runtime"]), Path(request["private_package"])
+    sys.path[:] = [str(public)] + [p for p in sys.path if p and not (
+        Path(p).resolve() == private.parent or private in Path(p).resolve().parents
+        or Path(p).resolve() == private)]
+    trace = []
+    if request["library"]:
+        import fin_skills.algorithms as algorithms
+        import fin_skills.algorithms.panel as panel
+        for attr in ("run", "positions", "rolling", "adjust_prices"):
+            real = getattr(algorithms, attr)
+            def observed(*args, _real=real, _name=attr, **kwargs):
+                if len(trace) >= 64:
+                    raise RuntimeError("library call trace limit exceeded")
+                trace.append({"kind": "algorithm" if _name != "adjust_prices" else "adjust_prices",
+                              "via": _name})
+                return _real(*args, **kwargs)
+            setattr(algorithms, attr, observed)
+            if hasattr(panel, attr):
+                setattr(panel, attr, observed)
+    real_import = builtins.__import__
+    def restricted(name, globals=None, locals=None, fromlist=(), level=0):
+        if level == 0 and (name == "fin_skills" or name.startswith("fin_skills.")):
+            if not request["library"]:
+                raise ImportError("fin_skills is not available for this task")
+            if name.startswith(("fin_skills.tasks", "fin_skills.rsi")):
+                raise ImportError("evaluation modules are not part of the public runtime")
+        return real_import(name, globals, locals, fromlist, level)
+    readonly = [Path(p) for p in request["runtime_readonly"]]
+    if request["library"]:
+        readonly.append(public)
+    confinement = hook(box, readonly) if hook else {}
+    if request["require_confinement"] and not confinement:
+        raise RuntimeError("confinement hook returned no evidence")
     try:
-        exec(compile(source, "submission.py", "exec"), namespace)
-        solve = namespace["solve"]
-        values = call(raw, factors).to_numpy()
-    except BaseException as exc:            # the program's failure is a result, not a crash
-        result["error"] = _error(exc)
-        base_calls = len(trace)
-    else:
-        base_calls = len(trace)              # calls made by the program itself, not the checks
-        result.update(executed=True, positions=np.where(np.isfinite(values), values,
-                                                        0.0).tolist())
-        checks = {"finite_output": bool(np.isfinite(values).all())}
-        try:
-            ones = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
-            other = call(adjusted, ones).to_numpy()
-            with np.errstate(invalid="ignore"):
-                checks["split_representation"] = bool(np.allclose(
-                    np.nan_to_num(other), np.nan_to_num(values), atol=1e-8, rtol=0))
-        except BaseException:
-            checks["split_representation"] = False
-        try:
-            lag_ok = True
-            for k in request["lag_ks"]:
-                verdict = lag_guard.run(fn=lambda frame: call(frame, factors), df=raw.copy(),
-                                        k=int(k), tol=1e-8)
-                lag_ok = lag_ok and bool(verdict.passed) and not verdict.warnings
-        except BaseException:
-            lag_ok = False
-        checks["execution_lag"] = lag_ok
-        result["checks"] = checks
-    result["solve_seconds"] = time.perf_counter() - started
-    result["trace"] = trace[:base_calls]
-    result["library_calls"] = sum(t["kind"] == "algorithm" for t in trace[:base_calls])
-    printed = sys.stdout.size + sys.stderr.size
-    sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
-    result["printed_chars"] = printed
-    (box / "result.json").write_text(json.dumps(result, allow_nan=False))
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS, (16 << 30, 16 << 30))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (2 << 20, 2 << 20))
+    except ImportError:
+        pass
+    kind = request.get("result_kind", "positions")
+    if kind == "positions":
+        idx = pd.to_datetime(request["dates"])
+        prices = pd.DataFrame(request["prices"], index=idx, columns=request["columns"])
+        factors = pd.DataFrame(request["factors"], index=idx, columns=request["columns"])
+    result = {"executed": False, "confinement": confinement}
+    # These bytes precede candidate execution and cannot be erased from the parent's pipe.
+    os.write(1, b"FIN_TASKS_READY " + json.dumps(confinement).encode() + b"\n")
+    original_stdout, original_stderr = sys.stdout, sys.stderr
+    sys.stdout = sys.stderr = Sink()
+    try:
+        namespace = {"__name__": "submission", "__builtins__": dict(
+            vars(builtins), __import__=restricted)}
+        if kind == "scalar_expression":
+            tree = ast.parse(source, filename="submission.py", mode="exec")
+            if not tree.body or not isinstance(tree.body[-1], ast.Expr):
+                raise TypeError("the last statement must be a numerical expression")
+            expression = ast.Expression(tree.body.pop().value)
+            exec(compile(tree, "submission.py", "exec"), namespace)
+            output = eval(compile(expression, "submission.py", "eval"), namespace)
+            if isinstance(output, (bool, np.bool_)) or not isinstance(
+                    output, (int, float, np.integer, np.floating)):
+                raise TypeError("program must return one numerical scalar")
+            value = int(output) if isinstance(output, (int, np.integer)) else float(output)
+            result.update(executed=True, value=value)
+        elif kind == "positions":
+            exec(compile(source, "submission.py", "exec"), namespace)
+            output = namespace["solve"](prices, factors)
+            if not isinstance(output, pd.DataFrame):
+                raise TypeError("solve must return a pandas DataFrame")
+            result.update(executed=True, values=output.to_numpy(dtype=float).tolist(),
+                          dates=[str(v) for v in output.index], columns=list(output.columns))
+        else:
+            raise ValueError("unknown result contract")
+    except BaseException as exc:
+        result["error"] = {"type": type(exc).__name__, "message": str(exc)[:2000],
+                           "traceback": traceback.format_exc()[-2000:]}
+    finally:
+        sys.stdout, sys.stderr = original_stdout, original_stderr
+    result["trace"] = trace
+    result["library_calls"] = sum(t["kind"] == "algorithm" for t in trace)
+    (box / "result.json").write_text(json.dumps(result), encoding="utf-8")
 
 
 if __name__ == "__main__":

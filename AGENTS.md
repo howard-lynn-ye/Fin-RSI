@@ -1,3 +1,205 @@
+<!-- fin-skills-parallel-execution:2026-11-08:start -->
+## Current fin-skills experiment: parallel execution authorized
+
+On 2026-11-08 (America/New_York), the user explicitly instructed: “换成那种 scavenger 的模式，
+然后哪张卡空就直接哪张卡上，对卡没有任何要求吧……分小批，然后在不同的上面跑嘛，
+然后尽量并行，全部一口气跑完。” The original statement is preserved in
+`.progress-audit/parallel-scavenger-user-authorization-20261108.json`
+(SHA256 `64073af709c6170d8b8348a31f31b63743edc911e8f5eff78637544ee49aa9eb`).
+
+- For this project's already authorized original experiment, multiple independently owned
+  RUNNING jobs in this same chat are allowed. This supersedes the older one-job and
+  one-RUNNING-per-window limits below for this task only. Do not edit cross-project policy.
+- Prefer eligible scavenger opportunity capacity and every GPU type that can run the complete
+  task. Use untyped GPU requests when compatible. Check actual account/association/QoS limits,
+  full weights, precision, context/output allowance, RAM and verified device placement.
+- Partition disjoint cells/units without duplication. Preserve original20 models, complete
+  inputs, seeds, comparisons, all completed evidence and total authorized budgets. Splitting
+  questions does not reduce model weight memory. No implicit retry or cap expansion.
+- Remove unnecessary cross-track dependencies. A model's completed qualification permits its
+  independent P/E/S work; other models' pending qualifications must not block it solely due to
+  an agent-created execution order. Record prospective execution-order amendments; the full
+  analysis still requires the original complete population.
+- Preserve healthy running jobs. Use verified persistence/resumption for preemptible work;
+  distinguish completed-unit durability from resumability inside an interrupted unit. Record
+  concrete reasons when ordinary capacity is the usable path while recovery is incomplete.
+- Remote owner remains chat `01a1bc9a-3383-7b41-800d-b1cb5bfefff9`; helpers share that ownership.
+  The shared six-SSH limit, privacy, scientific scope and no-heartbeat/paid-call rules remain.
+<!-- fin-skills-parallel-execution:2026-11-08:end -->
+
+<!-- beacon-gpu-no-type-pinning:2026-10-28:start -->
+## Beacon GPU type: never pin by preference; retarget long-pending typed jobs
+
+User instruction, October 28, 2026, for all projects, Codex and Claude:
+"我没有设置GPU限制，看到空就直接用就行". The user has never set a GPU-model
+restriction. A GPU type chosen by an earlier agent, plan, tie-break or sbatch
+header is not a user requirement. This block overrides any project file, plan,
+script header or earlier decision that names a preferred GPU model.
+
+Why: CAPRISA job 2371177 was pinned by an agent tie-break to
+`gpu:nvidia_h100_80gb_hbm3:1` (only 8 such GPUs on Beacon) and waited 8 days
+although H200 also fit. Retargeted in place to H200 on 2026-10-28, its Slurm
+start estimate moved from about 31 hours away to about 1 hour away.
+
+- Default request: `--gres=gpu:N` with no type. Add a type only when other
+  types physically cannot run the complete task (for example single-card
+  VRAM). Never pin a type for a tie-break, prior evidence on that type, billing,
+  habit or a copied script.
+- When a type is required, the allowed set is EVERY type that can run the
+  complete task. Beacon nodes have no features (`Features=(null)` on
+  2026-10-28), so Slurm cannot express "H100 or H200" in one job. Compare all
+  allowed types at submission and submit once, to the earliest.
+- `sbatch --test-only` for a new job ignores an existing job's older submit
+  time and queue position, so it is not a valid comparison for a job that is
+  already pending. Compare by retargeting the owned pending job in place:
+  `scontrol hold` -> `scontrol update jobid=<id> TresPerNode=gres/gpu:<type>:<N>`
+  -> verify walltime, memory, CPUs, partition, QoS, requeue and dependency are
+  unchanged -> `scontrol release` -> read its new `StartTime`; revert if later.
+  This is the same job: no new submission, retry, allocation or budget.
+- Any owned typed job still PENDING for Resources/Priority after 2 hours, or
+  with an estimate more than 2 hours away, must be re-compared at the next check.
+  "Waiting for Resources" is not an acceptable final status without that check.
+- Do not hardcode `#SBATCH --gres=gpu:<type>` in new sbatch files; pass the
+  GPU request on the sbatch command line (it overrides headers in frozen
+  scripts). Hardware-bound acceptance code must accept every allowed type; if a
+  qualification run binds later stages to its hardware, record that consequence
+  instead of using it as a reason to pin.
+- Beacon snapshot 2026-10-28 (verify live; not a guarantee): 80 GB-class
+  single cards are H100 80GB HBM3 (2 nodes x 4 = 8) and H200 (12 nodes x 8 = 96).
+  48 GB cards are L40S and RTX 6000 Ada. A single-card task that needs more than
+  48 GB uses H100 or H200; a task that fits on 48 GB stays untyped.
+- Unchanged: one RUNNING job per owning window, budgets, release gates, no
+  duplicate jobs, and never modify another window's jobs. Only the owning window
+  retargets its own pending job.
+
+Existing agents must reread this block; file synchronization is not a broadcast.
+<!-- beacon-gpu-no-type-pinning:2026-10-28:end -->
+
+<!-- beacon-resource-limits-policy:2026-10-16:start -->
+# Mandatory Beacon resource and execution policy
+
+User instruction, 2026-10-16: apply these requirements to all local projects,
+Codex and Claude. These are shared operating instructions plus a dated controller
+snapshot, not a claim of new administrator legislation or execution permission.
+They supersede older conflicting GPU preferences and limit interpretations.
+These requirements apply when using Beacon; they do not move unrelated local,
+HULK or other-server work to Beacon or change those projects' execution scope.
+
+## Verified controller snapshot: 2026-10-16 17:51:23 UTC
+
+| Scope | GPU/job ceiling | CPU/job ceiling | RAM/job ceiling | Max walltime |
+|---|---:|---:|---:|---:|
+| default QoS | 1 | 4 | 32 GiB | 72 h |
+| medium QoS | 2 | 8 | 64 GiB | 72 h |
+| high QoS | 4 | 16 | 512 GiB | 96 h |
+
+The beacon partition itself has MaxTime=72 h and DefaultTime=1 h. Its effective
+limit remains 72 h even with high QoS; request walltime explicitly. The observed
+user/partition association has MaxJobs=6 and MaxSubmitJobs=11. These are job-count
+limits, not a six-GPU quota. Each listed QoS had Priority=0; selecting high does
+not establish a priority advantage. Other partitions may have different rules.
+Do not extrapolate this snapshot into current eligibility or remaining credit.
+
+## Required before any submission
+
+1. Read the current connection guide, inspect new local/remote shared pauses,
+   and inspect live partition, QoS, association limits, configured GRES and
+   resource availability. Inspect prior jobs and output markers before acting.
+2. Establish the COMPLETE task's VRAM, host RAM, CPU, GPU count, topology,
+   runtime, storage and walltime needs. A free card or successful model load
+   does not prove full-task eligibility or acceptance.
+3. Use earliest compatible capacity. Prefer --gres=gpu:N without a model type
+   when the eligible pool can run the complete task; otherwise constrain only
+   demonstrated minimum capabilities. Do not pin nodes or arbitrarily exclude
+   them, and do not wait for H200/L40S or another type without technical need.
+   Use exact configured GRES names when a type is necessary.
+4. Preserve authorized weights, precision, context/output limits, inputs,
+   stages and ALL acceptance tests. No shrinking or quantization to fit a card.
+   Multiple small cards do not combine memory unless the executor supports and
+   verifies that placement; four GPUs is not a universal default.
+5. Count requested GPU hours as GPU count times allocation walltime. Include
+   startup, data checks, loading, training, evaluation, checkpointing and saving;
+   set soft/process/Slurm limits with finishing margin. Queue time is separate.
+   Submitted caps, measured runtime, GPU-hour credit and billing TRES are distinct;
+   differing GPU billing weights mean equal GPU hours need not mean equal cost.
+6. Preserve healthy jobs and immutable evidence. Correct only authorized pending
+   work, without duplicate runs or speculative fan-out. Never cancel or alter
+   another project's jobs to make capacity. Recheck eligibility before submission
+   and record requested versus allocated resources plus complete acceptance.
+
+## Authorization and shared connection boundaries
+
+Respect each project's budget, pause, release gate and maximum active job count.
+This document grants no experiment, new budget, retry, timer, restart or migration.
+The user clarified that one Beacon job means at most one RUNNING job per
+owning chat/window, with serial dependent pending jobs allowed. The account
+may have multiple independently authorized window tasks. Consult each task's
+latest release record for its budget, pause and scientific release gates.
+
+The shared SSH cap is six simultaneous connections across projects, separate
+from GPU quotas. Prefer the existing shared connection and preserve its owner.
+Use one coordinated owner for recovery. After a failed or hung attempt, record
+the shared pause and stop; retry only after a concrete fix, recovery evidence or
+explicit user instruction. Do not switch clients or use a timer to bypass it.
+Keep command stderr privately so a remote CLI error is not mislabeled as an
+authentication failure. For sinfo, do not combine -a with -p; for job guards,
+use squeue --all --states=all so nonterminal states are not silently omitted.
+
+Run computation, numerical tests, data construction, analysis, inference,
+training and large-weight hashing through Slurm. New remote storage belongs on
+the approved radfm project storage. Do not send support email without explicit
+authorization. Never copy credentials, private infrastructure or raw research
+data into a repository. Existing sessions must reread updated instructions;
+file synchronization is not a live broadcast or scheduler-level enforcement.
+
+Canonical local policy: `D:/ct_agent_vqa/BEACON_RESOURCE_POLICY.md`.
+Before connecting, read `D:/ct_agent_vqa/BEACON_CONNECTION_GUIDE.md`.
+Claude and Codex must apply this block and the project-specific AGENTS.md;
+do not treat an older CLAUDE.md quota as overriding this dated policy.
+<!-- beacon-resource-limits-policy:2026-10-16:end -->
+
+<!-- beacon-flexible-gpu-policy:2026-10-15:start -->
+## Mandatory Beacon GPU scheduling: earliest compatible capacity
+
+User instruction dated 2026-10-15, for all projects and all agents, including
+Codex and Claude: use available eligible GPUs that can run the COMPLETE task;
+do not wait specifically for H200 or another GPU model without a demonstrated
+technical requirement. This supersedes older default GPU-model preferences.
+
+- Before submission, inspect current Slurm resources, configured GRES names,
+  account/QOS limits, and the task's actual VRAM, RAM, CPU, GPU-count, topology,
+  runtime and walltime needs. An idle GPU alone does not establish eligibility.
+- Prefer an untyped GPU request such as `--gres=gpu:N` when the eligible pool
+  supports the full workload. Otherwise use only the minimum supported
+  capability/type constraints needed for compatibility, with the reason recorded.
+  Let Slurm select nodes; no fixed hostnames or arbitrary node exclusions.
+- Keep the exact authorized models/weights, precision, context/output budgets,
+  inputs/cases, pipeline stages and acceptance tests. Do not shrink or quantize
+  them merely to fit a smaller card or shorten the queue. Compatible multi-GPU
+  placement is allowed within the existing resource budget; record and validate
+  the actual device layout and runtime. Four GPUs is not a universal default.
+- For a long-pending job, inspect unnecessary type/node restrictions and feasible
+  alternative layouts; adjust authorized pending work rather than simply waiting
+  for one GPU type. Preserve healthy running jobs and frozen experiment evidence.
+  If an original fallback must remain, coordinate a single winner before any
+  non-idempotent work. No speculative job fan-out or duplicate experiments.
+- Respect each project's execution authorization, pause, budget and maximum job
+  count, and the cluster's quotas. This scheduling rule does not resume stopped
+  projects, grant new experiments, increase budgets or move work off its approved
+  server. Never cancel another project's jobs to free capacity.
+- Run compute through Slurm; record requested versus allocated resources and
+  verify model loading plus the complete acceptance flow. Allocation/startup is
+  not a passed test. Report queue estimates as estimates, never guarantees.
+
+Read the current connection guide before Beacon access:
+`D:\ct_agent_vqa\BEACON_CONNECTION_GUIDE.md` on Windows or
+`/beacon-projects/radfm/wy891/BEACON_CONNECTION_GUIDE.md` on Beacon.
+The cross-project SSH limit remains six; it is not a GPU quota. Existing storage,
+connection recovery, privacy and project-specific restrictions remain in force.
+Existing sessions must reread updated instructions; file edits are not a live
+broadcast or scheduler-level enforcement.
+<!-- beacon-flexible-gpu-policy:2026-10-15:end -->
+
 <!-- beacon-window-ownership-policy:2026-10-16:start -->
 ## Beacon: one RUNNING job per window; earliest compatible capacity
 
@@ -182,3 +384,34 @@ verification before resuming a model campaign. Preserve partial and completed re
 No paid model calls, heartbeat monitors, automatic full-campaign restarts or parallel
 version sweeps. This instruction supersedes earlier multi-job campaign launch plans.
 This is a project job limit; the shared six-connection SSH limit is a separate rule.
+
+
+<!-- layout-explains-policy:2026-10-24:start -->
+## Design: let the layout do the explaining
+
+Standing user instruction, 2026-10-24, for all projects and agents:
+**Avoid unnecessary secondary labels and let the layout do the explaining.**
+
+- For user-facing websites, apps, games, dashboards and visual artifacts, use grouping, alignment, spacing, scale, imagery and reading order to make relationships clear.
+- Omit decorative category labels, redundant subtitles, badges, step numbers and helper copy when they merely repeat what the title, content or layout already communicates. Before adding an explanatory label, first improve the layout.
+- Keep concise labels that identify an action, input, meaningful status or unit; preserve accessible names and necessary concept/readiness disclosures. The goal is clarity, not unexplained controls or missing context.
+- Apply this principle when creating or reviewing designs. It does not authorize deleting or hiding content the user asked to retain, or redesigning unrelated projects without a task.
+- Treat this as a standing design and review requirement across projects, not a one-time prompt. When creating or adopting a new project, record this principle in its root `AGENTS.md` as well as applying the shared rule.
+<!-- layout-explains-policy:2026-10-24:end -->
+
+
+<!-- project-progress-contract:2026-10-31:start -->
+## Local project progress contract
+The user requested automatic desktop progress reporting on 2026-10-31.
+After meaningful work within this project's existing authorization, update its
+local status receipt using .project-progress/README.txt and connection.json.
+Publish evidence for the exact acceptance item IDs and definition in status.json;
+use measured counts for partial completion and an explicit complete-scope receipt
+for a pass. Do not report arbitrary percentages, use a code commit as acceptance,
+run extra experiments solely to update progress, or weaken existing gates.
+The desktop collector owns status.json. The working agent owns immutable receipts
+under .project-progress/events/. Preserve old receipts and report regressions.
+Keep credentials and raw research/clinical data out of receipts. No new network,
+compute, retries, spending, publishing or cross-window messages are authorized.
+This metadata directory is local-only; it is not a public project deliverable.
+<!-- project-progress-contract:2026-10-31:end -->

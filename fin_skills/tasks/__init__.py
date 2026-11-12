@@ -13,8 +13,8 @@ and the four E4 tasks' algorithms are always development tasks.
 from .data import ASSETS, panel
 from .judge import Judge, Visible, reference
 from .prompts import library_positions, library_text, messages, system_prompt, task_prompt
-from .spec import SPLITS, Task, TaskSet, assign_splits, suite
+from .spec import SPLITS, Task, TaskSet, assign_splits, frozen_suite, suite
 
 __all__ = ["ASSETS", "Judge", "SPLITS", "Task", "TaskSet", "Visible", "assign_splits",
-           "library_positions", "library_text", "messages", "panel", "reference", "suite",
-           "system_prompt", "task_prompt"]
+           "frozen_suite", "library_positions", "library_text", "messages", "panel", "reference",
+           "suite", "system_prompt", "task_prompt"]
