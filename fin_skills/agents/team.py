@@ -31,13 +31,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import hashlib
-import re
 from typing import Callable, Iterable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from fin_skills.api.rules import CARDS, CAUSES, explain, prompt_block, rules_for
+from fin_skills.rsi.fences import extract
 from fin_skills.rsi.wiring import Attempt, observe
 
 MODES = ("roles", "single")
@@ -59,12 +59,6 @@ REVIEWER_CHECKS = ("You review one failed program for one family of checks: {fam
                    "guess numbers the program should output.")
 INTERFACE_REVIEWER = ("You review one program that failed to run. Say in at most five sentences "
                       "what caused the error and how to change the program. Do not write code.")
-
-
-def extract(text: str) -> str:
-    """The first python (or bare) fence, else the whole text."""
-    match = re.search(r"```(?:python|py)?[ \t]*\n(.*?)```", text, re.DOTALL)
-    return (match.group(1) if match else text).strip() + "\n"
 
 
 @dataclass(frozen=True)
