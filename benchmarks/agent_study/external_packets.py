@@ -110,7 +110,9 @@ def prompt(public, *, interface_text=""):
               "whose value is one finite numerical scalar. Preserve the quantities and units "
               "specified in the question. " + public["output_contract"]["unit_instruction"])
     if interface_text:
-        system += "\nAvailable library interface:\n" + interface_text
+        # The output instruction goes last. In the frozen study it came before a ~26,000-character
+        # interface, and smaller models then answered in prose instead of a python fence.
+        system = "Available library interface:\n" + interface_text + "\n\n" + system
     return [dict(role="system", content=system),
             dict(role="user", content=f"Context:\n{public['context']}\n\nQuestion: "
                                       + public["question"])]

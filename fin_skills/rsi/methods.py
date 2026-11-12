@@ -379,7 +379,7 @@ class PlaybookLearning(_Learner):
         try:
             for task_id in split["development"]:
                 observe(loop, [run_attempt(task_id, "")], available_at=FIT_START.isoformat(),
-                        source_version="fin-skills")
+                        source_version="fin-skills", tools=self.library)
             for i in range(budget.proposals):
                 as_of = (FIT_START + timedelta(minutes=i + 1)).isoformat()
                 decisions.append(loop.improve(as_of=as_of).status)

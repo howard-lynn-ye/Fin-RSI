@@ -119,9 +119,14 @@ def run(generate, tasks, *, out, model_id, seeds, execution_mode="model"):
     tasks = tuple(tasks)
     if not tasks:
         raise ValueError("external evaluation task scope must be nonempty")
-    if any(t.scoring["scoring_policy"][k] != 0 for t in tasks
-           for k in ("absolute_tolerance", "relative_tolerance")):
-        raise ValueError("external primary endpoint requires frozen exact numeric matching")
+    # BizBench scores program-synthesis answers within 1% of the reference (Koncel-Kedziorski et
+    # al. 2024, sec. 3.1); exact matching is kept as an option. The frozen study used 0/0, which
+    # no correct program can meet on the 115 CodeFinQA labels stored as float32 leftovers.
+    policies = {(t.scoring["scoring_policy"]["absolute_tolerance"],
+                 t.scoring["scoring_policy"]["relative_tolerance"]) for t in tasks}
+    if len(policies) != 1 or not policies <= {(0, 0), (0, 0.01)}:
+        raise ValueError("external endpoint must be one frozen policy: exact (0, 0) or "
+                         "BizBench's 1% relative tolerance (0, 0.01)")
     if len({t.public["source"]["split"] for t in tasks}) != 1:
         raise ValueError("development and evaluation source splits must stay separate")
     budget = Budget(attempts=1, calls=1, generated_tokens=2048)
@@ -132,7 +137,8 @@ def run(generate, tasks, *, out, model_id, seeds, execution_mode="model"):
         exposure="public external tasks; training contamination unknown; not official leaderboard",
         role="development" if tasks[0].public["source"]["split"] == "train" else "evaluation",
         selection="one generation per task/library/seed; no numeric feedback or retries",
-        endpoint="finite executable scalar AND exact numeric match to public source answer",
+        endpoint=("finite executable scalar AND " + ("exact numeric match"
+                  if policies == {(0, 0)} else "within 1% of") + " the public source answer"),
         library_intervention="full numerical library plus catalog/interface documentation",
         library_prompt_sha256=digest(interface), budget=budget.as_dict())
     return benchmark([FrozenExternal], generate, SimpleNamespace(dev=(), heldout=tasks),

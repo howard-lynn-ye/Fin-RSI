@@ -50,9 +50,30 @@ def test_external_reference_is_bound_and_primary_rejects_relaxed_tolerance(tmp_p
         study.ScalarTask(task.public, task.scoring)
     task = tasks()[0]
     task.scoring["scoring_policy"]["relative_tolerance"] = .1
-    with pytest.raises(ValueError, match="exact numeric"):
+    with pytest.raises(ValueError, match="one frozen policy"):
         study.run(lambda _: "unused", [task], out=tmp_path / "never.jsonl", model_id="fixture", seeds=(11,))
     assert not (tmp_path / "never.jsonl").exists()
+    exact, bizbench = tasks()[0], tasks()[0]
+    bizbench.scoring["scoring_policy"]["relative_tolerance"] = .01
+    with pytest.raises(ValueError, match="one frozen policy"):     # one policy per run
+        study.run(lambda _: "unused", [exact, bizbench], out=tmp_path / "mixed.jsonl",
+                  model_id="fixture", seeds=(11,))
+    assert not (tmp_path / "mixed.jsonl").exists()
+
+
+def test_external_bizbench_one_percent_policy_grades_near_answers(tmp_path, monkeypatch):
+    """BizBench's own criterion (within 1%) accepts 24.9 for a reference of 25; exact does not."""
+    monkeypatch.setattr(study, "evaluate_scalar", lambda *a, **k: dict(executed=True, value=24.9))
+    for tolerance, valid in ((0, False), (.01, True)):
+        task = tasks()[0]
+        task.scoring["scoring_policy"]["relative_tolerance"] = tolerance
+        task = study.ScalarTask(task.public, task.scoring)
+        report = study.run(lambda _: "```python\n24.9\n```", [task],
+                           out=tmp_path / f"policy-{tolerance}.jsonl", model_id="fixture",
+                           seeds=(11,), execution_mode="trusted-fixtures")
+        assert all(row["valid"] is valid for row in report.rows)
+        endpoint = report.protocol["study_manifest"]["endpoint"]
+        assert ("within 1%" in endpoint) is (tolerance == .01)
 
 
 def test_external_real_scalar_transport_and_post_selection_grade(tmp_path, monkeypatch):

@@ -53,3 +53,16 @@ def test_cluster_and_frozen_revision_are_required():
     with pytest.raises(ValueError, match="cluster"):
         packets(row, revision="a"*40, split="train", row_index=0,
                 source_cluster="", policy=policy)
+
+
+def test_output_instruction_comes_after_the_library_interface():
+    """The frozen study put the instruction first; models then lost it behind ~26k characters."""
+    row, policy = fixture()
+    public, _ = packets(row, revision="a"*40, split="train", row_index=0,
+                        source_cluster="synthetic-document", policy=policy)
+    plain = prompt(public)[0]["content"]
+    with_library = prompt(public, interface_text="LIBRARY INTERFACE TEXT")[0]["content"]
+    assert plain.startswith("Write Python code") and "LIBRARY" not in plain
+    assert with_library.startswith("Available library interface:")
+    assert with_library.endswith(plain)
+    assert with_library.index("LIBRARY INTERFACE TEXT") < with_library.index("Write Python code")
