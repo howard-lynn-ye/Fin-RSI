@@ -67,10 +67,15 @@ def main(box):
         raise RuntimeError("confinement hook returned no evidence")
     try:
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (16 << 30, 16 << 30))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (2 << 20, 2 << 20))
-    except ImportError:
-        pass
+    except ImportError:                       # Windows: the parent's timeout still applies
+        resource = None
+    for limit, size in (("RLIMIT_AS", 16 << 30), ("RLIMIT_FSIZE", 2 << 20)):
+        try:
+            if resource is not None:
+                resource.setrlimit(getattr(resource, limit), (size, size))
+        except (ValueError, OSError):         # macOS refuses an address-space limit
+            if request["require_confinement"]:
+                raise
     kind = request.get("result_kind", "positions")
     if kind == "positions":
         idx = pd.to_datetime(request["dates"])

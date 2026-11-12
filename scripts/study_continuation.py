@@ -283,18 +283,19 @@ def execution_replay(store, stream):
 def replay_events(events, checkpoint, generate):
     # A child has a fresh guard and its own logical request sequence. Reusing the
     # parent's indices collides with the first newly generated tail request.
-    try:
-        from study_context import ContextGuardedBackend
-    except ModuleNotFoundError as exc:
-        if exc.name != 'study_context':
-            raise
-        from scripts.study_context import ContextGuardedBackend
+    # The guard module is imported as study_context (coordinator layout) or as
+    # scripts.study_context (repository layout); either may already be loaded, so match the
+    # class by name and module rather than by one module's class object.
+    def is_guard(obj):
+        cls = type(obj)
+        return (cls.__name__ == 'ContextGuardedBackend'
+                and cls.__module__ in ('study_context', 'scripts.study_context'))
     current, guard, seen = generate, None, set()
     while not isinstance(current, ReplayBackend):
         if id(current) in seen or not hasattr(current, 'backend'):
             raise TypeError('checkpoint replay requires the bound backend chain')
         seen.add(id(current))
-        if isinstance(current, ContextGuardedBackend):
+        if is_guard(current):
             if guard is not None:
                 raise ValueError('multiple context guards in checkpoint replay')
             guard = current
