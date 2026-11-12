@@ -6,7 +6,7 @@ has three layers. \emph{Skills} hold the financial knowledge a model needs and t
 algorithms that apply it. \emph{Checks} are executable tests for the failures that the
 knowledge is meant to prevent. \emph{Self-improvement} methods turn check results into
 better programs (\S\ref{sec:methods}). An agent reaches all three through the same
-interfaces (\S\ref{sec:interfaces}; Figure~\ref{fig:overview}a).
+interfaces (\S\ref{sec:interfaces}; Figure~\ref{fig:overview}).
 
 \subsection{Skills: documents, algorithms and rule cards}
 \label{sec:skills}
@@ -20,6 +20,11 @@ dated and marked by how it was verified: at a primary source, secondhand, silent
 or dead. The descriptions of all \NSkills{} skills take about \NListingTokens{} tokens of an
 agent's skill listing, so the skills are split into plugins and a user installs only the
 ones a task needs.
+The plugin marketplace also lists \NFederatedPacks{} federated packs from other repositories
+(\NFederatedSkills{} skills), off by default and not verified here. \NLensPacks{} of them are
+investor templates: \NLensSkills{} skills built on named investors' approaches, such as
+Buffett's, Soros's or Duan Yongping's. The \texttt{kol-credibility-registry} skill adds track
+records for \NKOLProfiles{} social-media authors.
 
 \paragraph{Algorithms.}
 A catalog of \NAlgorithms{} algorithm entries covers \NAlgorithmTasks{} task types,
@@ -84,8 +89,9 @@ given as adjusted closes with unit factors, and its output must not change (abso
 tolerance $10^{-8}$). A program that applies the factors twice, or mixes raw and adjusted
 prices, fails.
 \item \texttt{execution\_lag}: the prices from row $k$ onward are perturbed, and no position
-up to row $k$ may move. A rule that trades on the close it reads fails this check. It still
-passes a plain causality test, which lets the value on row $t$ use row $t$.
+up to row $k$ may move (Figure~\ref{fig:episode}c). A rule that trades on the close it reads
+fails this check. It still passes a plain causality test, which lets the value on row $t$ use
+row $t$.
 \end{itemize}
 Each check carries a \emph{cause}: one sentence saying what the check observed, for
 instance that a position moved when only prices on or after its own row changed.

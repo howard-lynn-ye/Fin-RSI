@@ -1,0 +1,48 @@
+\section{Introduction}
+\label{sec:intro}
+
+Financial research code fails silently. A program that applies stock splits twice, decides
+a position with the close it trades over, or leaves warm-up rows missing still runs and
+still returns a backtest (Figure~\ref{fig:episode}). Language models are moving into
+financial work \citep{nie2024survey,kong2024applications,dong2025agents}, and agents now write
+such code
+\citep{zhang2024finagent,bigeard2025finance}. They make these mistakes: in our earlier
+audit, all 24 programs a 14B coding model wrote re-applied split factors that the prompt
+defined as already cumulative. The problem does not go away when a foundation model
+supplies the forecast or the portfolio weights
+\citep{jin2024timellm,liang2024foundation,hwang2025decision}: the code that turns them into
+positions must still apply each split once and trade only on what was known.
+
+An agent would need three things to avoid them: knowledge of the failure modes, checks that
+detect each failure without an expected output, and a way to turn check results into better
+programs. All three exist, but separately. Skill documents and tool collections give
+knowledge; testing utilities give checks; self-improvement methods each come with their own
+tasks, feedback and budgets
+\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,agrawal2026gepa}, so their
+results cannot be compared. Intrinsic self-correction without an external signal rarely
+helps \citep{huang2024cannot}, and financial benchmarks score answers or returns
+\citep{xie2024finben,chen2025stockbench}; a return can reward a wrong program on a
+favourable price path, and repeated trials make such false discoveries likely
+\citep{bailey2017pbo}. Evaluation practice has the same gap: of 164 recent papers on
+language models in finance, about a quarter acknowledge look-ahead bias
+\citep{kong2026bias}.
+
+\lib{} puts all three behind interfaces an agent can call (Figure~\ref{fig:overview}).
+PyOD put outlier detectors behind one interface \citep{zhao2019pyod,chen2025pyod2}, which let
+ADBench
+compare them on equal terms \citep{han2022adbench}. \lib{} does the same for
+self-improvement: every method gets the same judge and the same metered budget. A user
+connects a model once, as one \texttt{generate(messages)} callable. Our contributions:
+\begin{itemize}
+\item an agent-native library of skills, checks and tools (\S\ref{sec:library});
+\item \NMethods{} self-improvement methods behind one interface with equal budgets
+(\S\ref{sec:methods});
+\item \NTasks{} financial programming tasks with independent references, a hidden grader, an
+algorithm-level held-out split and real-price panels (\S\ref{sec:tasks});
+\item a study fixed before any test run, on \StudyModels{} open-weight models: feedback
+against repetition at the same temperature, the library against none, the \NMethods{}
+methods, and what the library's interface text does to public BizBench questions
+(\S\ref{sec:study}).
+\end{itemize}
+The first results point at adoption, not capability: models that could solve a task with one
+library call rarely make it (\S\ref{sec:results}).

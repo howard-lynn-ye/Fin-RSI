@@ -1,0 +1,95 @@
+\section{Task suite}
+\label{sec:tasks}
+
+\NTasks{} tasks cover \NTaskAlgorithms{} algorithms in \NFamilies{} families, two variants
+each (Appendix Table~\ref{tab:tasks}). A task states a rule in prose; the model implements
+\texttt{solve(prices, split\_factors)} returning positions, or for volatility, risk and
+forecast tasks the value known at the previous close. Each task can be solved by hand or by
+one library call. The rules are the momentum, volatility-scaling and allocation baselines
+that learned strategies are measured against
+\citep{lim2019enhancing,wood2022slow,zhang2020deep}.
+
+\paragraph{Data.}
+Synthetic panels have four assets and \NRows{} business days of seeded Gaussian returns,
+with four splits at fixed rows (2-for-1, 3-for-1, 3-for-2, 1-for-2), on \NSeeds{} seeds.
+Variant~a gives cumulative factors in alphabetical order; variant~b gives event ratios,
+shuffled columns and other parameters. The suite also has a real panel: as-traded
+closes of Amazon, Shopify, Alphabet and Tesla for \NRealRows{} sessions from \RealFirst{} to
+\RealLast{}, in which all four split (20-, 10-, 20- and 3-for-1; Appendix
+Figure~\ref{fig:real}). Yahoo Finance serves the
+closes split-adjusted; we rebuild as-traded quotes from a split table checked against the
+companies' announcements and published pre-split closes, and release the fetch code and the
+file's SHA-256, since the prices may not be redistributed.
+
+\paragraph{Judge and hidden grader.}
+The judge runs each program in a separate process with a memory limit and a 120-second
+timeout (in our runs also confined with Landlock and seccomp), refuses \texttt{import fin\_skills} without library access, and applies the three
+checks of \S\ref{sec:library}. A program is \emph{valid} only if it
+ran, passed every check and matches an independent numpy reference within $10^{-8}$
+($10^{-5}$ for \texttt{min\_variance}). A program that passes the checks but is wrong is
+\emph{accepted but wrong}; we report that rate because the checks cannot see it.
+
+\paragraph{Qualification.}
+Before any model ran: on every task and data panel, the reference agrees with the library
+to within $\RefGapOther$ ($\RefGapMinVariance$ for \texttt{min\_variance}); a correct
+program passes every check and is graded valid; and on a position task and a table task,
+planted versions of each failure (same close, no adjustment, factors cumulated twice,
+missing warm-up) fail their check and the grade. Building the references exposed a library
+defect: the long-only minimum-variance optimiser stopped early on daily-scale covariances,
+off by up to $1.2\times10^{-2}$, until we rescaled the covariance before solving.
+
+\paragraph{Split.}
+The split is by algorithm. The \NForcedDev{} algorithms a model has already seen go to
+development, and a seeded draw sends \NDrawnDev{} of the other \NDrawn{} there too:
+\NDevTasks{} development and \NHeldTasks{} held-out tasks, the latter covering all
+\NFamilies{} families.
+
+\section{Study protocol}
+\label{sec:study}
+
+We fixed the tasks, prompts, seeds, budgets, models and contrasts before any test run, on
+the suite as it stood on 8~November 2026: \StudyDevTasks{} development and
+\StudyHeldTasks{} held-out position tasks on synthetic panels (Bollinger, RSI and Donchian
+rules, two variants each). The tasks added since, and the real panel, are not part of the
+study. It has three tracks.
+
+\paragraph{P: feedback and library.}
+The three controlled arms, with and without the library, on the \StudyHeldTasks{} held-out
+tasks and \StudySeeds{} seeds: \StudyPEpisodes{} episodes per model. Three contrasts were
+declared: \texttt{Check} against \texttt{Repeat} and \texttt{Explain} against
+\texttt{Check}, both without the library, and library against none under \texttt{Explain}.
+The held-out rules are among the library's own algorithms, and variant~a uses their default
+parameters, so one \texttt{positions()} call solves every held-out task; the library contrast
+thus measures whether a model finds and makes that call.
+
+\paragraph{E: external questions.}
+\StudyEQuestions{} public questions from the two table-and-text program-synthesis tasks of
+BizBench \citep{krumdick2024bizbench} (\StudyECodeFinQA{} CodeFinQA, \StudyECodeTATQA{}
+CodeTAT-QA), selected by a rule fixed before any model output: a numeric answer, a prompt
+that fits every core model's context, no duplicate in the training split, one question per
+group of shared context. The model writes one program per question, with and without the
+library and without feedback: \StudyEEpisodes{} episodes per model. An answer counts if the
+program runs and returns a number within 1\% of the public label, BizBench's own criterion.
+The protocol made exact matching primary and 1\% a sensitivity analysis; we report 1\%
+because \FactFloatLabels{} of the \StudyECodeFinQA{} CodeFinQA labels are float32 leftovers
+(41.0999984741 for 41.1) that no correct program matches exactly: \FactFloatValid{} of
+\FactFloatEpisodes{} episodes did, in each library condition. With the library, the prompt also
+lists the library's \FactInterfaceAlgorithms{} algorithms (\FactInterfaceChars{} characters).
+None computes these table questions, so track E measures what that text costs, not what the
+library adds.
+
+\paragraph{S: seven methods.}
+The \NMethods{} methods of \S\ref{sec:methods}, with and without the library, on the same
+tasks and seeds, for \StudyCoreModels{} core models: \StudySEpisodes{} episodes and
+\StudySFits{} fits on the development tasks. Unlike the arms, the methods' first prompt includes
+the rule cards that apply to the task.
+
+\paragraph{Models and analysis.}
+Tracks P and E run on \StudyModels{} open-weight instruction models from \StudyFamilies{}
+families, 2B to 32B parameters, in BF16 at temperature 0.1, with a \StudyContext{}-token
+context (16,384 for one model with a smaller native limit) and at most \StudyOutputCap{}
+generated tokens per call. Every refusal, truncated reply and failed program stays in the
+denominator. The position tasks cover only \StudyAlgorithms{} algorithms, and variants and
+seeds are not independent of them: with three clusters a sign-flip test cannot go below
+$p=0.25$. We therefore report P and S as effects per algorithm, without significance
+claims. Track E weights its two sources equally.

@@ -1,0 +1,60 @@
+% Figure: the gated playbook loop of PlaybookLearning, told in pictures. The halves are the
+% development and validation splits of the development tasks (split by algorithm), and the gate is
+% guard_rule="no_regression" in fin_skills/rsi/core.py: accept only if neither half scores lower,
+% one scores higher and no task that passed its checks now fails. The dots are an example, not
+% results. The proposal budget is a macro from numbers.tex.
+\InputIfFileExists{figures/glyphs}{}{\input{../latex_acl2027/figures/glyphs}}%
+\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily]
+\def\Y{1.35}
+\def\book#1#2{% \book{centre x}{colour of the new entry, or n for none}
+  \gpage{(#1+0.1,\Y+0.08)}{1.0}{1.2}{white}
+  \gpage{(#1,\Y)}{1.0}{1.2}{white}
+  \foreach \k/\l in {1/0.62, 2/0.5, 3/0.66} {\gbar{#1-0.36}{\Y+0.36-0.18*\k}{\l}{gline}}
+  \ifx#2n\else\gbar{#1-0.36}{\Y+0.36-0.18*4}{0.56}{#2}\fi}
+\def\tasks#1#2#3{% \tasks{x}{y}{how many of 4 passed}
+  \foreach \i in {1,...,4} {
+    \ifnum\i>#3 \draw[gmid!70, line width=0.5pt] ({#1+0.2*(\i-1)},#2) circle (0.062);
+    \else \fill[gok] ({#1+0.2*(\i-1)},#2) circle (0.068);\fi}}
+% ---------------------------------------------------------------- playbook, proposer, candidate
+\book{1.05}{n}
+\node[gword] at (1.05,\Y-0.88) {playbook P};
+\node[gnote] at (1.05,\Y-1.15) {in every prompt};
+\draw[gflow] (1.72,\Y) -- (3.15,\Y);
+\gbot{(3.65,\Y)}{0.33}
+\node[gword] at (3.65,\Y-0.88) {proposer};
+\node[gnote] at (3.65,\Y-1.15) {sees checks, not grades};
+\draw[gflow] (4.1,\Y) -- (5.55,\Y);
+\book{6.25}{gok}
+\node[gword] at (6.25,\Y-0.88) {candidate P$'$};
+\node[gnote] at (6.25,\Y-1.15) {one entry added};
+\draw[gflow] (6.92,\Y) -- (7.5,\Y);
+% ---------------------------------------------------------------- two halves
+\begin{scope}[shift={(7.62,0)}]
+  \path[fill=white, draw=gline, line width=0.5pt, rounded corners=2pt, gshade] (0,\Y-0.62) rectangle (3.3,\Y+0.62);
+  \draw[gline, line width=0.5pt] (1.73,\Y-0.5) -- (1.73,\Y+0.5);
+  \node[gnote, anchor=east] at (0.34,\Y+0.2) {P};
+  \node[gnote, anchor=east] at (0.34,\Y-0.2) {P$'$};
+  \tasks{0.5}{\Y+0.2}{3} \tasks{0.5}{\Y-0.2}{3}
+  \tasks{2.05}{\Y+0.2}{2} \tasks{2.05}{\Y-0.2}{3}
+  \node[gword] at (0.86,\Y-0.88) {development};
+  \node[gword] at (2.42,\Y-0.88) {validation};
+  \node[gnote] at (0.86,\Y-1.15) {same};
+  \node[gnote] at (2.42,\Y-1.15) {higher};
+\end{scope}
+\draw[gflow] (10.98,\Y) -- (11.88,\Y);
+% ---------------------------------------------------------------- the gate
+\path[fill=white, draw=gink, line width=0.7pt, gshade] (12.45,\Y+0.5) -- (12.97,\Y) -- (12.45,\Y-0.5) -- (11.93,\Y) -- cycle;
+\gcheck{(12.45,\Y)}{1}
+\node[gword] at (12.45,\Y-0.88) {no-regression gate};
+\node[gnote] at (12.45,\Y-1.15) {no half lower, one higher};
+% accept: P' becomes the playbook
+\draw[-{Latex[length=1.7mm,width=1.4mm]}, gok, line width=0.9pt] (12.45,\Y+0.52) .. controls (12.45,\Y+1.6) and (1.05,\Y+1.6) .. (1.05,\Y+0.74);
+\node[gnote, fill=white, inner sep=1pt, text=gok!80!black] at (6.75,\Y+1.33) {accept: P$'$ becomes P};
+% reject: P stays
+\draw[-{Latex[length=1.7mm,width=1.4mm]}, gbad!80, line width=0.9pt] (12.99,\Y) -- (14.42,\Y);
+\begin{scope}[opacity=0.55]\book{15.1}{gok}\end{scope}
+\draw[gbad, line width=1.2pt, line cap=round] (14.75,\Y-0.4) -- (15.45,\Y+0.4) (14.75,\Y+0.4) -- (15.45,\Y-0.4);
+\node[gword] at (15.1,\Y-0.88) {reject};
+\node[gnote] at (15.1,\Y-1.15) {P stays};
+\node[gnote, anchor=east] at (15.95,\Y+1.05) {at most \FitProposals{} proposals};
+\end{tikzpicture}

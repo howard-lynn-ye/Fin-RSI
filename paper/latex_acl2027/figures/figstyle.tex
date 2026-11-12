@@ -1,0 +1,63 @@
+% The one figure style of the Fin-RSI paper, shared by every TikZ figure and every version
+% (ACL draft, FinFM 7 and 4 pages). make_figures.py and make_results.py read the colours below
+% through figstyle.py, so the data figures cannot drift from the diagrams.
+%
+% Rules: figures are drawn at print size and never scaled; no text below 7 pt; one meaning per
+% colour (skills and the library blue, checks orange, self-improvement aqua, pass and fail green
+% and red with a mark); icons are Lucide (figures/lucide.tex), one icon per meaning.
+%
+% Palette: the reference palette's first slots, validated for colour vision deficiency.
+\definecolor{finblue}{HTML}{2A78D6}%     skills, rule cards, the library
+\definecolor{finorange}{HTML}{EB6834}%   checks
+\definecolor{finaqua}{HTML}{1BAF7A}%     self-improvement
+\definecolor{finmagenta}{HTML}{C2408B}%  fourth slot, spare
+% Neutrals: one cool grey scale for text, lines and fills.
+\definecolor{figink}{HTML}{1F2335}%      titles and labels
+\definecolor{fingray}{HTML}{5A6374}%     secondary marks (the engine)
+\definecolor{figmid}{HTML}{6A7385}%      notes, flow arrows, axes
+\definecolor{figline}{HTML}{C9D0DA}%     outlines, unpicked items
+\definecolor{figfaint}{HTML}{EEF1F5}%    empty cells, light fills
+% Status: only with a check or a cross.
+\definecolor{figok}{HTML}{1E9E6A}%
+\definecolor{figbad}{HTML}{D2483E}%
+% Older names, kept so every figure file reads the same colours.
+\colorlet{gink}{figink}\colorlet{gmid}{figmid}\colorlet{gline}{figline}%
+\colorlet{gok}{figok}\colorlet{gbad}{figbad}%
+\colorlet{kink}{figink}\colorlet{kuse}{figmid}\colorlet{koff}{figline}%
+%
+% Text: four levels, plus the typewriter face of the body for code.
+\providecommand{\figTitleFont}{\sffamily\bfseries\fontsize{7.5}{9}\selectfont}%
+\providecommand{\figLabelFont}{\sffamily\fontsize{7.5}{9}\selectfont}%
+\providecommand{\figSmallFont}{\sffamily\fontsize{7}{8.4}\selectfont}%
+\providecommand{\figBrandFont}{\sffamily\bfseries\fontsize{8.4}{10}\selectfont}%
+\providecommand{\figCodeFont}{\ttfamily\fontsize{7}{8.6}\selectfont}%
+\providecommand{\glab}{\fontsize{7.5}{9}\selectfont}%
+\providecommand{\gsmall}{\fontsize{7}{8.4}\selectfont}%
+%
+\InputIfFileExists{figures/lucide}{}{\input{../latex_acl2027/figures/lucide}}%
+\tikzset{%
+  fig title/.style={font=\figTitleFont, text=figink, inner sep=0},%
+  fig label/.style={font=\figLabelFont, text=figink, inner sep=0, align=center},%
+  fig small/.style={font=\figSmallFont, text=figink!85, inner sep=0, align=center},%
+  fig note/.style={font=\figSmallFont, text=figmid, inner sep=0, align=center},%
+  fig code/.style={font=\figCodeFont, text=figink, inner sep=0},%
+  % lines: 0.5 pt outlines, 0.7 pt icons (lucide), 0.8 pt arrows
+  fig outline/.style={line width=0.5pt},%
+  fig shadow/.style={blur shadow={shadow blur steps=6, shadow xshift=0pt,%
+    shadow yshift=-0.8pt, shadow opacity=16, shadow blur radius=1.8pt}},%
+  % corners: 1 pt items, 2.5 pt cards and compartments, 4 pt containers
+  fig item/.style={rounded corners=1pt},%
+  fig card/.style={fill=white, draw=figline, line width=0.5pt, rounded corners=2.5pt, fig shadow},%
+  fig box/.style={fill=white, draw=figline, line width=0.5pt, rounded corners=4pt, fig shadow},%
+  % arrows: one tip, four meanings
+  fig arrow/.style={-{Latex[length=1.6mm,width=1.4mm]}, line width=0.8pt},%
+  fig flow/.style={fig arrow, draw=figmid!70},%
+  fig pass/.style={fig arrow, draw=figok},%
+  fig fail/.style={fig arrow, draw=figbad!80, dash pattern=on 3pt off 1.8pt},%
+  fig back/.style={fig arrow, draw=finaqua!85!black},%
+  % names the figure files already use
+  gword/.style={fig label},%
+  gnote/.style={fig note},%
+  gflow/.style={fig flow},%
+  gshade/.style={fig shadow},%
+}%

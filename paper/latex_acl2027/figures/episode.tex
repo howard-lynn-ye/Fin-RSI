@@ -1,0 +1,125 @@
+% Figure 2: one episode, from a real split to the benchmark. Drawn at the ACL text width (16 cm),
+% so no version scales it; nothing is smaller than 7 pt.
+% (a) is figures/episode_split.pdf (make_figures.py, real panel). (b) quotes episode_src/run1.py
+% and run2.py on task momentum_a; episode_src/check.py re-runs both through the judge and the
+% hidden grader on every seed and the real panel. The check name and its cause are the judge's
+% own (fin_skills/api/rules.py, CAUSES; the cause is shortened). Runs: rsi.Budget (numbers.tex).
+% (c) draws figures/episode_lag.tex (make_figures.py, episode_lag: seed-11 panel, the guard's
+% own verdicts).
+\InputIfFileExists{figures/glyphs}{}{\input{../latex_acl2027/figures/glyphs}}%
+\InputIfFileExists{figures/episode_lag}{}{\input{../latex_acl2027/figures/episode_lag}}%
+\begin{tikzpicture}[x=1cm, y=1cm, font=\sffamily,
+  tword/.style={fig label},
+  tnote/.style={fig note},
+  ttitle/.style={fig title, anchor=base west},
+  tcode/.style={fig code, anchor=base west},
+  tcard/.style={fig card},
+  tfeed/.style={fig fail},
+]
+\def\L{0.3}% code line pitch
+% ================================================================= (a) the data
+\node[ttitle] at (0, 4.42) {(a) Real closes: Amazon, 2022};
+\node[anchor=north west, inner sep=0] at (-0.02, 4.2) {\includegraphics{figures/episode_split.pdf}};
+% legend of the position strip
+\begin{scope}[shift={(0.95,-0.2)}]
+  \fill[finblue] (0,-0.08) rectangle (0.16,0.08);
+  \node[tnote, anchor=west] at (0.22,0) {long};
+  \fill[gline!80!gmid] (0.92,-0.08) rectangle (1.08,0.08);
+  \node[tnote, anchor=west] at (1.14,0) {short};
+  \fill[finorange!22] (1.9,-0.1) rectangle (2.06,0.1);
+  \node[tnote, anchor=west] at (2.12,0) {run 1 on the wrong side};
+\end{scope}
+% ================================================================= (b) one episode
+\node[ttitle] at (5.05, 4.42) {(b) One episode of \texttt{momentum\_a}: a check catches the bug,
+  the grade stays hidden};
+% ---------------------------------------------------------------- the model
+\gbot{(5.62,2.1)}{0.32}
+\node[tword, anchor=south west] at (6.0,2.25) {your model};
+% \codecard{left x}{top y}{run}{colour}{changed line}: the program as the judge received it
+\def\codecard#1#2#3#4#5{%
+  \path[tcard] (#1,#2) rectangle ({#1+5.25},{#2-1.32});
+  \fill[#4!13] ({#1+0.05},{#2-0.28-\L-0.09}) rectangle ({#1+5.2},{#2-0.28-\L+0.2});
+  \node[tcode] at ({#1+0.14},{#2-0.28}) {def solve(prices, split\_factors):};
+  \node[tcode, text=#4!75!black] at ({#1+0.14},{#2-0.28-\L}) {\ \ #5};
+  \node[tcode] at ({#1+0.14},{#2-0.28-2*\L}) {\ \ m = p.shift(1) / p.shift(21)};
+  \node[tcode, text=gmid] at ({#1+0.14},{#2-0.28-3*\L}) {\ \ ...};
+  \node[tnote, anchor=south west] at ({#1+0.02},{#2+0.07}) {run #3 of \BudgetAttempts};}
+% ---------------------------------------------------------------- run 1 and the judge
+\codecard{6.3}{3.86}{1}{gbad}{p = prices}
+\draw[gflow] (5.62,2.42) |- (6.24,3.2);
+\draw[gflow] (11.6,3.2) -- (12.0,3.2);
+\gcheck{(12.22,3.62)}{1} \gcheck{(12.22,3.2)}{0} \gcheck{(12.22,2.78)}{1}
+\node[tword, anchor=west] at (12.46,3.62) {finite output};
+\node[tword, anchor=west, text=gbad!80!black] at (12.46,3.2) {split representation};
+\node[tword, anchor=west] at (12.46,2.78) {execution lag};
+\node[tnote, anchor=north west, align=left, text width=3.5cm, text=gbad!65!gmid]
+  at (12.46,2.55) {output changed when given the same prices as adjusted closes};
+% feedback: the failed check, its cause and the rule card go back to the model, never the grade
+\draw[tfeed] (12.36,2.4) -- (12.36,2.1) -- (5.97,2.1);
+\gcard{(7.42,2.1)}
+\node[tnote, anchor=west, fill=white, inner xsep=2pt, text=gbad!80!black] at (7.7,2.1)
+  {check, cause, rule card; never the grade};
+% ---------------------------------------------------------------- run 2, accepted
+\codecard{6.3}{1.42}{2}{gok}{p = prices * split\_factors}
+\draw[gflow] (5.62,1.78) |- (6.24,0.76);
+\draw[gflow] (11.6,0.76) -- (11.98,0.76);
+\gcheck{(12.2,1.14)}{1} \gcheck{(12.2,0.76)}{1} \gcheck{(12.2,0.38)}{1}
+\node[tnote, anchor=north] at (12.2,0.14) {accepted};
+% ---------------------------------------------------------------- the wall and the grade
+\draw[gmid!60, line width=0.8pt, dash pattern=on 2.5pt off 2pt] (12.82,-0.35) -- (12.82,1.6);
+\glock{(12.82,0.76)}
+\draw[gflow] (12.44,0.76) -- (12.6,0.76);
+\draw[gflow] (13.05,0.76) -- (13.22,0.76);
+\begin{scope}[shift={(13.84,0.76)}]
+  \path[tcard] (-0.58,-0.5) rectangle (0.58,0.5);
+  \draw[gmid!45, line width=2.0pt, line cap=round, line join=round]
+    (-0.48,-0.24) -- (-0.22,0.06) -- (0.02,-0.08) -- (0.24,0.24) -- (0.48,0.1);
+  \draw[gok, line width=0.85pt, line cap=round, line join=round]
+    (-0.48,-0.24) -- (-0.22,0.06) -- (0.02,-0.08) -- (0.24,0.24) -- (0.48,0.1);
+\end{scope}
+\node[tword, anchor=north] at (13.84,0.14) {hidden\\[-1pt]grader};
+\draw[gflow] (14.46,0.76) -- (14.72,0.76);
+\begin{scope}[shift={(15.3,0.76)}]
+  \path[tcard] (-0.52,-0.5) rectangle (0.52,0.5);
+  \foreach \x/\h/\c in {-0.3/0.42/gline, -0.1/0.66/gline, 0.1/0.52/gok, 0.3/0.3/gline}
+    \fill[\c, rounded corners=0.6pt] (\x-0.07,-0.35) rectangle (\x+0.07,-0.35+\h);
+\end{scope}
+\node[tword, anchor=north] at (15.3,0.14) {benchmark};
+\node[tnote, anchor=north] at (15.3,-0.2) {valid or not};
+\node[tnote, anchor=west] at (12.92,1.48) {hidden from the method};
+% ================================================================= (c) the execution-lag check
+% One row of cells per program, one cell per row of the panel; \LagK is the first perturbed row.
+\def\cy{-0.92}% title baseline
+\node[ttitle] at (0, \cy) {(c) \texttt{execution\_lag} needs no expected output: perturb prices
+  from row $k$ on and see which positions move};
+\def\cx{6.3}\def\cw{0.3}\def\ch{0.24}% strip left, cell pitch, cell height
+\def\lagrow#1#2{% #1: y, #2: macro holding the cells
+  \foreach \s [count=\i from 0] in #2 {
+    \ifcase\s \def\c{gline!45}\or \def\c{figink!70}\else \def\c{gbad}\fi
+    \fill[\c, rounded corners=0.6pt] ({\cx+\i*\cw+0.03},{#1-\ch/2}) rectangle
+      ({\cx+(\i+1)*\cw-0.03},{#1+\ch/2});}}
+\foreach \i in {1,...,\LagRows} {
+  \pgfmathtruncatemacro\j{\i-1}
+  \ifnum\j<\LagK \def\c{gline!45}\else \def\c{finorange!50}\fi
+  \fill[\c, rounded corners=0.6pt] ({\cx+\j*\cw+0.03},{\cy-0.52}) rectangle
+    ({\cx+(\j+1)*\cw-0.03},{\cy-0.52+\ch});}
+\lagrow{\cy-0.74}{\LagCellsA}
+\lagrow{\cy-1.08}{\LagCellsB}
+\draw[gink, line width=0.6pt, rounded corners=1.5pt]
+  ({\cx+\LagK*\cw-0.01},{\cy-1.24}) rectangle ({\cx+(\LagK+1)*\cw+0.01},{\cy-0.24});
+\node[tnote, anchor=north] at ({\cx+(\LagK+0.5)*\cw},{\cy-1.26}) {row $k$};
+\node[tnote, anchor=north east] at ({\cx+\LagRows*\cw},{\cy-1.26}) {dark: moved};
+% names and code
+\node[tword, anchor=west] at (0,{\cy-0.4}) {prices};
+\node[tword, anchor=west] at (0,{\cy-0.74}) {lagged (library)};
+\node[tword, anchor=west] at (0,{\cy-1.08}) {same close};
+\node[tnote, anchor=west] at (2.45,{\cy-0.4}) {$\times2$, or $\times$ a factor per stock};
+\node[tcode, anchor=west] at (2.45,{\cy-0.74}) {w = positions(p)};
+\node[tcode, anchor=west] at (2.45,{\cy-1.08}) {w = positions(p).shift(-1)};
+% the guard's verdicts
+\gcheck{(12.22,\cy-0.74)}{1} \gcheck{(12.22,\cy-1.08)}{0}
+\node[tword, anchor=west] at (12.46,{\cy-0.74}) {first moves at row $k{+}1$};
+\node[tword, anchor=west, text=gbad!80!black] at (12.46,{\cy-1.08}) {moves at row $k$};
+\node[tnote, anchor=north west, text=gbad!65!gmid] at (12.46,{\cy-1.24})
+  {it read the close it trades over};
+\end{tikzpicture}
