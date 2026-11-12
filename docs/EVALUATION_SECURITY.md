@@ -128,6 +128,53 @@ subset as a complete score. New protocol tests are under `tests/test_sealed_eval
 These adversarial fixtures test protocol enforcement, not general model honesty or skill
 selection accuracy. A genuine private capability score requires a separately authored test set.
 
+## Task-program execution boundary (2026-11-08)
+
+`fin_skills.tasks.execution` owns data construction, perturbation checks and output validation.
+It launches `worker.py` by filename, avoiding `tasks.__init__` and its reference imports. Each
+candidate process receives one input panel and returns values, index and columns. Acceptance
+and numerical grading are computed by the parent; candidate changes to NumPy or a reported
+check cannot change those parent computations. The library arm receives a copied public
+runtime with `tasks`, `rsi` and `agents` removed. The raw arm receives no library runtime.
+
+The Python import filter is only helpful feedback, not a security boundary. Model execution
+uses the qualified Linux Landlock/seccomp hook: candidate access is restricted to its scratch
+directory, Python dependencies and, in the library arm, the public runtime. Network and child
+process creation are denied. Windows or an absent hook is suitable only for explicitly trusted
+fixtures. `rsi.benchmark(..., execution_mode="model")` fails before dispatch when the qualified
+hook, exact bounded backend, durable output or model identifier is absent. Calling lower-level
+APIs directly does not confer that qualification. Synthetic boundary tests live in
+`tests/test_task_execution_boundary.py`; they do not prove immunity to every kernel exploit,
+compromised dependency or administrator. Library-call traces remain candidate-side telemetry
+and are not cryptographic proof of use; correctness is based on parent-validated values.
+
+The run record freezes task manifests, source hashes, planned coordinates, budget limits and
+declared contrasts before calls. It persists request/response/failure events and fitted state,
+refuses implicit restarts, and writes a terminal digest. A provider failure with unknown
+token cost stays unknown. The record is a local audit trail, not independent custody or a
+pre-score external timestamp. An interrupted run is incomplete or invalid, never a complete
+model-quality denominator. Infrastructure failure is distinct from candidate rejection.
+
+The 2026-11-08 independent rereview also required an environment allowlist, bounded stdout
+and result parsing, a readiness message outside candidate-writable files, and rejection of
+result links/FIFOs. Those boundaries now precede parent-side checking. Post-readiness exits,
+malformed output and output limits are candidate execution failures; a candidate cannot label
+itself an infrastructure failure. A signal alone does not identify its underlying cause.
+Task manifests are rechecked after fit/solve and before completion. Each attempt retains its
+own validated values, so later execution of identical code cannot overwrite an earlier grade.
+Responses are retained and known usage charged before parsing; a bounded refusal must satisfy
+the same exact-usage and output-cap contract as an ordinary response.
+
+The protocol records numerical dependency versions and a backend descriptor with revisions,
+sampling settings and implementation identity. Formal backend descriptors are checked before
+each dispatch. Package resources and the confinement hook are copied into a source snapshot;
+workers launch from that snapshot. Qualification on the actual execution host and inspection
+of the actual model/tokenizer state are still required; local synthetic backends and WSL
+tests do not establish a qualified Beacon model deployment.
+
+All currently shipped task definitions and references are public. A fit/test split on them
+is public regression evidence; it does not establish a private or uncontaminated holdout.
+
 On 2026-09-14, the live protocol smoke attempt returned HTTP 429 on its first request. The
 failure was retained and was not retried; no live model score is claimed. Offline tests use
 explicit synthetic responses to exercise leakage and tampering attempts. API access/quota

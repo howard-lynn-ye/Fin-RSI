@@ -7,7 +7,7 @@ so the qualification tests can compare the two.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 import random
@@ -46,6 +46,23 @@ class Task:
         if self.factors not in FACTOR_KINDS:
             raise ValueError(f"{self.id}: factors must be one of {FACTOR_KINDS}")
 
+    def manifest(self) -> dict:
+        """The complete task contract; no behavioural fields are omitted from its hash."""
+        body = asdict(self)
+        body["traits"] = sorted(self.traits)
+        body["order"] = list(self.order)
+        return json.loads(json.dumps(body, sort_keys=True, allow_nan=False))
+
+    @classmethod
+    def from_manifest(cls, body: dict) -> "Task":
+        fields = set(cls.__dataclass_fields__)
+        if not isinstance(body, dict) or set(body) != fields:
+            raise ValueError("task manifest must contain exactly the complete Task fields")
+        values = json.loads(json.dumps(body, allow_nan=False))
+        values["traits"] = frozenset(values["traits"])
+        values["order"] = tuple(values["order"])
+        return cls(**values)
+
     @property
     def kind(self) -> str:
         """"positions" (weights held over the next return) or "table" (a value known at close
@@ -54,10 +71,7 @@ class Task:
 
     @property
     def sha256(self) -> str:
-        body = dict(id=self.id, algorithm=self.algorithm, definition=self.definition,
-                    parameters=self.parameters, rows=self.rows, factors=self.factors,
-                    order=list(self.order), tolerance=self.tolerance)
-        return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+        return hashlib.sha256(json.dumps(self.manifest(), sort_keys=True).encode()).hexdigest()
 
 
 FACTOR_TEXT = {
@@ -385,3 +399,24 @@ def suite() -> TaskSet:
     if len(ids) != len(set(ids)):
         raise RuntimeError("duplicate task ids")
     return TaskSet(tasks, assign_splits(t.algorithm for t in tasks))
+
+
+# The suite the frozen RSI study ran on Beacon (2026-11-08 on) and its follow-up P-adopt: the 18
+# position tasks that existed before the suite grew to 34, with that study's split. The tasks
+# are the same objects as in suite() (same manifests and hashes); only the selection and the
+# split differ (suite() now puts bollinger_reversion in dev).
+FROZEN_STUDY_SPLITS = {
+    "inverse_volatility": "dev", "cross_sectional_momentum": "dev", "ma_crossover": "dev",
+    "vol_target_momentum": "dev", "momentum": "dev", "macd": "dev",
+    "bollinger_reversion": "heldout", "rsi_reversion": "heldout", "donchian_breakout": "heldout"}
+FROZEN_STUDY_SHA256 = "a000f661cadc1b27035dbf8f8cc3ce327f9e5b601ed774e7d958e2bcf644a44e"
+
+
+def frozen_suite() -> TaskSet:
+    """The frozen study's 18-task suite (12 dev, 6 held-out); checked against its hash."""
+    tasks = tuple(t for t in suite().tasks if t.algorithm in FROZEN_STUDY_SPLITS)
+    frozen = TaskSet(tasks, dict(FROZEN_STUDY_SPLITS))
+    if len(tasks) != 18 or frozen.sha256 != FROZEN_STUDY_SHA256:
+        raise RuntimeError("the frozen study's tasks changed; its suite is not reproducible")
+    return frozen
+

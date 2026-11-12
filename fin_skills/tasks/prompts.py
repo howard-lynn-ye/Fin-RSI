@@ -73,22 +73,29 @@ def _signature(fn) -> str:
     return f"{fn.__name__}{plain}"
 
 
-def library_text() -> str:
-    from fin_skills.algorithms import adjust_prices, catalog, positions, rolling
+def library_text(*, rolling: bool = True) -> str:
+    """The interface shown to the model. rolling=False leaves out rolling() and its algorithms,
+    the interface the frozen RSI study and P-adopt showed (position tasks only)."""
+    from fin_skills.algorithms import adjust_prices, catalog, positions
+    from fin_skills.algorithms import rolling as rolling_fn
     from fin_skills.algorithms import run
     ready = {c["id"]: c for c in catalog() if c["status"] == "ready"}
-    lines = ["from fin_skills.algorithms import positions, rolling, adjust_prices, run",
-             "", _signature(positions), _doc(positions),
-             "", _signature(rolling), _doc(rolling),
-             "", _signature(adjust_prices), _doc(adjust_prices),
-             "", "run" + _signature(run)[len(run.__name__):],
-             "Run one algorithm once on a dict of inputs keyed by input name; returns one "
-             "allocation (portfolio) or one already-lagged exposure series (signal).",
-             "", "Algorithms usable with positions() (id: task, inputs; defaults):"]
+    lines = ["from fin_skills.algorithms import positions, "
+             + ("rolling, " if rolling else "") + "adjust_prices, run",
+             "", _signature(positions), _doc(positions)]
+    if rolling:
+        lines += ["", _signature(rolling_fn), _doc(rolling_fn)]
+    lines += ["", _signature(adjust_prices), _doc(adjust_prices),
+              "", "run" + _signature(run)[len(run.__name__):],
+              "Run one algorithm once on a dict of inputs keyed by input name; returns one "
+              "allocation (portfolio) or one already-lagged exposure series (signal).",
+              "", "Algorithms usable with positions() (id: task, inputs; defaults):"]
     for algorithm_id, defaults in DEFAULTS.items():
         card = ready[algorithm_id]
         shown = ", ".join(f"{k}={v!r}" for k, v in defaults.items()) or "no parameters"
         lines.append(f"  {algorithm_id}: {card['task']}, {' '.join(card['inputs'])}; {shown}")
+    if not rolling:
+        return "\n".join(lines)
     lines += ["", "Algorithms usable with rolling() (id: task, inputs; defaults):"]
     for algorithm_id, defaults in ROLLING_DEFAULTS.items():
         card = ready[algorithm_id]

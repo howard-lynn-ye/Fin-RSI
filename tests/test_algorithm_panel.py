@@ -91,6 +91,16 @@ def test_adjust_prices_accepts_event_ratios():
                                adjusted.to_numpy())
 
 
+@pytest.mark.parametrize("task", sorted(CASES))
+def test_positions_event_ratios_match_cumulative_factors(task):
+    """Both recipes offered by the rule card must implement the independent equations."""
+    raw, cumulative, adjusted = _data()
+    ratios = cumulative / cumulative.shift(1).fillna(1.0)
+    algorithm, options = CASES[task]
+    actual = positions(algorithm, raw, ratios, factors="ratio", **options)
+    np.testing.assert_allclose(actual.to_numpy(), _reference(task, adjusted), atol=1e-12, rtol=0)
+
+
 def test_adjust_prices_refuses_misaligned_or_bad_input():
     raw, factors, _ = _data()
     with pytest.raises(ValueError, match="identical index and columns"):

@@ -56,13 +56,15 @@ CARDS: tuple[RuleCard, ...] = (
         ("assert_causal",), frozenset({"features", "positions"})),
     RuleCard(
         "split_once", "corporate_actions",
-        "Cumulative split factors already contain every earlier split. Apply them once: "
-        "adjusted = raw * split_factors, then compute returns from the adjusted closes. Never "
-        "take cumprod() of factors that are already cumulative.",
+        "Follow the declared factor convention. For cumulative factors, adjusted = raw * "
+        "split_factors; do not cumprod() them. For event ratios (1 on non-event rows), first "
+        "compute split_factors.cumprod(), then multiply raw prices by that cumulative factor. "
+        "Apply the adjustment once before computing returns.",
         ("research-integrity-guards", "adjustment-conventions.md", "`adjusted = raw \u00d7 factor`"),
         ("split_representation", "adjustment_check"), frozenset({"split_factors"}),
-        "fin_skills.algorithms.positions(algorithm_id, raw, split_factors) does this once for "
-        "you. The output of adjust_prices(raw, split_factors) is already adjusted: pass it with "
+        "For cumulative factors, fin_skills.algorithms.positions(algorithm_id, raw, "
+        "split_factors) adjusts once. For event ratios, use positions(algorithm_id, raw, "
+        "split_factors, factors='ratio'). If prices came from adjust_prices(...), pass "
         "split_factors=None, never together with the factors again."),
     RuleCard(
         "same_convention", "corporate_actions",

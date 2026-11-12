@@ -67,8 +67,10 @@ isolated branch, and produced only the intended 16-line runtime diff.
 
 ### Metadata
 - Pattern-Key: powershell.literal_edit_script
-- Recurrence-Count: 1
+- Recurrence-Count: 2
 - First-Seen / Last-Seen: 2026-10-13
+
+Verified recurrence 2026-11-09: an unused double-quoted remote command with backslash-escaped quotes failed the local parser before connection. Removed it and used a literal command/here-string; SharedOnly status read succeeded.
 
 ## [HEAL-20261013-CI4] keep model roster test independent of optional study packages
 
@@ -207,8 +209,14 @@ NPJ v13's newly verified shared master (parent 71932). Reusing that connection s
 login, job, cancellation or modification to the existing 32B experiment was performed.
 
 - Pattern-Key: beacon.shared_master_owner_changed
-- Recurrence-Count: 1
-- First-Seen / Last-Seen: 2026-10-15
+- Recurrence-Count: 4
+- First-Seen / Last-Seen: 2026-10-15 / 2026-11-09
+- Latest verification: TACGEN intentionally closed healthy master3848 at20:38Z. A local
+  shareexists guard stopped before upload/authentication. After checking ownership and zero
+  SSH clients, one standard-helper recovery created master18016(parent68268); SharedOnly
+  reads and the prepared source upload both exited0. No other owner's job was changed.
+
+Verified recurrence 2026-11-09: previous master18016/parent68268 had ended. After zero-client and share checks, the standard hidden helper using the observed current PowerShell executable created master74308/parent32460. SharedOnly read and immutable v4 upload succeeded. A guessed Program Files executable had failed locally before any SSH attempt; no authentication retry loop or other owner connection was touched.
 
 ## [HEAL-20261015-WT] read verified code from the owned publication worktree
 
@@ -418,8 +426,12 @@ the intended ledger definitions and trade append sites, exit 0. No code or run
 was changed.
 
 - Pattern-Key: powershell.ripgrep_glob_path
-- Recurrence-Count: 1
-- First-Seen / Last-Seen: 2026-10-17
+- Recurrence-Count: 2
+- First-Seen / Last-Seen: 2026-10-17 / 2026-11-08
+
+Verification update, 2026-11-08: manuscript review repeated the positional
+wildcard mistake. Searching paper/latex_naacl with -g '*.tex' -g '*.bib'
+completed successfully; the targeted terms had no matches. No manuscript changed.
 
 ## [HEAL-20261017-VALIDATION-BUNDLE] deploy complete canonical source for remote checks
 
@@ -440,3 +452,761 @@ The subsequent regression-test result is recorded separately in the report.
 - Recurrence-Count: 1
 - First-Seen / Last-Seen: 2026-10-17
 - Evidence: benchmarks/agent_study/reports/20261017-research-reliability/
+
+## [HEAL-20261108-REVIEW-PATHS] resolve review sources before reading
+
+**Status**: verified
+**Area**: source inspection
+**Trigger**: missing local execution record and inaccessible guessed workshop URL
+
+The report's relative execution.json was incorrectly resolved under runs/.
+File discovery found it under benchmarks/agent_study/reports/20261017-research-reliability/;
+reading that file succeeded and confirmed it is an October 17 historical snapshot.
+The guessed ICAIF /workshops/ URL failed in the web reader. The official /news/
+page opened successfully and supplied the workshop deadline notice. The failed
+URL was not treated as evidence that the site itself was unavailable.
+
+- Pattern-Key: review.unverified_source_location
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Verification: corrected local Get-Content and official news-page open both succeeded.
+- Scope: read-only review recovery; no experiment, manuscript or remote state changed.
+
+## [HEAL-20261108-RECEIPT-STDOUT] distinguish committed receipt from console failure
+
+**Status**: verified
+**Area**: local progress reporting
+**Trigger**: publish_status.py wrote its receipt, then cp1252 stdout rejected Chinese text
+
+Read the publisher and confirmed the atomic write precedes printing. Verified the
+existing event 2026-11-08-9ae5e51c4b534cc39dcff282d598a2c9.json has the intended
+run_id and partial result. Reprinted the success message with Python -X utf8;
+the Unicode output succeeded with exit 0. Did not republish or create duplicates.
+Use -X utf8 for future publisher invocations; no shared script was modified.
+
+- Pattern-Key: progress.stdout_encoding_after_commit
+- Recurrence-Count: 3
+- First-Seen / Last-Seen: 2026-11-08 / 2026-11-09
+- Verification: existing receipt assertions and UTF-8 success-message output passed.
+- Later recurrence: production-runtime-20261108 was already committed before stdout failed.
+  UTF-8 inspection found exactly one matching event; no second publication was made.
+
+2026-11-09 recurrence: the parent Python used UTF-8 but its publisher subprocess did
+not inherit Python's -X setting. Run original-study-20261109-0407 committed event
+2026-11-09-c281654f19b54d66bb5966b95d00c1e4.json before stdout failed. Exact unique
+run-id, item/result and evidence hash assertions passed; UTF-8 readback printed
+success with exit0. No duplicate publication. Put -X utf8 on the child interpreter
+argument list as well as the parent; capture encoding alone does not configure it.
+
+## [HEAL-20261108-FACTOR-CARD] honor event-ratio as well as cumulative split inputs
+
+**Status**: verified
+**Area**: agent instructions
+**Trigger**: new task prompts declared event ratios while the shared card assumed cumulative factors
+
+The split_once rule and its feedback recipe applied raw * split_factors unconditionally
+and offered positions() with its cumulative default. Ratio tasks require a running product
+or factors='ratio'. The shared card now states both conventions explicitly, retaining the
+double-adjustment rejection guidance. Frozen experiment files were not edited.
+
+Verification: the new rule regression failed before the fix. Afterward the six-module
+focused suite passed: 118 passed, 3 Linux-confinement tests skipped, 2 slow tests deselected.
+Four new numerical tests compare the event-ratio recipe with independent reference equations.
+
+- Pattern-Key: agents.rule_card_factor_convention
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Related Files: fin_skills/api/rules.py, tests/test_api_rules.py, tests/test_algorithm_panel.py
+
+## [HEAL-20261108-TASK-WORKER] use the caller's package in child task execution
+
+**Status**: verified
+**Area**: task evaluator
+**Trigger**: seven existing task-suite integration tests failed with ModuleNotFoundError
+
+The parent imported the source checkout, but the autouse test fixture moved cwd to a
+temporary directory. The child python -m invocation could not find the uninstalled package.
+The worker environment now prepends the parent package root to PYTHONPATH and preserves
+existing entries. No timeout, grading rule, import restriction or confinement hook changed.
+
+Verification: the same focused suite changed from 7 failed / 111 passed to 118 passed,
+3 skipped, 2 deselected. Correct programs are accepted and independently graded; planted
+timing, split, warm-up, forbidden-import and output-shape defects retain their expected results.
+
+- Pattern-Key: tasks.worker_source_checkout_import
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Related Files: fin_skills/tasks/judge.py, tests/test_tasks_suite.py
+
+
+## [HEAL-20261108-V2-TELEMETRY] distinguish final calls from any-attempt calls
+
+**Status**: verified
+**Area**: manuscript evidence generator
+**Trigger**: the new v2 recount asserted that any-attempt use equaled library_users
+
+The frozen v2 scorer defines library_users from the final submission; v1 manuscript use
+counts any attempt. Direct recount found 9 final callers and 10 any-attempt episodes.
+The generator now computes both, checks the final count against scores.json, and the table
+caption states its denominator and selection rule. No frozen evidence changed.
+
+Verification: python scripts/build_codegen_evidence.py and --check both passed; the v2 table
+rendered with 9/24 final callers and the text separately reports 10 any-attempt episodes.
+
+- Pattern-Key: evidence.final_vs_any_attempt_telemetry
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+
+## [HEAL-20261108-LATEX-BUILD] compile in an isolated output directory
+
+**Status**: verified
+**Area**: manuscript build
+**Trigger**: latexmk failed because its Perl engine was absent; repeated pdflatex passes
+from the source directory then kept reading the old source-directory main.aux
+
+Use the installed pdflatex directly, with the working directory set to the isolated build
+directory and -include-directory pointing to the source. This avoids changing system tools
+and makes the current aux file authoritative. No bibliographic content was edited.
+
+Verification: .progress-audit/paper-build-20261108/pass-4.log and main.log report 24 pages,
+with no undefined references or overfull boxes. The changed v2 table page was rendered and
+visually inspected; references resolve and no text is clipped.
+
+- Pattern-Key: latex.miktex_output_aux_precedence
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+
+
+## [HEAL-20261108-STRUCTURAL-EVAL] separate execution, attempt identity and trustworthy accounting
+
+**Status**: verified locally; production/model qualification not performed
+**Area**: task execution and experiment records
+
+Independent review reproduced shared checker/reference access, mutable task identity,
+post-start failure misclassification and lost known costs on malformed/refused responses.
+The executor now stages a public runtime, confines candidates, bounds streams/files, and
+computes checks in the parent. Readiness travels through a pipe, not a candidate-writable
+marker. Complete task contracts are frozen/rechecked; source bundles, request/response/failure
+records and terminal digests are retained. Bounded responses validate exact usage before
+content/refusal parsing. Each attempt keeps separate numerical evidence, so repeated code
+cannot overwrite the first attempt's grade.
+
+Verification: local Linux/WSL related suite 84 passed; final attempt-index/contract/study delta
+65 passed. The suites overlap. Independent closure receipts are
+.progress-audit/independent-structure-closure-20261108.json and
+.progress-audit/independent-controlled-study-review-20261108.json. No historical model outputs
+were rerun and no scientific success rate was created from these scripted fixtures.
+
+- Pattern-Key: evaluation.execution_identity_cost_boundary
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Supersedes current implementation approach of HEAL-20261108-TASK-WORKER; preserves its history.
+
+## [HEAL-20261108-READ-STDOUT] UTF-8 for Chinese read-only inspection output
+
+**Status**: verified
+**Trigger**: Windows Python cp1252 stdout failed while printing Chinese protocol/state JSON
+
+Both implementation and reviewer windows observed this read-only formatting failure. Running
+Python with -X utf8 successfully printed the same content. No source JSON or progress receipt
+needed to be recreated. This shares the console cause of HEAL-20261108-RECEIPT-STDOUT, but the
+failed operations here were reads; they did not commit a receipt before failing.
+
+- Pattern-Key: windows.python_read_stdout_cp1252
+- Recurrence-Count: 4
+- First-Seen / Last-Seen: 2026-11-08
+- Verification: protocol inspection with python -X utf8 exited 0; reviewer reported the same.
+
+
+Verified recurrence, 2026-11-08: reviewer S coordinator criteria inspection
+printed Chinese through a PowerShell Python pipeline and hit UnicodeEncodeError
+under cp1252. The same read-only command with python -X utf8 succeeded.
+No scientific source or data changed; reported by the independent reviewer.
+Verified recurrence 2026-11-09: protocol read_text without explicit UTF-8 failed decoding Chinese under cp1252. The same read-only inspection with python -X utf8 succeeded and returned the exact five model IDs. No protocol was altered.
+
+## [HEAL-20261108-SCALAR-INTEGER] preserve exact integer output across the worker boundary
+
+**Status**: verified
+**Trigger**: independent reviewer reproduced 2^53+1 becoming 2^53 through float(output)
+
+Scalar transport now preserves Python and NumPy integers as JSON integers; only floating
+outputs convert to float. Parent validation and exact scoring avoid converting large integers
+to float for finiteness. Linux tests cover both signs of 2^53+1, 10^400 and NumPy int64;
+scalar/packet tests passed21 in17.92s. The independent window re-ran the four numerical
+counterexamples successfully. This is local typed-contract qualification, not model evidence.
+
+- Pattern-Key: evaluation.scalar_integer_float_roundtrip
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Verification: .progress-audit/scalar-exactness-linux.log; independent review chat
+  01a1bca7-537c-70b0-b077-f422924260f1.
+
+## [HEAL-20261108-PATH-DISCOVERY] resolve actual implementation and job-output paths
+
+**Status**: verified
+**Trigger**: review guessed report.py/records.py; implementation tried a GPU stderr file
+before its dependent job had started. These were missing paths, not transport failures.
+
+Use rg --files for repository discovery (Report lives in rsi/bench.py). For pending Slurm
+jobs inspect state first and guard optional log reads with test -f. The actual files and CPU
+log were successfully read through the same healthy connection. No authentication retry
+or job restart was needed.
+
+- Pattern-Key: inspection.existing_path_discovery
+- Recurrence-Count: 7
+- First-Seen / Last-Seen: 2026-11-08
+
+2026-11-09 follow-up: a guessed self_debug.py and literal Windows wildcard failed;
+rg --files located self_debug.sh, then exact-path reads succeeded. Remote directory listing
+located worker.stderr (not worker-stderr.txt). The SSH transport was healthy; no retry occurred.
+
+2026-11-08 follow-up: guessed `manifest.json`/`submit.ps1` and a prefixed local
+qualification folder were absent; PowerShell did not expand the rg path globs.
+`rg --files` resolved `core-qualification-20261108/launch.py`, `launch.sh` and
+`benchmarks/agent_study/rsi_qualify.py`; exact-path reads then succeeded. No
+transport retry, model run or source modification was needed.
+
+Same-session recurrence: a prefixed coordinator folder and wildcard path operands
+were guessed again. Corrected reads use the actual `coordinator-cpu-20261108-v2`
+folder and `rg PATTERN .progress-audit -g '*provenance*.json'`; exact source/release
+reads then passed. The matching independent-review handoff reported the same
+missing-path category, not an infrastructure failure. Stop using globs as path
+operands in PowerShell; filter with rg's own `-g` argument after directory discovery.
+
+## [HEAL-20261108-PARQUET-ENGINE] isolate a missing production data dependency
+
+**Status**: verified
+**Trigger**: CPU intake job3607586 downloaded and hash-verified the pinned public training
+file, then pandas could not read it because neither PyArrow nor fastparquet was installed.
+
+The recovery installs pinned PyArrow20.0.0 into the new release's data-tools directory inside
+Slurm, preserving the shared Python environment. It reuses and rechecks the already downloaded
+file instead of downloading another copy. Job3607628 read all14377 training rows with
+pandas2.2.3/PyArrow20.0.0 and wrote a verified source-intake receipt. No model or upstream
+reference program was executed, and no final test file was downloaded.
+
+- Pattern-Key: beacon.parquet_engine_missing
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Verification: fin-rsi-repair-20261108-v2/bizbench-train-3607628/terminal.json on Beacon;
+  source SHA256 d0af1868ac46b082f153981b813b97b78707153b7a5cd872b30490bec47b3cc1.
+
+## [HEAL-20261108-CPU-QUALIFICATION] complete the bounded production test plan
+
+**Status**: verified
+**Trigger**: serial CPU job3607508 exceeded its 1500-second process cap before all planned
+tests completed; dependent GPU3607545 was cancelled without calling a model.
+
+The recovery enumerates the complete test-node plan, runs one isolated pytest process per
+node with two allocated CPU workers, validates exactly one unskipped JUnit result per node,
+and enforces a55-minute global process deadline inside a65-minute allocation. Explicit
+pytest root selection also prevents ancestor configuration from changing collected node IDs.
+No test or assertion was removed. Job3607628 passed129/129 with no failures/errors/skips in
+1112.229seconds; its source manifest is3b09f075a95a4d71102334e433a75463eac76fc822ca917b6d377152fc295d41.
+
+- Pattern-Key: beacon.qualification_serial_timeout
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+- Verification: .progress-audit/fin-rsi-repair-20261108-v2/cpu-terminal-metadata.json.
+
+## [HEAL-20261108-FIT-OUTCOMES] preserve learning-stage model outcomes and state
+
+**Status**: verified locally; separate production fit qualification pending
+**Trigger**: a synthetic writer refusal raised ModelRefusal out of PlaybookLearning.fit.
+Evolve also treated failed zero-program episodes as an empty failure list.
+
+Development refusals now remain counted model outcomes. Model proposal schema/size failures
+have a distinct InvalidProposal type; provider, transport and evaluator faults still propagate.
+Refusal, malformed proposals and exhausted budgets freeze the last accepted state and retain
+all charged requests/tokens. Evolve includes failed zero-program episodes and rejects blank
+or overlength instructions rather than silently truncating them.
+
+Verification: twelve targeted cases plus existing core/wiring tests passed60/60 in3.49seconds,
+including accepted-state preservation and transport-failure propagation. The initial failure
+and an incomplete synthetic Grader fixture were diagnosed; the completed fixture supplies
+the required check capability. Remote v2 source is unchanged and does not qualify this delta.
+
+- Pattern-Key: evaluation.fit_refusal_outcome_and_state
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+
+Follow-up independent counterexample: dropping a refused zero-score task raised the old
+tie-break mean from (0,1/3) to (0,2/3) without a correct program. The fixed scorer uses all
+predeclared development episodes, assigning zero to missing/unexecuted/no-check results.
+The same counterexample no longer improves the score. Final local core/wiring/fit suite:
+61 passed in3.37seconds (tool receipt6ff5d4); independent acceptance and exact source hashes
+are in .progress-audit/fit-outcome-acceptance-20261108.json. Production fit remains pending.
+
+## [HEAL-20261108-SUPERVISION] enforce the wallclock outside worker cleanup
+
+**Status**: verified on local Linux; production coordinator verification pending
+**Trigger**: independent review reproduced a0.1-second SIGALRM taking1.513seconds because
+the worker Popen context manager waited for a1.5-second child during exception cleanup.
+
+The coordinator now supervises an independently owned process group from a parent process.
+On deadline it sends TERM and then KILL only to that group, retains worker logs/accepted
+chunks, and writes a separate authoritative terminal. The immutable numerical v2 runtime is
+unchanged. WSL stdlib tests passed3/3 in1.484seconds: a60-second cleanup trap stopped at
+0.602seconds under a0.6-second deadline; TERM-ignoring child/parent stopped at0.802seconds;
+normal success was retained. An initial exit-state assertion observed transient R after
+SIGKILL delivery; the test now confirms exit within a bounded0.5-second kernel-state window.
+Independent replay also passed3/3. Actual imported module paths and runtime source hashes
+are bound to the qualified tree before model loading; a different nearby tree is rejected.
+
+- Pattern-Key: runtime.sigalarms_defeated_by_popen_cleanup
+- Recurrence-Count: 1
+- Verification: tests/test_study_supervisor.py; tool77c1b6; independent closure
+  .progress-audit/frozen-coordination-repair-closure-20261108.json.
+- Review probe correction: reviewer first used WSL system Python without pandas; it then
+  loaded the original function AST using stdlib for the focused counterexample. No package
+  was installed and this is not a production dependency failure.
+
+## [HEAL-20261108-UPSTREAM-LABELS] keep ambiguous source tables unresolved
+
+**Status**: verified in production
+**Trigger**: enrollment3607809 failed on upstream TAT-QA labels that became identical after
+NFKC/whitespace normalization. The strict context normalizer correctly refused a lossy map.
+
+Source-table conversion now checks normalized row/column label uniqueness before constructing
+a JSON variant. Ambiguous variants supply no source identity; original questions and cells
+remain unchanged and use the existing unresolved fallback. No answer or model outcome
+affects selection. Nine focused local tests passed, and the independent reviewer reproduced
+four row/column and whitespace/NFKC cases. Recovery3607864 completed0:0 in2:08, freezing
+367 questions and the entire planned cell list with zero model calls. Failed3607809 is retained.
+
+- Pattern-Key: data.normalized_upstream_label_collision
+- Recurrence-Count: 1
+- Verification: .progress-audit/enrollment-20261108-v2/terminal-metadata.json.
+- Review test-path correction: a guessed test_external_intake.py did not exist; rg located
+  test_source_intake.py, and the corrected enrollment/intake command passed9 tests. The root
+  also replaced a PowerShell-invalid rg path glob with discovered literal paths. Neither read
+  failure changed source or experiment state; use discovery before constructing test paths.
+
+
+## [HEAL-20261108-SUPERVISION] production verification follow-up
+
+Production Slurm3607880 completed0:0 in14seconds. All15 coordinator tests passed without
+skips, including actual v2 import binding and owned process-tree deadlines. This closes the
+production-pending status above. Evidence: .progress-audit/coordinator-cpu-20261108/terminal-metadata.json.
+
+## [HEAL-20261108-RELEASE-IMPORT] package from the resolved repository root
+
+**Status**: verified
+Direct execution from .progress-audit failed to import benchmarks. The helper now inserts its
+resolved repository root before importing the declared test plan. The failed run made only an
+empty local directory, verified by exact absolute path before nonrecursive removal; no remote
+v3 or job existed. Corrected upload contained728 files, and remote archive SHA matched
+611a629a93129df3c913aeb006ce551ce55729c4da593b1a7c79bbe640ecfa6b. This is packaging verification,
+not scientific acceptance.
+- Pattern-Key: packaging.script_directory_import_root
+- Recurrence-Count: 1
+- Evidence: .progress-audit/fin-rsi-repair-20261108-v3/upload-receipt.json.
+
+## [HEAL-20261108-EXPIRED-DEPENDENCY] verify an expired completed prerequisite
+
+**Status**: verified submission recovery; computation still pending
+sbatch rejected afterok:3607880 with Job dependency problem after this successful CPU job had
+aged out of the controller. No new job ID or computation existed. Confirmed sacct COMPLETED0:0,
+the immutable terminal, missing submission marker and complete live queue, then removed only
+that already-satisfied dependency. Submitted3607895 once and serialized the remaining own jobs.
+This was not authentication failure, compute retry or authority to bypass unfinished gates.
+- Pattern-Key: slurm.completed_dependency_controller_expiry
+- Recurrence-Count: 1
+- Evidence: .progress-audit/fin-rsi-repair-20261108-v3/submission-cpu-recovered.txt.
+
+Operational follow-up to inspection.existing_path_discovery: guessed preparation-helper and
+metadata paths returned missing; rg --files located the actual terminal-metadata.json before
+reading. Reviewer corrected ExitStack import from unittest.mock to contextlib, then its
+synthetic worker transport-failure replay succeeded. No production source fault followed.
+An apply_patch write to HEALS.md failed despite normal non-readonly attributes; direct UTF-8
+append below succeeded and was read back. No permission or policy setting was changed.
+
+## [HEAL-20261108-TEAM] team_execution_identity
+
+**Logged**: 2026-11-08T23:15:00Z
+**Status**: verified
+**Trigger**: tool-failure
+**Area**: evaluation
+**Priority**: high
+
+### Failure
+Adding Team to the full benchmark reproduced ValueError: unknown execution attempt
+(index -1), 1 failed in 71.33 seconds. Team bypassed BaseRSI recording and its Step
+kept the invalid default attempt index.
+
+### Fix
+BaseRSI._attempt and Team.run_checks now share _check_program, recording the actual
+Judge attempt index after one charged check. Preserve the pre-writer budget gate,
+original fields and Team roles/prompts. An unrelated dev grading change was reverted.
+
+### Verification
+Final full benchmark plus fit-outcome and learning-qualification regressions:
+18 passed in 70.03s, exit 0. Team failure then success records indices [0,1],
+first_valid=False and final valid=True. XML and exact source hashes are recorded in
+.progress-audit/team-execution-repair-20261108.json. Production v4 CPU job3607936
+is still pending; local verification does not certify the production snapshot.
+
+### Metadata
+- Related Files: fin_skills/rsi/methods.py, tests/test_rsi_methods.py
+- Pattern-Key: evaluation.team_execution_identity
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+
+## [HEAL-20261108-SIT] interrupted_terminal_json
+
+**Logged**: 2026-11-08T23:29:00Z
+**Status**: verified
+**Trigger**: independent fault-injection failure
+**Area**: experiment ledger
+**Priority**: high
+
+### Failure
+The independent reviewer reproduced two synthetic S parent failures: a truncated
+worker terminal or accepted marker raised JSONDecodeError and prevented the parent
+terminal from being written. No real model or Slurm job was used in those probes.
+
+### Fix
+The S parent records worker/marker read errors, marks invalid, verifies complete
+accepted units against original reports and provider events, continues partial
+cost indexing and writes its authoritative terminal. The analyzer uses the same
+accepted-unit verification. Old P/E code is unchanged.
+
+### Verification
+Both parent truncation regressions now require an invalid terminal, no accepted
+unit and one unknown-cost call. Complete S helper tests: 14 passed in5.07s.
+JUnit: .progress-audit/seven-study-interruption-repair-20261108.xml. Production
+S coordinator qualification remains pending.
+
+### Metadata
+- Related Files: scripts/run_seven_study.py, scripts/seven_study.py, scripts/analyze_seven_study.py, tests/test_seven_study.py
+- Pattern-Key: evaluation.interrupted_terminal_json
+- Recurrence-Count: 2
+- First-Seen / Last-Seen: 2026-11-08
+
+## [HEAL-20261108-SFP] slurm_literal_field_parser
+
+**Logged**: 2026-11-08T23:45:00Z
+**Status**: verified
+**Trigger**: remote CLI stderr
+**Area**: scheduler metadata
+**Priority**: medium
+
+### Failure
+The type-comparison helper inserted CPUs/Task into slash-delimited sed syntax,
+producing unknown-option errors. Command substitutions yielded empty strings, so
+the shell comparison did not validate that field. This was not an SSH/auth failure.
+
+### Fix
+Stopped using a regex substitution for scheduler keys. Verified all recorded
+before/H100/restored snapshots and fresh readback with escaped literal field
+matching. Subsequent route comparison parses whitespace-delimited key=value fields
+in Python, preserving the literal CPUs/Task key.
+
+### Verification
+All ten resource/dependency fields, including CPUs/Task=2, were equal across four
+snapshots. Same owned job remained pending, returned to H200 with45min/2CPU/32G,
+no requeue and no duplicate submission. The repaired route comparison then checked
+both ordinary compatible GPU types and restored the original route, exit0.
+Evidence: .progress-audit/mistral-type-invariants-verified-20261108.json and
+.progress-audit/mistral-owned-route-recompare-20261108T2345.jsonl.
+
+### Metadata
+- Pattern-Key: slurm.literal_field_parser_slash
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-08
+
+## Verified production follow-up for HEAL-20261108-TEAM and HEAL-20261108-SIT
+
+Immutable v4 CPU job 3607936 passed the complete146-test declaration with zero
+failures/errors/skips. The independent S coordinator job3607977 passed all18
+declared checks under actual v4 imports, including three Linux process-group
+checks. Exact source/composition/CPU evidence was independently reviewed before
+the full70-unit S plan was frozen. First formal job3607999 then completed both
+NoImprove library units (36 test episodes), with36 provider requests,20651 generated
+tokens and no unknown/unfinished costs. These are finite engineering/first-unit
+closure evidence; they do not claim full scientific acceptance or a completed
+Team model comparison. See .progress-audit/seven-production-first-progress-20261108.json
+and the immutable independent production-prerequisite review.
+
+## [HEAL-20261109-R5] admit declared extension models without replacing a frozen plan
+
+**Status**: verified locally, independently and in production CPU allocation
+
+The old P/E runner generated all20 model cells but rejected non-core chunks and
+looked up qualifications only in the initial plan. Independent execution of that
+old runner reproduced the first rejection; removing it exposed the missing
+qualification entry. New allocation-level admission pins a later extension's
+receipt path/hash while keeping the full population and every already frozen
+qualification unchanged. Parent, worker and analyzer verify source, model,
+revision, full declared generation configuration and the same admission identity.
+P/E interrupted terminals now reuse the existing S provider-accounting parser and
+verify complete hashed reports instead of trusting completion markers.
+
+Verification: final local related suite62passed/3Linux-only skipped,6.65s,
+`.progress-audit/PE-admission-strict-contract-local-20261109.xml`. Independent
+review exercised real20-model synthetic admission/analyzer composition, extension
+worker load-boundary sentinel, mutated receipt/backend/inventory and old-claim
+refusal; three Linux process-group tests passed separately. A final exact six-line
+strict-generation delta passed27 independent tests and ten bad/missing-field probes.
+No model or dataset score was generated for this verification. Deployment awaits
+resolution of the separate16k/32k scientific contract conflict and new bounded CPU
+acceptance; immutable v2/v4 and the active S deployment remain unchanged.
+
+- Pattern-Key: evaluation.frozen_plan_extension_admission
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Evidence: `.progress-audit/r5-extension-admission-structural-closure-20261108.json`;
+  `.progress-audit/PE-strict-generation-gate-independent-review-20261108.json`.
+
+Production follow-up: user-delegated native-ceiling amendment resolved the explicit
+contract conflict prospectively. New immutable P/E coordinator job3608226 passed69/69
+checks under actual v2 imports, including Linux supervision, extension admission,
+context boundaries and raw/derived cost accounting. No model calls were made for
+these checks; complete fixed20 tokenizer preflight is a separate stage in that job.
+
+## [HEAL-20261109-CUDA-INIT] diagnose allocated GPU startup without retrying experiment
+
+**Status**: verified startup recovery; scientific job completion remains separate
+
+S job3608064 received one L40S on ihccs418, but torch CUDA initialization returned
+unknown error before model loading. Frozen worker and parent both record invalid;
+no loaded.json or provider outputs were created, while exclusive claims remain.
+Five afterok dependent jobs were canceled by Slurm without running. Preserve those
+receipts and claims. One finite5-minute untyped GPU diagnosis3608228 will inspect
+driver/Slurm visibility and compare batch versus srun initialization and an exact
+small BF16 check. This diagnosis does not itself restart the scientific experiment.
+
+- Pattern-Key: beacon.cuda_initialization_before_model
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Evidence: .progress-audit/fin-cuda-recovery-20261109/release.json;
+  .progress-audit/context-production-and-recovery-progress-20261109.json
+
+Diagnosis3608228 reproduced the failure on the same ihccs418 node in both batch and
+srun, with driver615.71.09/CUDA13.0. Step mapping did not repair it. Recovery3608259
+therefore excludes only that demonstrated incompatible node, keeps untyped gpu:1,
+and checks current-allocation CUDA before moving either failed claim into immutable
+history. Four file-only recovery tests passed. Actual recovered model execution
+was pending at that point. Recovery3608259 subsequently passed CUDA on ihccs601,
+loaded the unchanged Phi4 model and passed the full-context probe. Both old claims
+were archived byte-for-byte before resumed execution. This verifies startup recovery,
+not completion or quality of its original36 scientific cells.
+
+## [HEAL-20261109-TOKENIZER-DEPS] isolate optional tokenizer conversion dependencies
+
+**Status**: verified in production
+
+CPU3608226 passed all69 source/coordinator checks and produced16 fixed-model profiles,
+then pinned Mistral7b tokenizer conversion required missing SentencePiece and Protobuf.
+The new finite CPU3608248 installs sentencepiece0.2.1/protobuf5.29.5 into its own
+directory, reuses cached public metadata and unchanged immutable profile code, and
+retains every old partial result. Shared environment, models, precision and weights
+are untouched. Full20 preflight completion, not installation, verifies this repair.
+
+Verification:3608248 COMPLETED in172seconds, all20 profiles complete with zero
+initial overflow, each covering P108/E2202 fixed cells. Terminal SHA
+d2496a65019ae1c21f27f2dd01e0ac098c17fd6eb51a53974726f42981325e91.
+No weights or model outputs were generated. Actual multi-turn completion is separate.
+
+- Pattern-Key: beacon.tokenizer_conversion_dependencies
+- Recurrence-Count: 1
+- Evidence: .progress-audit/context-profile-dependency-failure-20261109.txt;
+  .progress-audit/fin-context-dependencies-20261109/release.json
+
+## [HEAL-20261109-SLURM-LAUNCH] preserve LF and whole-minute allocation budgets
+
+**Status**: verified submission and resource admission; model execution separate
+
+Windows write_text translated a new shell wrapper to CRLF; sbatch rejected it before
+submission. An append-only byte-written LF wrapper preserved all command lines and
+was accepted. Slurm rounded04:53:25 up to04:54:00, which would fail exact released
+resource admission. Held the still-pending3608253, prepared a lower293-minute release,
+verified validate_allocation against04:53:00, then canceled the0-second pending job
+and submitted3608259 with an exact matching04:53:00 controller value. Original files
+and archive remain intact. No model call, scientific retry, or resource increase occurred.
+
+- Pattern-Key: slurm.generated_launcher_and_minute_rounding
+- Recurrence-Count: 1
+- Evidence: .progress-audit/fin-rsi-seven-startup-recovery-20261109/launcher-line-endings-addendum.json;
+  .progress-audit/fin-rsi-seven-startup-recovery-20261109/minute-budget-addendum.json;
+  .progress-audit/fin-rsi-seven-startup-recovery-20261109/submission-minute.txt
+
+## [HEAL-20261109-HF-METADATA] read publisher revision metadata after web-reader failure
+
+**Status**: verified
+
+The web reader returned Internal Error for the two official pinned Phi4 blob JSON
+pages. This was not evidence that the publisher or revision was unavailable.
+The same official revision's resolve/config.json and resolve/tokenizer_config.json
+were fetched with Invoke-RestMethod, each completing successfully. The extracted
+metadata showed16384 native/tokenizer context and no RoPE scaling. No credentials,
+weight downloads or model calls were involved. The independent reviewer separately
+verified the pinned official README rather than claiming to have read these JSONs.
+
+- Pattern-Key: web.pinned_hf_metadata_reader_failure
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Evidence: `.progress-audit/phi4-native-context-conflict-20261109.json`.
+
+## [HEAL-20261109-METADATA-BYTES] distinguish local serialization from remote evidence bytes
+
+**Status**: verified
+
+The local enrollment terminal copy used CRLF plus a terminal newline; its1dc2 hash
+was incorrectly described in messages as the remote original hash. Byte-level
+normalization of exactly those separators (no JSON parsing/reformatting) produces
+the remote2048-byte c30b hash exactly. All8 payload file hashes are unchanged.
+Preserve both receipts, name which byte representation each hash identifies, and
+bind runtime plans to the actual remote original. No scientific rerun is needed.
+
+- Pattern-Key: provenance.metadata_text_serialization
+- Recurrence-Count: 1
+- Evidence: .progress-audit/enrollment-serialization-identity-20261109.json
+
+Operational note: two combined documentation patches were atomically rejected because
+one context fragment omitted its line prefix and an empty later hunk pointed backward.
+After reading the exact target, removing the unrelated hunks produced the intended
+receipts/docs; no partial or duplicate files were present. Keep patch hunks in file order.
+
+## [HEAL-20261109-CONTINUATION-FIXTURE] test recovery with the declared synthetic mode
+
+**Status**: verified locally; deployment qualification recorded separately
+**Trigger**: four new fault-injection cases used execution_mode=model with a scripted backend and no Linux confinement hook. The production guard correctly refused before the intended interruption.
+
+The tests now identify themselves as trusted fixtures while exercising the real Meter, benchmark, immutable records and original P/E entry point. No production confinement gate changed. Fifteen fault-injection cases passed locally; they include durable response before Meter receipt, completed fit and episode reuse, original judge execution replay without early grading, checkpoint publication interruption, changed identities and unresolved provider requests.
+
+- Pattern-Key: testing.synthetic_recovery_mode
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Verification: python -X utf8 -m pytest -q tests/test_study_continuation.py — 15 passed; no actual model calls.
+
+Production verification: scavenger CPU job 3608744 completed 0:0 in 104 seconds,
+with all 15 cases passing on each immutable v2 and v4 runtime, no skipped cases
+and no actual model calls. Evidence: .progress-audit/continuation-CPU-result-20261109.txt.
+This qualifies the component, not allocation ownership or a formal GPU continuation.
+
+## [HEAL-20261109-STAGING-BRACES] quote generated dictionary literals before staging
+
+**Status**: verified
+**Trigger**: a nested f-string interpreted a dictionary in the Phi4 E-tail preparer
+as the outer Python expression, raising NameError before any remote upload.
+
+Escaped the inner dictionary braces. Verified the failed preparation directories
+were empty before reuse, parsed the generated Python, checked exact disjoint
+chunk counts and resource fields, then uploaded each archive once. Submissions
+3608822 and 3608823 bind 1050 and 1002 original cells respectively; 3608822
+subsequently started. This failure caused no model call or duplicate submission.
+
+- Pattern-Key: staging.nested_fstring_dictionary
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Evidence: .progress-audit/stage-remaining-E-phi4-a-20261109.py;
+  .progress-audit/stage-remaining-E-phi4-b-20261109.py;
+  .progress-audit/remaining-E-phi4-submission-20261109.txt
+
+## [HEAL-20261109-LEGACY-OWNER] bind the legacy job's verified owning release
+
+**Status**: verified
+**Trigger**: the retarget guard refused legacy job 3607734 because its Comment
+did not contain the owner chat, before any scheduler mutation.
+
+Verified the original remote release owner, exact job name and launch command;
+the local copy is .progress-audit/core-qualification-20261108/release.json.
+Added the matching owner Comment while held and verified it in readback. This
+establishes ownership only; the later administrative hold is unresolved below.
+
+- Pattern-Key: slurm.legacy_owner_comment
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+
+## [HEAL-20261109-ADMIN-HOLD] preserve a denied release after route comparison
+
+**Status**: pending-verify
+**Trigger**: Slurm 26.05.5 denied release of owned pending job 3607734 after
+its third held resource-route update; readback is JobHeldAdmin, Priority=0.
+
+Two earlier routes released successfully. The transition followed the update
+back to beacon/default/H200; the exact controller cause is unproven. The job
+still has zero runtime and unchanged 45-minute, 2-CPU, 32-GiB, no-requeue limits.
+This is a scheduler authorization failure, not an SSH or authentication failure.
+
+Fix: none applied. Stopped mutations, retained the original job and evidence,
+and prepared a support message. Ordinary job-owner release cannot remove an
+administrative hold. Do not bypass it with priority changes, cancellation and
+resubmission, privileged commands, or repeated equivalent release attempts.
+Other healthy jobs continue. Support mail requires explicit user authorization.
+
+- Pattern-Key: slurm.pending_retarget_admin_hold
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Evidence: .progress-audit/mistral-release-error-state-readback-20261109.txt;
+  .progress-audit/mistral-admin-hold-diagnosis-20261109.txt;
+  .progress-audit/mistral-admin-hold-support-draft-20261109.txt
+- Primary reference: https://slurm.schedmd.com/scontrol.html (hold and release).
+
+## [HEAL-20261109-REPLAY-CONTEXT] preserve a unique child context request sequence
+
+**Status**: verified locally and by independent targeted reproduction; new runtime
+qualification recorded separately under CPU job 3608908.
+**Trigger**: independent review reproduced a completed E prefix followed by fresh
+generation with duplicate context request_index=0. The report completed but the
+unchanged context-ledger validator correctly refused it.
+
+Replayed checkpoint events now reserve indices from the actual child context guard;
+new requests continue that sequence. Replay metadata retains each original event
+hash and original index; parent bytes are unchanged. Missing or different guards
+fail closed. The new fault case interrupts after one cell, resumes through three,
+then resumes all four; physical requests and program executions remain four, all
+logical context identities are unique, and old evidence stays byte-identical.
+
+- Pattern-Key: continuation.context_sequence_after_completed_prefix
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Verification: full local 18-case intermediate suite passed; independent targeted
+  mixed-prefix case passed. Subsequent original external checkpoint-gap case passed
+  separately (1 passed,18 deselected); combined new deployment contains 19 cases.
+- Files: scripts/study_continuation.py; tests/test_study_continuation.py
+
+## [HEAL-20261109-CHECKPOINT-INTENT] reconstruct a deterministic checkpoint commit gap
+
+**Status**: verified locally and by independent targeted reproduction; new runtime
+qualification recorded separately under CPU job 3608908.
+**Trigger**: interruption after fit/episode intent fsync but before writing complete
+bytes prevented recovery, despite all preceding provider/program receipts existing.
+
+Only fit/episode checkpoint intents may reconstruct through strict existing operation
+replay after binding/request verification. The same original intent is retained while
+the deterministic value is atomically completed. Existing pending complete bytes
+still require explicit exact-byte recovery. Provider and program intents lacking a
+complete response remain unresolved and are never implicitly reissued.
+
+Tests cover both checkpoint kinds, pending-byte preservation, unresolved provider
+refusal, and the original E entry point: recovery produces two cells using exactly
+two total provider calls and two original scalar executions. The independent reviewer
+also reproduced the corrected cases without changing source or accessing Beacon.
+
+- Pattern-Key: continuation.deterministic_checkpoint_intent_gap
+- Recurrence-Count: 1
+- First-Seen / Last-Seen: 2026-11-09
+- Files: scripts/study_continuation.py; tests/test_study_continuation.py
+
+Production verification for both continuation fixes: CPU job 3608908 completed
+0:0 in194 seconds; all19 cases passed with zero skips on each immutable v2/v4
+runtime. Component SHA20447afa2f1ae83a4f260050bec0c5ce1ebfaddfc7d96b406c6cbeac7ca0a1ca.
+Evidence: .progress-audit/continuation-v2-CPU-terminal-20261109.txt. No real model
+calls, formal allocation takeover, cumulative budget or full S continuation is
+claimed by this component receipt.
+
+2026-11-09 ETA recovery note (beacon.shared_master_owner_changed): prior master74308
+and parent32460 were absent and zero SSH clients existed. After reading shared pause
+history, one hidden standard-helper invocation created master19780(parent15284).
+SharedOnly queue/receipt read succeeded with no remote pause; no blind retry. The
+connection is retained for the now-authorized continuing original wave. Other owners
+and the administrative job hold were not altered.
+
+Read-command note: a PowerShell -ErrorAction option was accidentally appended to rg,
+which parsed it as its -E encoding flag. Re-ran the exact existing design-file search
+without that shell-specific argument; exit0 and matching cache/scope lines verified.
+No source, remote job or evidence changed because of that failed read. A later
+documentation patch contained an empty trailing hunk and was rejected atomically;
+removing that unused hunk allowed the intended documentation update to apply.

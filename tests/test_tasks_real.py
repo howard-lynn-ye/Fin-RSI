@@ -80,10 +80,13 @@ def test_a_missing_or_altered_file_is_refused(tmp_path, monkeypatch):
 
 def test_report_keeps_real_and_synthetic_apart():
     row = dict(method="NoImprove", library=True, cards=True, arm="cards+library", task_id="t",
-               valid=True, accepted=True, library_used=True,
+               task_algorithm="a", valid=True, accepted=True, library_used=True,
                usage=dict(calls=1, generated_tokens=10))
+    # A summary needs a complete run whose rows match its plan.
+    plan = [["NoImprove", "cards+library", "t", seed] for seed in (11, 23, REAL)]
     report = rsi.Report(rows=[dict(row, seed=11), dict(row, seed=23),
-                              dict(row, seed=REAL, valid=False)])
+                              dict(row, seed=REAL, valid=False)],
+                        complete=True, protocol=dict(conditions="arms", plan=plan))
     by_data = {s["data"]: s for s in report.summary(draws=50)}
     assert by_data["synthetic"]["episodes"] == 2 and by_data["synthetic"]["valid"] == 1.0
     assert by_data["real"]["episodes"] == 1 and by_data["real"]["valid"] == 0.0

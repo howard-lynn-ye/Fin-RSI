@@ -71,3 +71,14 @@ def test_split_card_steers_away_from_double_adjustment():
     assert "positions(algorithm_id, raw, split_factors)" in text
     assert "split_factors=None" in text
     assert text.isascii()
+
+
+def test_split_card_distinguishes_cumulative_factors_from_event_ratios():
+    """The same card reaches both task conventions, including no-library feedback."""
+    rule = card("split_once")
+    for text in (rule.render(tools=False), explain(["split_representation"], tools=False)):
+        assert "For cumulative factors" in text
+        assert "For event ratios" in text
+        assert "split_factors.cumprod()" in text
+        assert "fin_skills" not in text
+    assert "factors='ratio'" in rule.render()

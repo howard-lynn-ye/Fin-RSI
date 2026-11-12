@@ -11,6 +11,7 @@ CASES = [
     ("```\nx = 1\n```", "x = 1\n", "fenced"),
     ("Here it is:\n```Python\nx = 1\n```\n", "x = 1\n", "fenced"),
     ("```python3\nx = 1\n```", "x = 1\n", "fenced"),
+    ("```python\r\nx = 1\r\n```\r\n", "x = 1\n", "fenced"),          # Windows line endings
     ("```py title=solve.py\nx = 1\n```", "x = 1\n", "fenced"),
     # cut off at the token limit: the open block runs to the end of the reply
     ("Sure.\n```python\ndef solve(p, f):\n    return p", "def solve(p, f):\n    return p\n",

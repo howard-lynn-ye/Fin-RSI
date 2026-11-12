@@ -23,7 +23,8 @@ from .meter import Budget, BudgetExceeded, FitBudget, Meter
 from .wiring import Attempt, check_evaluator, loop_from_checks, observe
 
 _METHODS = ("ARMS", "BaseRSI", "CheckFeedback", "Episode", "Evolve", "METHODS", "NoImprove",
-            "PlaybookLearning", "Reflexion", "SelfDebug", "Step", "Team", "arm_name", "extract")
+            "PlaybookLearning", "Reflexion", "RepeatedSampling", "SelfDebug", "Step", "Team",
+            "arm_name", "extract")
 _BENCH = ("Report", "benchmark")
 
 __all__ = ["Attempt", "Budget", "BudgetExceeded", "CaseResult", "Decision", "Entry",
