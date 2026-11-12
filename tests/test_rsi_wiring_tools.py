@@ -20,4 +20,4 @@ def test_playbook_fit_passes_its_library_condition_to_observe():
     import inspect
     from fin_skills.rsi import methods
     source = inspect.getsource(methods.PlaybookLearning.fit)
-    assert 'source_version="fin-skills", tools=self.library)' in source
+    assert "tools=self.library if self.trace_tools is None else self.trace_tools" in source

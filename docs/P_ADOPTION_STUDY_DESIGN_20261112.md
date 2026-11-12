@@ -1,7 +1,14 @@
-# P-adopt: does a model use the library when it has a fair chance? (draft, 2026-11-12)
+# P-adopt: does a model use the library when it has a fair chance? (v2, 2026-11-12)
 
-Draft pre-registration for a follow-up to the frozen RSI study. Not frozen; nothing here has run.
-It is meant for the ACL 2027 version (ARR deadline 2027-01-04), not the FinFM short paper.
+Pre-registration for an exploratory follow-up to the frozen RSI study, approved by the user on
+2026-11-12 after review with the independent audit window. It was designed after the frozen
+results were seen, so it is exploratory: it can describe what happens, not confirm a hypothesis
+the frozen study set out to test. Its numbers are compared only within this study, never pooled
+with frozen numbers (the output cap differs). Target: the ACL 2027 version (ARR 2027-01-04).
+
+Code: `fin_skills/rsi/adopt.py` (arms, retriever, manifest), `scripts/run_p_adopt.py` (runner),
+`benchmarks/agent_study/adopt_backend.py` (context overflow handling). Tests:
+`tests/test_rsi_adopt.py`, `tests/test_p_adopt_runner.py`.
 
 ## Why
 
@@ -12,78 +19,110 @@ The frozen study (tracks P, E, S; 17 of 20 models finished on 2026-11-11) found:
   default parameters.
 - The library arms almost never make that call: 25 programs that called the library ran,
   across 17 models; 6 episodes were valid with a library call.
-- The P task text describes the rule in words and never says which library algorithm it is;
-  the system prompt asks to "implement the rule exactly".
+- The P task text describes the rule in words and never says which library algorithm it is.
 
 So the frozen library contrast measured whether a model *discovers and adopts* the library
-from interface text, not what the library adds once used. This study separates the two.
+from interface text, not what the library adds once used.
 
 ## Questions
 
 1. Told which library algorithm implements the rule, how often does a model call it, and get
    the task right? (L2 against L1)
-2. Retrieving the matching catalogue entry from the rule text, with no hand-written pointer,
-   does that close the gap? (L3 against L1)
+2. Given the catalogue entry a fixed text retriever finds for the rule, with no hand-written
+   pointer, does that close the gap? (L3 against L1)
 3. Does the interface text by itself change anything against no library? (L1 against L0)
+4. Does learning on development tasks (PlaybookLearning) lead a model to the library, and is any
+   gain learning in general or learning to use the library? (Playbook-L1 against Playbook-L0)
 
-## Conditions
+## Arms
 
-All on branch `claude/frozen-study-fixes` with the 2026-11-12 fixes (fence parsing, no-library
-traces, output instruction last). Same 6 held-out tasks, 3 seeds and judge as the frozen study;
-one feedback setting, `Check`, with at most 3 attempts.
+Every arm starts from the frozen study's first prompt (`study.initial_messages`): same system
+prompt, including "Implement the rule exactly", and no rule cards. The only differences are in
+the table. Feedback after a failed attempt is the frozen `Check` text in every arm: the names of
+the failed checks, nothing else. At most 3 attempts.
 
-| Arm | System prompt | Task prompt adds |
+| Arm | System prompt | Appended to the task prompt |
 |---|---|---|
 | L0 | no library (`import fin_skills` refused) | nothing |
 | L1 | library interface text, as frozen | nothing |
-| L2 | as L1 | one sentence naming the algorithm: "The library implements this rule as `positions("<id>", ...)`; check its parameters and factor convention against the rule." |
-| L3 | as L1 | the catalogue entry a fixed lexical retriever ranks first for the rule text, with its docstring |
+| L2 | as L1 | `The fin_skills library implements this rule as positions("<id>", ...).` |
+| L3 | as L1 | `Library entry retrieved for this rule by text search:` and the BM25 top-1 entry (id, name, task, default parameters, caveat) |
+| Playbook-L0 | as L0, plus the learned playbook | nothing |
+| Playbook-L1 | as L1, plus the learned playbook | nothing |
 
-- Variant b tasks need non-default parameters and event-ratio factors, so L2 still tests whether
-  the call is made correctly, not only whether it is made.
-- L3's retriever is deterministic and frozen before any run; its top-1 accuracy on development
-  and held-out tasks is computed and reported in advance (it may well be 100%, in which case L3
-  measures the retrieved text rather than retrieval).
+- L2 is one sentence, no advice about parameters or factor conventions, so it adds only the
+  pointer.
+- PlaybookLearning is re-implemented on these prompts: no rule cards in the first prompt,
+  names-only Check feedback during fitting, and development traces without library hints in
+  both conditions (`trace_tools=False`). Fit on the 12 development tasks, fit seed 11, default
+  fit budget (48 episodes, 6 proposals, 600 calls, 1.2M tokens). No playbook arm under L2: once
+  told which function to call, little is left to learn.
+
+## L3 retrieval, published before any run
+
+BM25 (k1 1.5, b 0.75), query = the task's rule text, documents = the catalogue entries of the 12
+algorithms `positions()` accepts (id, name, caveat, tags, objectives, task, skill), stop words
+and pure numbers removed, ties broken by id. This replicates the independent window's probe.
+
+| Task | Correct algorithm | Top-3 retrieved | Rank of correct |
+|---|---|---|---|
+| bollinger_reversion_a, _b | bollinger_reversion | equal_weight, min_variance, donchian_breakout | 4 |
+| rsi_reversion_a, _b | rsi_reversion | rsi_reversion, equal_weight, min_variance | 1 |
+| donchian_breakout_a, _b | donchian_breakout | donchian_breakout, momentum, min_variance | 1 |
+
+Top-1 is right on 4 of 6 held-out tasks (5 of 12 development tasks). Over all 48 catalogue
+algorithms none of the 6 ranks first, which is why the pool is the 12. L3 therefore mixes right
+and wrong retrievals by design; results are read by algorithm.
 
 ## Models and generation
 
-The protocol's 20 open-weight models, same revisions and precision, temperature 0.1. Output cap
-4,096 tokens for every model (the frozen 2,048 cut off long reasoning: deepseek-r1-distill-14b
-reached it in 170 of 297 P replies). Where a chat template has a thinking switch (Qwen3), it is
-set off and recorded.
+The protocol's 20 open-weight models at their frozen revisions, BF16, temperature 0.1, top-p 1.
+Output cap 4,096 tokens per reply for every model (the frozen 2,048 cut off long reasoning:
+deepseek-r1-distill-14b reached it in 170 of 297 frozen P replies). Episode budget: 3 attempts,
+6 calls, 12,288 generated tokens. Qwen3 models are the Instruct-2507 releases, which have no
+thinking mode; deepseek-r1-distill-14b always thinks and is reported separately; SmolLM3 runs
+with its default template.
+
+A reply whose prompt plus 4,096-token reservation would exceed the model's native context is not
+generated; the episode ends with status `budget:context` and stays in the denominator.
+
+Seeds: data and generation seeds 101, 211, 307 (as frozen P). Episodes per model: 4 Check arms x
+6 tasks x 3 seeds = 72, plus 2 x 18 Playbook test episodes = 108.
 
 ## Measures
 
 - Primary: valid (ran, passed every visible check, matches the independent reference).
-- Secondary: share of programs that call the library; accepted but wrong; no program in the
-  reply; calls and tokens.
-- Episodes per model: 4 arms x 6 tasks x 3 seeds = 72.
+- Funnel: called the library -> program ran -> passed the visible checks -> valid.
+- Error types among library calls: wrong algorithm, wrong factor convention, missing or wrong
+  parameters. A call with missing parameters can pass every visible check, so Check feedback
+  cannot repair it.
+- Also: accepted but wrong; no program in the reply; calls and tokens.
 
 ## Analysis (declared now)
 
-- Per model: valid counts per arm and the three contrasts L2-L1, L3-L1, L1-L0, by algorithm.
-- After all models finish: the same contrasts paired on model, task and seed, averaged within
-  each of the 3 algorithm clusters. Three clusters cannot give p < 0.25, so results are
-  descriptive; no significance claims.
-- Every refusal, truncated reply and failed program stays in the denominator.
+- Every contrast reported separately for variant a (library defaults) and variant b (non-default
+  parameters and event-ratio factors), and by algorithm.
+- Per model: valid counts per arm and the contrasts L2-L1, L3-L1, L1-L0, Playbook-L1 vs
+  Playbook-L0, and each Playbook arm against its Check arm.
+- After all models finish: the same contrasts paired on model, task and seed. Three algorithm
+  clusters cannot support significance claims, so all results are descriptive.
+- Every refusal, truncated reply, context stop and failed program stays in the denominator.
 
 ## Validation before release
 
-A development-only job (development tasks, two models) checks that every arm's prompt renders,
-that L2's pointer names the right algorithm, that L3's retrieval output matches the frozen
-record, and that the judge and grader run end to end. No held-out task is run before release, and
-nothing is tuned on held-out results.
+One development-only job (`--dev`: test task macd_a, seed 101, fit on four other development
+tasks with a small fit budget) on two small models runs every arm through the real backend. It
+must finish every unit, and every declared first prompt of every Check episode must reach the
+model unchanged. It checks the pipeline only; no grade from it is read, and nothing is changed
+on its results. Main jobs depend on it (`afterok`).
 
-## Compute and schedule (estimates)
+## Execution
 
-- Frozen P took 2-6 hours per model for 108 episodes; 72 episodes with up to 3 attempts should
-  take roughly 1.5-4 hours per model, about 30-80 GPU-hours for 20 models.
-- Models up to 14B fit 48 GB cards and request untyped GPUs; the 24B-32B models need 80 GB-class
-  cards.
-- Queue estimates on 2026-11-12 put any new GPU job at about 2026-11-19, so results land after
-  the FinFM deadline and before the ACL deadline.
-
-## Open for the user
-
-- Whether to add `PlaybookLearning` under L1 (does learning on development tasks discover the
-  library?). It adds two fits and 18 episodes per model.
+- Per model three jobs: `check` (L0-L3), `playbook_L0`, `playbook_L1`. Each unit writes under its
+  own job directory; a unit with a complete terminal receipt is skipped on resubmission, so a
+  preempted job loses only its unfinished unit. Interrupted directories are kept.
+- Scavenger partition (the beacon partition's submission limit is in use by the frozen jobs),
+  no automatic requeue.
+- GPUs: untyped single GPU for models up to 14B; qwen-coder-32b on two GPUs with its qualified
+  dual layout; mistral-small-24b, qwen3-30b-a3b and qwen-general-32b on one 80 GB-class GPU.
+- Queue estimates on 2026-11-12 put new GPU jobs at about 2026-11-19.

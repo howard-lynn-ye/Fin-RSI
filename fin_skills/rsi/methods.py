@@ -338,6 +338,7 @@ class PlaybookLearning(_Learner):
     """RSILoop over dev tasks with the no_regression gate; the frozen playbook is the addendum."""
 
     name = "playbook"
+    trace_tools = None          # None: traces follow the library condition; False: never hints
 
     def fit(self, generate, dev_tasks, *, budget=FitBudget(), seeds=(11,),
             episode_budget=Budget()):
@@ -379,7 +380,8 @@ class PlaybookLearning(_Learner):
         try:
             for task_id in split["development"]:
                 observe(loop, [run_attempt(task_id, "")], available_at=FIT_START.isoformat(),
-                        source_version="fin-skills", tools=self.library)
+                        source_version="fin-skills",
+                        tools=self.library if self.trace_tools is None else self.trace_tools)
             for i in range(budget.proposals):
                 as_of = (FIT_START + timedelta(minutes=i + 1)).isoformat()
                 decisions.append(loop.improve(as_of=as_of).status)
