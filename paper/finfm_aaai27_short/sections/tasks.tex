@@ -58,6 +58,9 @@ The three controlled arms, with and without the library, on the \StudyHeldTasks{
 tasks and \StudySeeds{} seeds: \StudyPEpisodes{} episodes per model. Three contrasts were
 declared: \texttt{Check} against \texttt{Repeat} and \texttt{Explain} against
 \texttt{Check}, both without the library, and library against none under \texttt{Explain}.
+The held-out rules are among the library's own algorithms, and variant~a uses their default
+parameters, so one \texttt{positions()} call solves every held-out task; the library contrast
+thus measures whether a model finds and makes that call.
 
 \paragraph{E: external questions.}
 \StudyEQuestions{} public questions from the two table-and-text program-synthesis tasks of
@@ -66,13 +69,20 @@ CodeTAT-QA), selected by a rule fixed before any model output: a numeric answer,
 that fits every core model's context, no duplicate in the training split, one question per
 group of shared context. The model writes one program per question, with and without the
 library and without feedback: \StudyEEpisodes{} episodes per model. An answer counts if the
-program runs and returns the public label exactly; BizBench scores within 1\%, which we report as
-a sensitivity analysis.
+program runs and returns a number within 1\% of the public label, BizBench's own criterion.
+The protocol made exact matching primary and 1\% a sensitivity analysis; we report 1\%
+because \FactFloatLabels{} of the \StudyECodeFinQA{} CodeFinQA labels are float32 leftovers
+(41.0999984741 for 41.1) that no correct program matches exactly: \FactFloatValid{} of
+\FactFloatEpisodes{} episodes did, in each library condition. With the library, the prompt also
+lists the library's \FactInterfaceAlgorithms{} algorithms (\FactInterfaceChars{} characters).
+None computes these table questions, so track E measures what that text costs, not what the
+library adds.
 
 \paragraph{S: seven methods.}
 The \NMethods{} methods of \S\ref{sec:methods}, with and without the library, on the same
 tasks and seeds, for \StudyCoreModels{} core models: \StudySEpisodes{} episodes and
-\StudySFits{} fits on the development tasks.
+\StudySFits{} fits on the development tasks. Unlike the arms, the methods' first prompt includes
+the rule cards that apply to the task.
 
 \paragraph{Models and analysis.}
 Tracks P and E run on \StudyModels{} open-weight instruction models from \StudyFamilies{}
