@@ -23,17 +23,21 @@ Since 2026-11-10 the text describes the study that actually ran (section 5, "Stu
 protocol": tracks P, E and S, frozen on 2026-11-08), not the earlier four-arm design. Its
 numbers are in `study_numbers.tex`, read from the frozen plan.
 
-Since 2026-11-12 section 6 reports the models that have finished (17 of 20 for P and E, 4 of 5
-core models for S), one row per model, pooled nothing (the protocol allows only a per-model
-description until all 20 finish). `make_results.py` writes `results_numbers.tex` and
-`results_table.tex` from `study_summary.min.json`, a digest of read-only Slurm jobs 3620741,
-3620783 and 3620797 whose SHA-256 the script checks; three further facts carry their job IDs in
-the script. Track E is reported within 1% (BizBench's own criterion) rather than by exact match,
+Section 6 reports the models that have finished, one row per model, pooled nothing (the
+protocol allows only a per-model description until all 20 finish). Since 2026-11-16 that is 20
+of 20 for P, 18 for E (qwen-general-32b and qwen3-30b-a3b still running) and 5 of 5 core models
+for S. `extract_summary.py <dir> <v> <t> <z>` builds `study_summary.min.json` from the outputs
+of three read-only Slurm jobs (2026-11-16: 3655749 verification, 3655750 triage, 3655751
+library calls; the same scripts ran on 2026-11-11 as 3620741, 3620783, 3620797, and every field
+of the 17 models complete then is unchanged). `make_results.py` checks the digest's SHA-256 and
+writes `results_numbers.tex` and `results_table.tex`; it also asserts the patterns the track S
+paragraph states, so a refreshed digest that no longer supports the wording stops the build.
+Three further facts carry their job IDs in the script. Track E is reported within 1% (BizBench's own criterion) rather than by exact match,
 because 115 of the 200 CodeFinQA labels are float32 leftovers; see
 `docs/E_ENDPOINT_DEVIATION_20261112.md` on branch `claude/frozen-study-fixes`. Figure 2 moved to
 the appendix to keep the technical content within four pages; it now ends about two thirds
-down the right column of page 4. When the last three models finish, refresh the digest and
-rerun `make_results.py`.
+down the right column of page 4. When the last two models finish, rerun the three jobs,
+`extract_summary.py` and `make_results.py`, then the frozen pooled analysis.
 
 The method table, rule cards and task table are in the appendix; the skill-arm figure is
 commented out here because that ablation was not run. Numbers, figures and tables come from

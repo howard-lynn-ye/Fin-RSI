@@ -1,15 +1,15 @@
 \section{Preliminary results}
 \label{sec:results}
 
-\ResModelsDone{} of the \StudyModels{} models have finished tracks P and E, and \ResCoreS{}
-of the \StudyCoreModels{} core models track S; \ResModelsRunning{} are still running
-(Table~\ref{tab:results}). Until all have finished the protocol allows only a description per
+\ResModelsP{} of the \StudyModels{} models have finished track P, \ResModelsDone{} track E,
+and \ResCoreS{} of the \StudyCoreModels{} core models track S; track E of
+\ResModelsRunning{} is still running (Table~\ref{tab:results}). Until all have finished the protocol allows only a description per
 model, so nothing below is pooled.
 
 \begin{table}[t]
 \centering\scriptsize\setlength{\tabcolsep}{2.5pt}
 \input{results_table}
-\caption{Finished models ($^\ast$: core). P: valid episodes of 54 without / with the library,
+\caption{Results per model ($^\ast$: core). P: valid episodes of 54 without / with the library,
 summed over the three arms, and programs that called the library and ran. E: share within 1\%
 of the label (sources weighted equally) and episodes of 1,101 with no program in the reply,
 each without $\to$ with the library.}
@@ -23,8 +23,8 @@ episodes were valid with a library call. \ResZeroP{} models wrote no valid progr
 their \StudyPEpisodes{} episodes; the most was \ResBestP{} (\texttt{\ResBestPModel}). The visible
 checks let many wrong programs through: \ResQwenAcceptedWrong{} of
 \texttt{qwen-coder-32b}'s \ResQwenAccepted{} accepted episodes were wrong. Per model,
-\texttt{Explain} minus \texttt{Check} ranged from 0 to +\ResExplainCheckMax{} points and was
-never negative, \texttt{Check} minus \texttt{Repeat} from \ResCheckRepeatMin{} to
+\texttt{Explain} minus \texttt{Check} ranged from \ResExplainCheckMin{} to +\ResExplainCheckMax{}
+points (negative for \ResExplainCheckNeg{} models), \texttt{Check} minus \texttt{Repeat} from \ResCheckRepeatMin{} to
 +\ResCheckRepeatMax{}, and the library under \texttt{Explain} from \ResLibExplainMin{} to
 +\ResLibExplainMax{}.
 
@@ -38,12 +38,15 @@ after the interface text, smaller models answered in prose (\texttt{\ResEWorstMo
 any model, called the library.
 
 \paragraph{Self-improvement.}
-In track S only \texttt{qwen-coder-32b} wrote valid programs (\ResSQwen{} of \ResSEpisodes{}
-episodes; the other core models \ResSOthers). Out of 18 episodes without and with the library,
-\texttt{NoImprove} had \ResSQwenNoImprove{}, \texttt{PlaybookLearning} \ResSQwenPlaybook{},
-\texttt{Evolve} \ResSQwenEvolve{}, \texttt{CheckFeedback} \ResSQwenCheckFeedback{},
-\texttt{Reflexion} \ResSQwenReflexion{}, \texttt{SelfDebug} \ResSQwenSelfDebug{} and
-\texttt{Team} \ResSQwenTeam{}.
+In track S two core models wrote valid programs, \texttt{qwen-coder-32b} (\ResSQwen{} of
+\ResSEpisodes{} episodes) and \texttt{mistral-small-24b} (\ResSMistral); the other three had
+\ResSOthers. Out of 18 episodes without/with the library (\texttt{qwen-coder-32b};
+\texttt{mistral-small-24b}), \texttt{NoImprove} had \ResSNoImprove,
+\texttt{PlaybookLearning} \ResSPlaybook, \texttt{Evolve} \ResSEvolve,
+\texttt{CheckFeedback} \ResSCheckFeedback, \texttt{Reflexion} \ResSReflexion,
+\texttt{SelfDebug} \ResSSelfDebug{} and \texttt{Team} \ResSTeam. Without the library every
+method but \texttt{SelfDebug}, which tied, solved more than \texttt{NoImprove} in both models;
+with it, \texttt{mistral-small-24b} solved fewer under every method except \texttt{Team}.
 
 \paragraph{Limitations.}
 The study covers three position rules on synthetic panels, all among the library's own, and
