@@ -53,7 +53,9 @@ def _frame(x: Any, name: str) -> pd.DataFrame:
     if not np.isfinite(values).all():
         raise ValueError(f"{name} contains missing or nonfinite values")
     if (values <= 0).any():
-        raise ValueError(f"{name} must be positive")
+        hint = (" (closing prices, not returns: positions() computes returns itself)"
+                if name == "prices" else "")
+        raise ValueError(f"{name} must be positive{hint}")
     return x.astype(float)
 
 

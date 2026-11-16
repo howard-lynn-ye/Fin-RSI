@@ -87,8 +87,12 @@ def test_run_takes_the_single_input_itself_and_a_parameters_dict(prices):
     for got in (run("rsi_reversion", close, lookback=10),
                 run("rsi_reversion", close, parameters={"lookback": 10})):
         np.testing.assert_allclose(np.asarray(got, float), np.asarray(reference, float))
+    np.testing.assert_allclose(np.asarray(run("rsi_reversion", close, {"lookback": 10}), float),
+                               np.asarray(reference, float))
     with pytest.raises(TypeError, match="given both"):
         run("rsi_reversion", close, parameters={"lookback": 10}, lookback=12)
+    with pytest.raises(TypeError, match="given both"):
+        run("rsi_reversion", close, {"lookback": 10}, lookback=12)
     returns = prices.pct_change().iloc[1:]
     with pytest.raises(ValueError, match="1-D|one asset"):
         run("rsi_reversion", prices)          # a table to a one-asset algorithm: use positions()
@@ -148,3 +152,8 @@ def test_confined_program_can_read_site_packages_outside_the_prefix(tmp_path, mo
     roots = _runtime_paths(tmp_path / "private", tmp_path / "original")
     assert str(outside.resolve()) in roots
     assert str(private.resolve()) not in roots
+
+
+def test_returns_passed_as_prices_say_so(prices):
+    with pytest.raises(ValueError, match="not returns"):
+        positions("rsi_reversion", prices.pct_change().fillna(0.0))

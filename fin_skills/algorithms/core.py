@@ -257,12 +257,21 @@ class Registry:
         candidates.sort(key=lambda c: (-c.score, c.algorithm.id))
         return Selection(request, tuple(candidates), rejected)
 
-    def run(self, algorithm_id: str, data: Mapping[str, Any], **parameters) -> Any:
+    def run(self, algorithm_id: str, data: Mapping[str, Any], positional_parameters=None, /,
+            **parameters) -> Any:
         """Run a named adapter. Backend failures propagate; there is no silent fallback.
 
         data is a dict keyed by input name, or the input itself when the algorithm has exactly
-        one input. Parameters are keyword arguments or one parameters={...} dict.
+        one input. Parameters are keyword arguments, or one dict: run(id, data, {...}) or
+        run(id, data, parameters={...}).
         """
+        if positional_parameters is not None:
+            if not isinstance(positional_parameters, Mapping):
+                raise TypeError("run(algorithm_id, data, parameters): the third argument must be "
+                                "a dict of the algorithm's parameters")
+            if "parameters" in parameters:
+                raise TypeError("parameters given both positionally and as parameters=")
+            parameters = dict(parameters, parameters=positional_parameters)
         from .runtime import validate_data
         a = self.get(algorithm_id)
         if not isinstance(data, Mapping):
