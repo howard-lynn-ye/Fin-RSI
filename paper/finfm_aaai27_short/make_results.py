@@ -20,6 +20,13 @@ FACTS are numbers from two further read-only jobs, kept here with their provenan
            no no-library test prompt did.
   interface.json of the frozen E enrollment (enrollment-3607864): the library text added to the
            E prompt lists 48 algorithms (17 of them missing a dependency) in 25,658 characters.
+  3655794: every P program in the library arms whose worker trace recorded a positions()/run()
+           call (the trace entry precedes the call, so calls that raised count): 519 programs,
+           of which 39 ran (the same 39 as job 3655751); in 168 of the 1,080 library-arm
+           episodes the last program called the library, and 9 of those were valid (as 3655750);
+  3655802: the 480 calls that raised, grouped by error: the model's own function passed as the
+           algorithm id 167, an id not in the catalogue 143, wrong arguments 77, run() or an
+           algorithm given the wrong input form 49, other 44.
 """
 import hashlib
 import json
@@ -34,7 +41,9 @@ EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-genera
              "phi4-14b", "mistral-nemo-12b", "mistral-7b", "falcon3-10b", "falcon3-7b",
              "granite-2b", "smollm3-3b"]
 FACTS = dict(FloatLabels=115, FloatEpisodes="5,865", FloatValid=0, LeakPrompts=7,
-             LeakOf=497, InterfaceAlgorithms=48, InterfaceChars="25,658")
+             LeakOf=497, InterfaceAlgorithms=48, InterfaceChars="25,658",
+             LibCalling=519, LibFinal=168, LibEpisodes="1,080", LibOwnFunction=167,
+             LibUnknownId=143, LibWrongArgs=77 + 49)
 METHODS = ["no_improve", "self_debug", "check_feedback", "reflexion", "playbook", "team", "evolve"]
 S_WRITERS = ["qwen-coder-32b", "mistral-small-24b"]
 
@@ -69,6 +78,9 @@ def main():
     others = [m for m in s_models if m not in S_WRITERS]
     worst_e = min(done, key=lambda m: lib_minus[m])
     q = models["qwen-coder-32b"]
+    # The library-call facts must agree with the digest they sit beside.
+    assert sum(models[m]["P_library_calls_ran"] for m in p_done) == 39 and len(p_done) == 20
+    assert sum(models[m]["P_valid_with_library_used"] for m in p_done) == 9
     num = dict(
         ResModelsP=len(p_done), ResModelsDone=len(done), ResModelsRunning=len(running),
         ResCoreS=len(s_models),
