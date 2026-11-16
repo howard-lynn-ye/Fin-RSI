@@ -155,9 +155,15 @@ def _child_environment(private):
 
 
 def _runtime_paths(private, original):
+    # Everything the interpreter itself can import: sys.path entries inside its prefixes, and
+    # site-packages directories wherever they are (an environment can import packages from
+    # another one through a .pth file; statsmodels then lazily imports `packaging` from there,
+    # and a confined program that called it failed with PermissionError in P-adopt).
+    # Other sys.path entries (the source tree, data tools) stay unreadable.
     roots = {Path(p).resolve() for p in sys.path if p and Path(p).is_dir()
-             and any(Path(p).resolve().is_relative_to(Path(q).resolve())
-                     for q in (sys.prefix, sys.base_prefix))}
+             and (any(Path(p).resolve().is_relative_to(Path(q).resolve())
+                      for q in (sys.prefix, sys.base_prefix))
+                  or Path(p).name in ("site-packages", "dist-packages"))}
     roots.update(p.resolve() for p in (Path("/lib"), Path("/lib64")) if p.exists())
     # Extra read-only roots, e.g. a shared runtime whose site-packages sit outside sys.prefix,
     # so a confined program can still import scipy submodules lazily.

@@ -10,6 +10,7 @@ import it) and cards (the task's rule cards). Both off is a model with only the 
 """
 from __future__ import annotations
 
+import hashlib
 import inspect
 
 from fin_skills.api.rules import prompt_block, rules_for
@@ -73,29 +74,41 @@ def _signature(fn) -> str:
     return f"{fn.__name__}{plain}"
 
 
+FROZEN_INTERFACE_SHA256 = "f0940c646523ca388a970de725e9088510d33e4248506d2ce2eeba08e4058a4f"
+
+
 def library_text(*, rolling: bool = True) -> str:
-    """The interface shown to the model. rolling=False leaves out rolling() and its algorithms,
-    the interface the frozen RSI study and P-adopt showed (position tasks only)."""
-    from fin_skills.algorithms import adjust_prices, catalog, positions
+    """The interface shown to the model.
+
+    rolling=False returns, byte for byte, the interface the frozen RSI study and P-adopt showed
+    (position tasks only), kept in frozen_interface.py and checked by hash, so later changes
+    to the library's docstrings cannot change what reproducing those studies sends.
+    """
+    if not rolling:
+        from .frozen_interface import FROZEN_INTERFACE
+        if hashlib.sha256(FROZEN_INTERFACE.encode()).hexdigest() != FROZEN_INTERFACE_SHA256:
+            raise RuntimeError("frozen_interface.py differs from the interface the studies showed")
+        return FROZEN_INTERFACE
+    from fin_skills.algorithms import adjust_prices, catalog, positions, signal_positions
     from fin_skills.algorithms import rolling as rolling_fn
     from fin_skills.algorithms import run
     ready = {c["id"]: c for c in catalog() if c["status"] == "ready"}
-    lines = ["from fin_skills.algorithms import positions, "
-             + ("rolling, " if rolling else "") + "adjust_prices, run",
-             "", _signature(positions), _doc(positions)]
-    if rolling:
-        lines += ["", _signature(rolling_fn), _doc(rolling_fn)]
-    lines += ["", _signature(adjust_prices), _doc(adjust_prices),
-              "", "run" + _signature(run)[len(run.__name__):],
-              "Run one algorithm once on a dict of inputs keyed by input name; returns one "
-              "allocation (portfolio) or one already-lagged exposure series (signal).",
-              "", "Algorithms usable with positions() (id: task, inputs; defaults):"]
+    lines = ["from fin_skills.algorithms import positions, signal_positions, rolling, "
+             "adjust_prices, run",
+             "", _signature(positions), _doc(positions),
+             "", _signature(signal_positions), _doc(signal_positions),
+             "", _signature(rolling_fn), _doc(rolling_fn),
+             "", _signature(adjust_prices), _doc(adjust_prices),
+             "", "run" + _signature(run)[len(run.__name__):],
+             "Run one algorithm once on its inputs: a dict keyed by input name, or the input "
+             "itself when the algorithm has one; returns one allocation (portfolio) or one "
+             "already-lagged exposure series for one asset (signal). For a date x asset table "
+             "use positions().",
+             "", "Algorithms usable with positions() (id: task, inputs; defaults):"]
     for algorithm_id, defaults in DEFAULTS.items():
         card = ready[algorithm_id]
         shown = ", ".join(f"{k}={v!r}" for k, v in defaults.items()) or "no parameters"
         lines.append(f"  {algorithm_id}: {card['task']}, {' '.join(card['inputs'])}; {shown}")
-    if not rolling:
-        return "\n".join(lines)
     lines += ["", "Algorithms usable with rolling() (id: task, inputs; defaults):"]
     for algorithm_id, defaults in ROLLING_DEFAULTS.items():
         card = ready[algorithm_id]
