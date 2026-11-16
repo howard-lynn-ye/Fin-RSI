@@ -7,9 +7,10 @@ wrong in our audits: split factors applied twice, positions computed on the clos
 over, warm-up rows left as NaN, index or column order lost. These two functions do the
 assembly once, with every one of those choices explicit.
 
-    from fin_skills.algorithms import adjust_prices, positions
+    from fin_skills.algorithms import adjust_prices, positions, signal_positions
     w = positions("inverse_volatility", raw, split_factors, window=60)   # adjusts once, inside
-    w = positions("ma_crossover", raw, split_factors, parameters={"fast": 5, "slow": 20})
+    w = positions("ma_crossover", raw, split_factors, fast=5, slow=20)  # = parameters={...}
+    w = signal_positions(my_states)    # your own rule: states decided at each close, unlagged
 
     close = adjust_prices(raw, split_factors)    # only when you need the adjusted closes
     w = positions("inverse_volatility", close, window=60)   # already adjusted: no factors
@@ -52,7 +53,9 @@ def _frame(x: Any, name: str) -> pd.DataFrame:
     if not np.isfinite(values).all():
         raise ValueError(f"{name} contains missing or nonfinite values")
     if (values <= 0).any():
-        raise ValueError(f"{name} must be positive")
+        hint = (" (closing prices, not returns: positions() computes returns itself)"
+                if name == "prices" else "")
+        raise ValueError(f"{name} must be positive{hint}")
     return x.astype(float)
 
 
@@ -97,6 +100,47 @@ def _refuse_readjusting(prices) -> None:
             "or pass the adjusted prices with split_factors=None.")
 
 
+def positions_ids(registry=None) -> list[str]:
+    """Ids of the catalogued algorithms positions() can run (portfolio and signal tasks)."""
+    from . import _DEFAULT
+    reg = registry if registry is not None else _DEFAULT
+    return sorted(a.id for a in reg.algorithms() if a.task in ("portfolio", "signal")
+                  and reg.status(a.id) == "ready")
+
+
+def _spec_for_positions(reg, algorithm_id):
+    """The catalogue entry, or an error that says how to call positions() instead."""
+    ids = positions_ids(reg)
+    if callable(algorithm_id):
+        raise TypeError(
+            "positions() takes the id of a catalogued algorithm, not a function. If the rule is "
+            "one of these, pass its id: " + ", ".join(ids) + ". For your own rule, compute a "
+            "date x asset table of states decided at each close (row t uses closes through t; do "
+            "not shift it) and pass it to signal_positions(states), which lags, fills the warm-up "
+            "and scales it the same way positions() does.")
+    if not isinstance(algorithm_id, str):
+        raise TypeError(f"algorithm_id must be a catalogue id string, got "
+                        f"{type(algorithm_id).__name__}. Call positions(algorithm_id, prices, "
+                        f"split_factors, ...); ids: {', '.join(ids)}")
+    try:
+        return reg.get(algorithm_id)
+    except KeyError:
+        from .core import suggest
+        close = suggest(algorithm_id, ids)
+        hint = f" Did you mean {' or '.join(repr(c) for c in close)}?" if close else ""
+        raise KeyError(f"unknown algorithm: {algorithm_id!r}.{hint} positions() accepts: "
+                       f"{', '.join(ids)}. For your own rule use signal_positions().") from None
+
+
+def _merge_parameters(parameters, extra) -> dict:
+    params = dict(parameters or {})
+    both = sorted(set(params) & set(extra))
+    if both:
+        raise TypeError(f"{both} given both in parameters= and as keyword arguments")
+    params.update(extra)
+    return params
+
+
 def _needed(spec, window: int | None, parameters: Mapping[str, Any]) -> int:
     lookback = parameters.get("lookback")
     need = max(int(spec.min_observations or 1), int(window or 0))
@@ -109,11 +153,17 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
               factors: str = "cumulative", window: int | None = None,
               rebalance_every: int = 1, lag: int = 1, warmup: str = "zero",
               scale: float | str = "equal", parameters: Mapping[str, Any] | None = None,
-              registry=None) -> pd.DataFrame:
-    """Positions with one row per date and one column per asset, decided lag bars ahead.
+              registry=None, **algorithm_parameters) -> pd.DataFrame:
+    """Final positions: one row per date, one column per asset, decided lag bars ahead.
 
-    algorithm_id   : a catalogued portfolio algorithm (input asset_returns) or signal
-                     algorithm (input prices or returns); see catalog().
+    The result is ready to use: already lagged, warm-up rows filled and, for signal
+    algorithms, already multiplied by scale (1 / number of assets by default). Do not shift
+    it or divide it by the number of assets again.
+
+    algorithm_id   : the id of a catalogued portfolio algorithm (input asset_returns) or
+                     signal algorithm (input prices or returns), e.g. "rsi_reversion"; the
+                     list is below and in catalog(). Not a function: for your own rule use
+                     signal_positions().
     prices         : raw closes, one column per asset (a Series is one asset).
     split_factors  : see adjust_prices(); None means prices are already adjusted. The output
                      of adjust_prices() must come with split_factors=None, or this raises.
@@ -127,7 +177,8 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
                      "nan" leaves them missing so they stay visibly unavailable.
     scale          : signal algorithms only - per-asset exposures in [-1, 1] are multiplied
                      by this number, or by 1 / number of assets for "equal" (default).
-    parameters     : passed to the algorithm unchanged.
+    parameters     : the algorithm's parameters, e.g. {"lookback": 20}. They may also be given
+                     as keyword arguments: positions("rsi_reversion", prices, lookback=10).
 
     The returned frame has exactly the input index and columns. Its attrs record the
     algorithm, lag, warm-up rows and parameters. Errors from the algorithm are raised, not
@@ -137,7 +188,7 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     """
     from . import _DEFAULT
     reg = registry if registry is not None else _DEFAULT
-    params = dict(parameters or {})
+    params = _merge_parameters(parameters, algorithm_parameters)
     for key, value in (("lag", lag), ("rebalance_every", rebalance_every)):
         if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value < 1:
             raise ValueError(f"{key} must be an integer >= 1, got {value!r}")
@@ -146,7 +197,7 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
         raise ValueError(f"window must be None or an integer >= 2, got {window!r}")
     if warmup not in WARMUP:
         raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
-    spec = reg.get(algorithm_id)
+    spec = _spec_for_positions(reg, algorithm_id)
     if split_factors is not None:
         _refuse_readjusting(prices)
     close = adjust_prices(_frame(prices, "prices"), split_factors, factors=factors)
@@ -228,6 +279,58 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     out.attrs.update(algorithm=algorithm_id, task=spec.task, lag_bars=int(lag),
                      warmup_rows=warm_rows, warmup=warmup, factors=factors,
                      window=window, rebalance_every=int(rebalance_every), parameters=params)
+    return out
+
+
+def signal_positions(states: pd.DataFrame | pd.Series, *, lag: int = 1, warmup: str = "zero",
+                     scale: float | str = "equal") -> pd.DataFrame:
+    """Final positions from YOUR OWN rule's states, with the same timing as positions().
+
+    states : date x asset table (a Series is one asset) of the state your rule decides at
+             each close, e.g. +1 long, -1 short, 0 flat; row t may use closes through row t.
+             Do NOT shift it: this function applies the lag. Rows before your rule is
+             defined are NaN (warm-up); a NaN after that is an error.
+    lag    : the position on row t is the state decided at close t - lag.
+    warmup : "zero" (default) fills rows before the first decision with 0.0; "nan" keeps them.
+    scale  : states are multiplied by this number, or by 1 / number of assets for "equal"
+             (default). Do not divide by the number of assets again.
+
+    Compute your states from split-adjusted closes: adjust_prices(prices, split_factors).
+    """
+    frame = states.to_frame() if isinstance(states, pd.Series) else states
+    if not isinstance(frame, pd.DataFrame) or frame.empty:
+        raise TypeError("states must be a nonempty pandas DataFrame or Series")
+    if frame.index.has_duplicates or not frame.index.is_monotonic_increasing:
+        raise ValueError("states index must be unique and increasing")
+    if isinstance(lag, bool) or not isinstance(lag, (int, np.integer)) or lag < 1:
+        raise ValueError(f"lag must be an integer >= 1, got {lag!r}")
+    if warmup not in WARMUP:
+        raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
+    values = frame.astype(float)
+    if np.isinf(values.to_numpy()).any():
+        raise ValueError("states contain infinite values")
+    started = values.notna().cummax()
+    if (values.isna() & started).to_numpy().any():
+        raise ValueError("states have missing values after a column's first decision; only "
+                         "warm-up rows before it may be NaN")
+    if isinstance(scale, str):
+        if scale != "equal":
+            raise ValueError("scale must be a number or 'equal'")
+        factor = 1.0 / frame.shape[1]
+    else:
+        factor = float(scale)
+        if not np.isfinite(factor):
+            raise ValueError("scale must be finite")
+    out = values.shift(lag) * factor
+    leading = out.notna().any(axis=1).to_numpy()
+    if not leading.any():
+        raise ValueError(f"no decision on any of the {len(out)} rows: the states are all "
+                         f"warm-up, or shorter than lag={lag}")
+    warm_rows = int(np.argmax(leading))
+    if warmup == "zero":
+        out = out.fillna(0.0)
+    out.attrs.update(algorithm="signal_positions", task="signal", lag_bars=int(lag),
+                     warmup_rows=warm_rows, warmup=warmup)
     return out
 
 

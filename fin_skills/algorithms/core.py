@@ -130,6 +130,16 @@ class Selection:
 Handler = Callable[[Mapping[str, Any], Mapping[str, Any]], Any]
 
 
+def suggest(name: str, ids, n: int = 2) -> list[str]:
+    """Ids a mistyped algorithm name most likely meant: same leading word first, then spelling."""
+    import difflib
+    lead = name.lower().split("_")[0]
+    same = sorted(i for i in ids if i.split("_")[0] == lead)
+    near = [i for i in difflib.get_close_matches(name.lower(), list(ids), n=n, cutoff=0.6)
+            if i not in same]
+    return (same + near)[:n]
+
+
 class Registry:
     """Custom adapters are trusted Python callables; JSON cannot register/import code."""
 
@@ -157,8 +167,13 @@ class Registry:
     def get(self, algorithm_id: str) -> Algorithm:
         try:
             return self._specs[algorithm_id]
-        except KeyError:
-            raise KeyError(f"unknown algorithm: {algorithm_id!r}") from None
+        except (KeyError, TypeError):
+            if not isinstance(algorithm_id, str):
+                raise KeyError(f"unknown algorithm: {algorithm_id!r}; an algorithm is named by "
+                               f"its catalogue id string, see catalog()") from None
+            close = suggest(algorithm_id, list(self._specs))
+            hint = f"; did you mean {' or '.join(repr(c) for c in close)}?" if close else ""
+            raise KeyError(f"unknown algorithm: {algorithm_id!r}{hint} (ids: catalog())") from None
 
     def algorithms(self, task: str | None = None) -> tuple[Algorithm, ...]:
         task = task_name(task) if task is not None else None
@@ -242,10 +257,35 @@ class Registry:
         candidates.sort(key=lambda c: (-c.score, c.algorithm.id))
         return Selection(request, tuple(candidates), rejected)
 
-    def run(self, algorithm_id: str, data: Mapping[str, Any], **parameters) -> Any:
-        """Run a named adapter. Backend failures propagate; there is no silent fallback."""
+    def run(self, algorithm_id: str, data: Mapping[str, Any], positional_parameters=None, /,
+            **parameters) -> Any:
+        """Run a named adapter. Backend failures propagate; there is no silent fallback.
+
+        data is a dict keyed by input name, or the input itself when the algorithm has exactly
+        one input. Parameters are keyword arguments, or one dict: run(id, data, {...}) or
+        run(id, data, parameters={...}).
+        """
+        if positional_parameters is not None:
+            if not isinstance(positional_parameters, Mapping):
+                raise TypeError("run(algorithm_id, data, parameters): the third argument must be "
+                                "a dict of the algorithm's parameters")
+            if "parameters" in parameters:
+                raise TypeError("parameters given both positionally and as parameters=")
+            parameters = dict(parameters, parameters=positional_parameters)
         from .runtime import validate_data
         a = self.get(algorithm_id)
+        if not isinstance(data, Mapping):
+            if len(a.inputs) != 1:
+                raise TypeError(f"{a.id} takes inputs {list(a.inputs)}: pass data as a dict "
+                                f"keyed by those names")
+            data = {a.inputs[0]: data}
+        nested = parameters.get("parameters")
+        if isinstance(nested, Mapping):
+            rest = {k: v for k, v in parameters.items() if k != "parameters"}
+            both = sorted(set(rest) & set(nested))
+            if both:
+                raise TypeError(f"{both} given both in parameters= and as keyword arguments")
+            parameters = dict(nested, **rest)
         status = self.status(a.id)
         if status == "catalog_only":
             raise NotImplementedError(f"{a.id} is catalog_only; no execution adapter")
