@@ -1,10 +1,10 @@
-\section{Preliminary results}
+\section{Results}
 \label{sec:results}
 
-\ResModelsP{} of the \StudyModels{} models have finished track P, \ResModelsDone{} track E,
-and \ResCoreS{} of the \StudyCoreModels{} core models track S; track E of
-\ResModelsRunning{} is still running (Table~\ref{tab:results}). Until all have finished the protocol allows only a description per
-model, so nothing below is pooled.
+All \StudyModels{} models finished tracks P and E, and all \StudyCoreModels{} core models track S
+(Table~\ref{tab:results}). The frozen pooled summaries are descriptive: P and S rest on three rule
+families, so a sign-flip test cannot go below $p=\FactPMinP$, and E's questions form one
+dependency block, so it has no interval.
 
 \begin{table}[t]
 \centering\scriptsize\setlength{\tabcolsep}{2.5pt}
@@ -26,17 +26,19 @@ model's own function as the algorithm, \FactLibUnknownId{} named an algorithm no
 catalogue, and \FactLibWrongArgs{} passed wrong arguments or inputs. \ResZeroP{} models wrote no valid program in any of
 their \StudyPEpisodes{} episodes; the most was \ResBestP{} (\texttt{\ResBestPModel}). The visible
 checks let many wrong programs through: \ResQwenAcceptedWrong{} of
-\texttt{qwen-coder-32b}'s \ResQwenAccepted{} accepted episodes were wrong. Per model,
-\texttt{Explain} minus \texttt{Check} ranged from \ResExplainCheckMin{} to +\ResExplainCheckMax{}
-points (negative for \ResExplainCheckNeg{} models), \texttt{Check} minus \texttt{Repeat} from \ResCheckRepeatMin{} to
-+\ResCheckRepeatMax{}, and the library under \texttt{Explain} from \ResLibExplainMin{} to
-+\ResLibExplainMax{}.
+\texttt{qwen-coder-32b}'s \ResQwenAccepted{} accepted episodes were wrong. Pooled, out of
+\FactPArm{} episodes per arm without and with the library, \texttt{Repeat} was valid in
+\FactPRepeat, \texttt{Check} in \FactPCheck{} and \texttt{Explain} in \FactPExplain. The primary
+contrasts were small: \texttt{Check} minus \texttt{Repeat} \FactPCheckRepeat{} points,
+\texttt{Explain} minus \texttt{Check} \FactPExplainCheck{} (per model \ResExplainCheckMin{} to
++\ResExplainCheckMax), the library under \texttt{Explain} \FactPLibExplain{} (all $p\ge0.5$).
 
 \paragraph{Track E measures the interface text.}
 The library left both \texttt{qwen-coder} models unchanged within 1\%
 (\ResEQwenCoderBigNo{} to \ResEQwenCoderBigLib\%, \ResEQwenCoderMidNo{} to
 \ResEQwenCoderMidLib\%), but \ResELibLower{} of the \ResModelsDone{} models lost accuracy,
-\texttt{\ResEWorstModel} the most (\ResEWorstNo{} to \ResEWorstLib\%). The loss is one of format:
+\texttt{\ResEWorstModel} the most (\ResEWorstNo{} to \ResEWorstLib\%); pooled, the rate fell from
+\FactENoLib{} to \FactELib\% (exact: \FactEExactNoLib{} to \FactEExactLib\%). The loss is one of format:
 after the interface text, smaller models answered in prose (\texttt{\ResEWorstModel}:
 \ResEWorstNoProgNo{} to \ResEWorstNoProgLib{} episodes without a program). No valid answer, in
 any model, called the library.
@@ -50,7 +52,11 @@ In track S two core models wrote valid programs, \texttt{qwen-coder-32b} (\ResSQ
 \texttt{CheckFeedback} \ResSCheckFeedback, \texttt{Reflexion} \ResSReflexion,
 \texttt{SelfDebug} \ResSSelfDebug{} and \texttt{Team} \ResSTeam. Without the library every
 method but \texttt{SelfDebug}, which tied, solved more than \texttt{NoImprove} in both models;
-with it, \texttt{mistral-small-24b} solved fewer under every method except \texttt{Team}.
+with it, \texttt{mistral-small-24b} solved fewer under every method except \texttt{Team}. Pooled
+over the core models and both conditions, the gain over \texttt{NoImprove} was \FactSPlaybook{}
+points for \texttt{PlaybookLearning}, \FactSEvolve{} \texttt{Evolve}, \FactSCheckFeedback{}
+\texttt{CheckFeedback}, \FactSReflexion{} \texttt{Reflexion}, \FactSTeam{} \texttt{Team} and
+\FactSSelfDebug{} \texttt{SelfDebug}, nearly all from those two models.
 
 \paragraph{Limitations.}
 The study covers three position rules on synthetic panels, all among the library's own, and

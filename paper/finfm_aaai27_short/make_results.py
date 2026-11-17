@@ -24,6 +24,16 @@ FACTS are numbers from two further read-only jobs, kept here with their provenan
            call (the trace entry precedes the call, so calls that raised count): 519 programs,
            of which 39 ran (the same 39 as job 3655751); in 168 of the 1,080 library-arm
            episodes the last program called the library, and 9 of those were valid (as 3655750);
+  3658422: the frozen formal analyses, run once every frozen job was terminal (2026-11-17), with
+           the frozen coordinators' analyze_frozen_study.py (P, E; all20) and analyze_seven_study.py
+           (S). Outputs (sha256): P-all20 a9bd603e, E-all20 9fa80fef, S b4da1ff5. P: valid of 360
+           per arm, Repeat 12/12, Check 22/26, Explain 37/27 (without/with library); primary
+           contrasts Check-Repeat +2.8 points (sign-flip p 0.5), Explain-Check +4.2 (p 0.5),
+           library under Explain -2.8 (p 0.75); three algorithm blocks, smallest attainable p 0.25.
+           E: source-balanced 1% rate 50.8% -> 40.0%, exact 22.4% -> 15.7%; one dependency block,
+           so no interval. S (five core models, method minus NoImprove, both library conditions
+           averaged): PlaybookLearning +11.7, Evolve +11.1, CheckFeedback +10.6, Reflexion +7.2,
+           Team +5.6, SelfDebug +1.7 points;
   3655802: the 480 calls that raised, grouped by error: the model's own function passed as the
            algorithm id 167, an id not in the catalogue 143, wrong arguments 77, run() or an
            algorithm given the wrong input form 49, other 44.
@@ -34,7 +44,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SUMMARY = HERE / "study_summary.min.json"
-SUMMARY_SHA256 = "61a0c481d16c9124a2cdc96eb8e9b2e8b5c37f809bc2341fd547ccd928e683f5"
+SUMMARY_SHA256 = "4918cd8be77a42925aad63540a69a38f9bc4febb982b2681e7765923783824a5"
 CORE = ["qwen-coder-32b", "mistral-small-24b", "granite-8b", "olmo3-7b", "phi4-mini"]
 EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-general-14b",
              "qwen-general-7b", "qwen3-30b-a3b", "qwen3-4b", "deepseek-r1-distill-14b",
@@ -43,7 +53,12 @@ EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-genera
 FACTS = dict(FloatLabels=115, FloatEpisodes="5,865", FloatValid=0, LeakPrompts=7,
              LeakOf=497, InterfaceAlgorithms=48, InterfaceChars="25,658",
              LibCalling=519, LibFinal=168, LibEpisodes="1,080", LibOwnFunction=167,
-             LibUnknownId=143, LibWrongArgs=77 + 49)
+             LibUnknownId=143, LibWrongArgs=77 + 49,
+             PRepeat="12 and 12", PCheck="22 and 26", PExplain="37 and 27", PArm=360,
+             PCheckRepeat="+2.8", PExplainCheck="+4.2", PLibExplain="$-$2.8", PMinP="0.25",
+             ENoLib="50.8", ELib="40.0", EExactNoLib="22.4", EExactLib="15.7",
+             SPlaybook="11.7", SEvolve="11.1", SCheckFeedback="10.6", SReflexion="7.2",
+             STeam="5.6", SSelfDebug="1.7")
 METHODS = ["no_improve", "self_debug", "check_feedback", "reflexion", "playbook", "team", "evolve"]
 S_WRITERS = ["qwen-coder-32b", "mistral-small-24b"]
 
