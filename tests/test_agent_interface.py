@@ -157,3 +157,20 @@ def test_confined_program_can_read_site_packages_outside_the_prefix(tmp_path, mo
 def test_returns_passed_as_prices_say_so(prices):
     with pytest.raises(ValueError, match="not returns"):
         positions("rsi_reversion", prices.pct_change().fillna(0.0))
+
+
+@pytest.mark.parametrize("kwargs", [dict(window=15), dict(rebalance_every=5),
+                                    dict(window=15, rebalance_every=2)])
+def test_portfolio_only_arguments_are_refused_for_signal_rules(prices, kwargs):
+    # window=15 used to be ignored for a signal rule, which kept its default lookback of 20.
+    with pytest.raises(TypeError, match="portfolio algorithms only and would be ignored") as err:
+        positions("bollinger_reversion", prices, **kwargs)
+    assert "lookback=15" in str(err.value)
+    explicit = positions("bollinger_reversion", prices, rebalance_every=1)
+    assert explicit.equals(positions("bollinger_reversion", prices))
+
+
+def test_scale_is_refused_for_portfolio_algorithms(prices):
+    with pytest.raises(TypeError, match="signal algorithms only and would be ignored"):
+        positions("inverse_volatility", prices, scale=0.5)
+    assert positions("inverse_volatility", prices, window=30).notna().all().all()

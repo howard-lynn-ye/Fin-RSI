@@ -141,6 +141,25 @@ def _merge_parameters(parameters, extra) -> dict:
     return params
 
 
+def _refuse_unused_arguments(spec, algorithm_id, window, rebalance_every, scale):
+    """An argument that does not apply to this kind of algorithm would otherwise be ignored and
+    the result would look right: window=15 for a signal rule keeps its default lookback."""
+    if spec.task == "signal":
+        unused = [f"{k}={v!r}" for k, v in (("window", window), ("rebalance_every", rebalance_every))
+                  if v is not None and not (k == "rebalance_every" and v == 1)]
+        if unused:
+            verb = "apply" if len(unused) > 1 else "applies"
+            raise TypeError(f"{' and '.join(unused)} {verb} to portfolio algorithms only and would "
+                            f"be ignored: {algorithm_id} is a signal algorithm. Pass the rule's own "
+                            f"parameters as keywords instead, e.g. positions({algorithm_id!r}, "
+                            f"prices, split_factors, lookback=15) for its rolling window; an "
+                            f"unknown keyword raises and lists the accepted ones.")
+    elif spec.task == "portfolio" and not (isinstance(scale, str) and scale == "equal"):
+        raise TypeError(f"scale={scale!r} applies to signal algorithms only and would be ignored: "
+                        f"{algorithm_id} is a portfolio algorithm, whose weights are returned as "
+                        "computed")
+
+
 def _needed(spec, window: int | None, parameters: Mapping[str, Any]) -> int:
     lookback = parameters.get("lookback")
     need = max(int(spec.min_observations or 1), int(window or 0))
@@ -198,6 +217,7 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     if warmup not in WARMUP:
         raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
     spec = _spec_for_positions(reg, algorithm_id)
+    _refuse_unused_arguments(spec, algorithm_id, window, rebalance_every, scale)
     if split_factors is not None:
         _refuse_readjusting(prices)
     close = adjust_prices(_frame(prices, "prices"), split_factors, factors=factors)
