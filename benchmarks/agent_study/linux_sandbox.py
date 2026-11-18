@@ -59,6 +59,13 @@ def confine(writable, readonly):
             raise OSError(ctypes.get_errno(), "landlock_restrict_self")
     finally:
         os.close(fd)
+    _deny_syscalls()
+    return {"landlock_abi": int(abi), "network": "socket syscalls denied",
+            "writes": str(writable), "subprocesses": "denied"}
+
+
+def _deny_syscalls():
+    sec = ctypes.CDLL("libseccomp.so.2")
     sec.seccomp_init.argtypes = [ctypes.c_uint32]
     sec.seccomp_init.restype = ctypes.c_void_p
     sec.seccomp_rule_add.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int, ctypes.c_uint]
@@ -80,5 +87,31 @@ def confine(writable, readonly):
             raise RuntimeError("seccomp load failed")
     finally:
         sec.seccomp_release(context)
-    return {"landlock_abi": int(abi), "network": "socket syscalls denied",
-            "writes": str(writable), "subprocesses": "denied"}
+
+
+def seccomp_available():
+    """Probe for the declared no-Landlock deviation; never applies restrictions to the caller."""
+    if sys.platform != 'linux' or platform.machine() != 'x86_64':
+        return False
+    try:
+        ctypes.CDLL('libseccomp.so.2')
+        return True
+    except OSError:
+        return False
+
+
+def confine_without_landlock(writable, readonly):
+    """Declared deviation for kernels without Landlock (Zaratan, 4.18): the same system-call
+    denials as confine() (sockets, exec, fork, signals, namespaces, mounts), but no filesystem
+    rules, so executed programs must be scanned afterwards for file access."""
+    if not seccomp_available():
+        raise RuntimeError("seccomp confinement requires Linux x86_64 with libseccomp")
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.syscall.restype = ctypes.c_long
+    abi = libc.syscall(444, 0, 0, 1)
+    if libc.prctl(38, 1, 0, 0, 0):
+        raise OSError(ctypes.get_errno(), "no_new_privs")
+    _deny_syscalls()
+    return {"landlock_abi": max(int(abi), 0), "network": "socket syscalls denied",
+            "writes": "not restricted (declared deviation: no Landlock)",
+            "subprocesses": "denied"}

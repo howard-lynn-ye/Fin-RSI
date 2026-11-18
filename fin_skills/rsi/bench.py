@@ -42,6 +42,11 @@ from .backend import describe_backend
 from .methods import ARMS, arm_name
 
 
+QUALIFIED_HOOK = "benchmarks.agent_study.linux_sandbox:confine"
+# Declared deviation for kernels without Landlock: system calls denied, files scanned afterwards.
+NO_LANDLOCK_HOOK = "benchmarks.agent_study.linux_sandbox:confine_without_landlock"
+
+
 def _arm(row: dict) -> str:
     return row.get("arm") or arm_name(row["library"], row.get("cards", True))
 
@@ -204,12 +209,14 @@ def benchmark(methods: Iterable[type], generate, tasks, *,
     if execution_mode == "model":
         if not out or not model_id.strip():
             raise ValueError("model execution requires durable output and a model identifier")
-        if (os.environ.get("FIN_TASKS_REQUIRE_CONFINEMENT") != "1" or
-                os.environ.get("FIN_TASKS_CONFINE") !=
-                "benchmarks.agent_study.linux_sandbox:confine"):
+        hook = os.environ.get("FIN_TASKS_CONFINE")
+        allowed = {QUALIFIED_HOOK: "confinement_available"}
+        if os.environ.get("FIN_TASKS_DECLARED_DEVIATION") == "no-landlock":
+            allowed[NO_LANDLOCK_HOOK] = "seccomp_available"
+        if os.environ.get("FIN_TASKS_REQUIRE_CONFINEMENT") != "1" or hook not in allowed:
             raise ValueError("model execution requires the qualified Linux confinement hook")
-        from benchmarks.agent_study.linux_sandbox import confinement_available
-        if not confinement_available():
+        from benchmarks.agent_study import linux_sandbox
+        if not getattr(linux_sandbox, allowed[hook])():
             raise ValueError("required Linux confinement is unavailable")
         require_bounded_backend = True
     if len(fit_seeds) != 1:
@@ -249,6 +256,8 @@ def benchmark(methods: Iterable[type], generate, tasks, *,
                     execution_mode=execution_mode,
                     runtime=dict(python=platform.python_version(), system=platform.system(),
                                  confinement_hook=os.environ.get("FIN_TASKS_CONFINE", ""),
+                                 declared_deviation=os.environ.get(
+                                     "FIN_TASKS_DECLARED_DEVIATION", ""),
                                  required=os.environ.get("FIN_TASKS_REQUIRE_CONFINEMENT") == "1",
                                  packages={p: version(p) for p in ("numpy", "pandas", "scipy")}),
                     contrasts=list(primary_contrasts),
