@@ -79,9 +79,9 @@ def error_group(error: str) -> str:
     return "other: " + re.sub(r"0x[0-9a-f]+", "0x?", head)[:100]
 
 
-# The library's result is final (lagged, filled, scaled); dividing it by the number of assets again
-# scales it twice. Read from program text, for accepted-but-wrong episodes whose last program
-# called the library.
+# The library's result is final (lagged, filled, scaled); dividing by the number of assets again
+# scales it twice. Read from program text (a line dividing by the asset count that does not pass
+# scale= to the library), for accepted-but-wrong episodes whose last program called the library.
 RESCALE = r"/\s*(?:len\(\s*\w+(?:\.columns)?\s*\)|num_assets|n_assets|n_cols|ncols|n\b|4\b)"
 
 
@@ -180,8 +180,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
                     f["last_calls_library_valid"] += bool(r["valid"])
                     if last["accepted"] and not r["valid"]:
                         f["last_calls_library_accepted_wrong"] += 1
-                        f["last_calls_library_accepted_wrong_rescaled"] += bool(
-                            re.search(RESCALE, last.get("code") or ""))
+                        f["last_calls_library_accepted_wrong_rescaled"] += any(
+                            re.search(RESCALE, x) and "scale=" not in x
+                            for x in (last.get("code") or "").splitlines())
                 elif last:
                     f["last_no_library"] += 1
                     f["last_no_library_valid"] += bool(r["valid"])

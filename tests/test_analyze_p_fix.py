@@ -141,3 +141,14 @@ def test_scan_ignores_comments_and_scipy_signal(tmp_path):
     out = ap.analyze(tmp_path)
     assert {f["arm"] for f in out["scan"]["flagged"]} == {"F2"}
     assert out["scan"]["counts"] == {"file": 18, "process": 18}
+
+
+def test_scale_argument_is_not_counted_as_rescaling(tmp_path):
+    code = ("from fin_skills.algorithms import positions\n"
+            "def solve(prices, split_factors):\n"
+            "    return positions('macd', prices, split_factors, scale=1/len(prices.columns))\n")
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0"))
+    write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") +
+               episodes("check_F2", valid_every=1000, calls=1, code=code, accepted=True))
+    f = ap.analyze(tmp_path)["funnel"]["F2"]
+    assert f["last_calls_library_accepted_wrong"] == 17 and f["last_calls_library_accepted_wrong_rescaled"] == 0
