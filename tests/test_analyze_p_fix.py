@@ -14,7 +14,7 @@ TASKS = [("macd", "macd_a"), ("macd", "macd_b"), ("rsi_reversion", "rsi_reversio
 
 
 def row(method, fam, task, seed, valid, calls=0, executed=True, code="x = 1", error="", accepted=None):
-    step = dict(accepted=valid, attempt_index=0, checks={}, code=code, error=error,
+    step = dict(accepted=valid if accepted is None else accepted, attempt_index=0, checks={}, code=code, error=error,
                 executed=executed, feedback="", library_calls=calls, number=1,
                 reply_format="fenced")
     return dict(method=method, task_algorithm=fam, task_id=task, seed=seed, valid=valid,
@@ -103,3 +103,30 @@ def test_check_fix_from_a_later_version(tmp_path):
     out = ap.analyze(v1, fix_root=v2)
     assert out["runs"]["m1"] == {"check_F0": "job-5", "check_fix": "job-9"}
     assert out["per_model"]["m1"]["F1"]["valid"] == 18 and out["per_model"]["m1"]["F0"]["valid"] == 6
+
+
+@pytest.mark.parametrize("error, group", [
+    ("TypeError: positions() takes the id of a catalogued algorithm, not a function. ...",
+     "own function passed as the algorithm"),
+    ("TypeError: positions() has no states= argument: it computes x from prices.",
+     "states passed to positions()"),
+    ("TypeError: window=15 applies to portfolio algorithms only and would be ignored",
+     "argument that does not apply to the algorithm"),
+    ("ValueError: split_factors look like event ratios (1.0 except on split days)",
+     "split factors in the other convention"),
+    ("ValueError: bollinger_reversion requires >= 22 observations", "too few rows (called on a slice)"),
+])
+def test_error_groups(error, group):
+    assert ap.error_group(error) == group
+
+
+def test_rescaled_library_output_is_counted(tmp_path):
+    code = ("from fin_skills.algorithms import positions\n"
+            "def solve(prices, split_factors):\n"
+            "    r = positions('macd', prices, split_factors)\n"
+            "    return r / len(r.columns)\n")
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0"))
+    write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") +
+               episodes("check_F2", valid_every=1000, calls=1, code=code, accepted=True))
+    f = ap.analyze(tmp_path)["funnel"]["F2"]
+    assert f["last_calls_library_accepted_wrong"] == 17 and f["last_calls_library_accepted_wrong_rescaled"] == 17

@@ -57,15 +57,31 @@ def error_group(error: str) -> str:
     head = lines[0] if lines else ""
     if "unknown algorithm" in head:
         return "algorithm id not in the catalogue"
-    if "signal_positions" in head or "callable" in head:
+    if "not a function" in head:
         return "own function passed as the algorithm"
+    if "no states= argument" in head or "not returns or states" in head:
+        return "states passed to positions()"
     if "closes, not returns" in head or "prices must be positive" in head:
         return "returns passed as prices"
+    if "portfolio algorithms only" in head or "signal algorithms only" in head:
+        return "argument that does not apply to the algorithm"
+    if "look like event ratios" in head or "look cumulative" in head:
+        return "split factors in the other convention"
+    if "1-D array" in head:
+        return "run() given a table"
+    if re.search(r"requires >= \d+ observations|made no decision on any", head):
+        return "too few rows (called on a slice)"
     if head.startswith("TypeError") and ("argument" in head or "parameter" in head):
         return "wrong arguments"
     if head.startswith(("KeyError", "ValueError")) and "parameter" in head:
         return "unknown or invalid parameter"
     return "other: " + re.sub(r"0x[0-9a-f]+", "0x?", head)[:100]
+
+
+# The library's result is final (lagged, filled, scaled); dividing it by the number of assets again
+# scales it twice. Read from program text, for accepted-but-wrong episodes whose last program
+# called the library.
+RESCALE = r"/\s*(?:len\(\s*\w+(?:\.columns)?\s*\)|num_assets|n_assets|n_cols|ncols|n\b|4\b)"
 
 
 def rate(valid, n):
@@ -159,6 +175,10 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
                     f["last_calls_library_ran"] += bool(last["executed"])
                     f["last_calls_library_passed_checks"] += bool(last["accepted"])
                     f["last_calls_library_valid"] += bool(r["valid"])
+                    if last["accepted"] and not r["valid"]:
+                        f["last_calls_library_accepted_wrong"] += 1
+                        f["last_calls_library_accepted_wrong_rescaled"] += bool(
+                            re.search(RESCALE, last.get("code") or ""))
                 elif last:
                     f["last_no_library"] += 1
                     f["last_no_library_valid"] += bool(r["valid"])
