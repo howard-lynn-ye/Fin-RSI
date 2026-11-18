@@ -1,73 +1,60 @@
 \section{Results}
 \label{sec:results}
 
-All \StudyModels{} models finished tracks P and E, and all \StudyCoreModels{} core models track S
-(Table~\ref{tab:results}). The frozen pooled summaries are descriptive: P and S rest on three rule
-families, so a sign-flip test cannot go below $p=\FactPMinP$, and E's questions form one
-dependency block, so it has no interval.
+Table~\ref{tab:results} lists every model's valid episodes. The numbers are descriptive
+(\S\ref{sec:study}).
 
 \begin{table}[t]
-\centering\scriptsize\setlength{\tabcolsep}{2.5pt}
+\centering\scriptsize\setlength{\tabcolsep}{2pt}
 \input{results_table}
-\caption{Results per model ($^\ast$: core). P: valid episodes of 54 without / with the library,
-summed over the three arms, and programs that called the library and ran. E: share within 1\%
-of the label (sources weighted equally) and episodes of 1,101 with no program in the reply,
-each without $\to$ with the library.}
+\caption{Valid episodes per model ($^\ast$: core). Library study: of \FixEpisodesPerArm{} per
+arm, and the library calls that ran out of all programs that called it in F1 and F2. No library:
+of 18 per arm in the study fixed on 8~November.}
 \label{tab:results}
 \end{table}
 
-\paragraph{Models call the library, but wrongly.}
-One library call solves every held-out task, and the library arms reach for it:
-\FactLibCalling{} programs called the library, and in \FactLibFinal{} of the \FactLibEpisodes{}
-library-arm episodes the last program did. Only \ResLibCallsRan{} of those programs ran, and
-\ResValidWithLib{} episodes were valid with a library call. The rest raised errors, which
-\texttt{Check} and \texttt{Explain} showed to the model: \FactLibOwnFunction{} passed the
-model's own function as the algorithm, \FactLibUnknownId{} named an algorithm not in the
-catalogue, and \FactLibWrongArgs{} passed wrong arguments or inputs. \ResZeroP{} models wrote no valid program in any of
-their \StudyPEpisodes{} episodes; the most was \ResBestP{} (\texttt{\ResBestPModel}). The visible
-checks let many wrong programs through: \ResQwenAcceptedWrong{} of
-\texttt{qwen-coder-32b}'s \ResQwenAccepted{} accepted episodes were wrong. Pooled, out of
-\FactPArm{} episodes per arm without and with the library, \texttt{Repeat} was valid in
-\FactPRepeat, \texttt{Check} in \FactPCheck{} and \texttt{Explain} in \FactPExplain. The primary
-contrasts were small: \texttt{Check} minus \texttt{Repeat} \FactPCheckRepeat{} points,
-\texttt{Explain} minus \texttt{Check} \FactPExplainCheck{} (per model \ResExplainCheckMin{} to
-+\ResExplainCheckMax), the library under \texttt{Explain} \FactPLibExplain{} (all $p\ge0.5$).
+\paragraph{The library helps the models that call it.}
+Pooled over \FixModels{} models and \FixArm{} episodes per arm, F0 was valid in
+\FixFZeroValid{} episodes (\FixFZeroPct\%), F1 in \FixFOneValid{} (\FixFOnePct\%) and F2 in
+\FixFTwoValid{} (\FixFTwoPct\%). F2 did better than F0 in \FixFTwoMinusFZeroBetter{} models and
+worse in \FixFTwoMinusFZeroWorse{} (\FixFTwoMinusFZero{} points pooled); F1 did better than F0 in
+\FixFOneMinusFZeroBetter{} and worse in \FixFOneMinusFZeroWorse{} (\FixFOneMinusFZero{} points).
+With the interface alone (F1), models imported \texttt{fin\_skills} in
+\FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs, but mostly to wrap a rule they
+wrote themselves: \FixFOneUsesSignalPositions{} called \texttt{signal\_positions()} and
+\FixFOneUsesPositions{} \texttt{positions()}. One sentence naming the call (F2) moved them to it:
+\FixFTwoUsesPositions{} programs called \texttt{positions()}, and in \FixFTwoLastCalls{} episodes
+the last program called the library. \FixFTwoLastCallsChecked{} of those ran and passed the
+checks, and \FixFTwoLastCallsValid{} were valid, against \FixFTwoLastOwnValid{} of the
+\FixFTwoLastOwn{} episodes whose last program did not call it.
 
-\paragraph{Track E measures the interface text.}
-The library left both \texttt{qwen-coder} models unchanged within 1\%
-(\ResEQwenCoderBigNo{} to \ResEQwenCoderBigLib\%, \ResEQwenCoderMidNo{} to
-\ResEQwenCoderMidLib\%), but \ResELibLower{} of the \ResModelsDone{} models lost accuracy,
-\texttt{\ResEWorstModel} the most (\ResEWorstNo{} to \ResEWorstLib\%); pooled, the rate fell from
-\FactENoLib{} to \FactELib\% (exact: \FactEExactNoLib{} to \FactEExactLib\%). The loss is one of format:
-after the interface text, smaller models answered in prose (\texttt{\ResEWorstModel}:
-\ResEWorstNoProgNo{} to \ResEWorstNoProgLib{} episodes without a program). No valid answer, in
-any model, called the library.
+\paragraph{What still goes wrong.}
+\FixFTwoLastCallsAcceptedWrong{} library programs that passed the checks were wrong;
+\FixFTwoLastCallsRescaled{} of them divided the library's result, which is already scaled, by the
+number of assets again, which the interface text warns against and no check can see. Of the
+\FixLibErrors{} library calls that raised, the commonest errors were
+\FixLibErrorOne{} (\FixLibErrorOneCount), \FixLibErrorTwo{} (\FixLibErrorTwoCount) and
+\FixLibErrorThree{} (\FixLibErrorThreeCount). Each error names the call to make, but small models
+rarely recovered within three programs: \FixFTwoNoneValid{} models had no valid F2 episode.
 
-\paragraph{Self-improvement.}
-In track S two core models wrote valid programs, \texttt{qwen-coder-32b} (\ResSQwen{} of
-\ResSEpisodes{} episodes) and \texttt{mistral-small-24b} (\ResSMistral); the other three had
-\ResSOthers. Out of 18 episodes without/with the library (\texttt{qwen-coder-32b};
-\texttt{mistral-small-24b}), \texttt{NoImprove} had \ResSNoImprove,
-\texttt{PlaybookLearning} \ResSPlaybook, \texttt{Evolve} \ResSEvolve,
-\texttt{CheckFeedback} \ResSCheckFeedback, \texttt{Reflexion} \ResSReflexion,
-\texttt{SelfDebug} \ResSSelfDebug{} and \texttt{Team} \ResSTeam. Without the library every
-method but \texttt{SelfDebug}, which tied, solved more than \texttt{NoImprove} in both models;
-with it, \texttt{mistral-small-24b} solved fewer under every method except \texttt{Team}. Pooled
-over the core models and both conditions, the gain over \texttt{NoImprove} was \FactSPlaybook{}
-points for \texttt{PlaybookLearning}, \FactSEvolve{} \texttt{Evolve}, \FactSCheckFeedback{}
-\texttt{CheckFeedback}, \FactSReflexion{} \texttt{Reflexion}, \FactSTeam{} \texttt{Team} and
-\FactSSelfDebug{} \texttt{SelfDebug}, nearly all from those two models.
+\paragraph{Feedback and self-improvement without the library.}
+In the study fixed on 8~November, out of \FrozenArm{} episodes per arm, \texttt{Repeat} was
+valid in \FrozenRepeat, \texttt{Check} in \FrozenCheck{} and \texttt{Explain} in
+\FrozenExplain: \texttt{Check} minus \texttt{Repeat} \FrozenCheckRepeat{} points and
+\texttt{Explain} minus \texttt{Check} \FrozenExplainCheck. Out of \SNoLibEpisodes{} episodes on
+the \SNoLibModels{} core models, \texttt{NoImprove} was valid in \SNoLibNoImprove,
+\texttt{CheckFeedback} and \texttt{Evolve} in \SNoLibCheckFeedback{} and \SNoLibEvolve,
+\texttt{PlaybookLearning} in \SNoLibPlaybook, \texttt{Reflexion} in \SNoLibReflexion,
+\texttt{Team} in \SNoLibTeam{} and \texttt{SelfDebug} in \SNoLibSelfDebug.
 
 \paragraph{Limitations.}
-The study covers three position rules on synthetic panels, all among the library's own, and
-public questions the library does not cover; the newer tasks and the real panel are released
-but not evaluated here. All tasks are public, so a model may have seen them. No track measures
-returns, and we make no claim about them. The checks reject only the failures they were
-written for. We moved track E's reported endpoint from exact matching to 1\% after the runs,
-because of the label defect; exact results are released with the rest. The frozen source had
-three defects that the release fixes: \texttt{Evolve} chose the development failures it showed
-its proposer by the hidden grade; without the library, the \texttt{PlaybookLearning} proposer
-saw library hints in \FactLeakPrompts{} of \FactLeakOf{} development prompts (in no test
-prompt); and a reply fenced as \texttt{Python} rather than \texttt{python} ran whole as code.
-All models are open-weight, under one attempt budget and at most \StudyOutputCap{} generated
-tokens per call, which cuts off long reasoning.
+The study covers three position rules on synthetic panels, all among the library's own; the
+newer tasks and the real panel are released but not evaluated here. All tasks are public, so a
+model may have seen them. No experiment measures returns, and we make no claim about them. The
+checks reject only the failures they were written for. The library study ran on a cluster whose
+kernel lacks Landlock: programs could not open sockets or start processes, but file access was
+not confined, so we scanned every program afterwards (\FixScanFlagged{} mention file or process
+access; Appendix). Its refusals of silent mistakes were added after a first run of the same
+design, whose records we release; F0 never imports the library and is taken from that run. All
+models are open-weight, with at most \FixOutputCap{} generated tokens per reply in the library
+study and \StudyOutputCap{} in the earlier one, which cuts off long reasoning.
