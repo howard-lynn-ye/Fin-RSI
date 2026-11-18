@@ -28,7 +28,7 @@ author): section 5 "Study" has two parts, and section 6 reports them.
   `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix`. `pfix_analysis.json` is the
   output of `scripts/analyze_p_fix.py runs/main out.json --fix-root runs-v2/main` (F0 from the
   first run; F1/F2 from the rerun with the library at 001ea472, identical prompts), sha256
-  646228b0...; `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and
+  23f5f085...; `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and
   `results_table.tex`, and asserts every direction the prose states.
 - **Feedback and self-improvement without the library.** The no-library cells of the study frozen
   on 2026-11-08 (`study_summary.min.json`, pinned in both generators). Its library conditions

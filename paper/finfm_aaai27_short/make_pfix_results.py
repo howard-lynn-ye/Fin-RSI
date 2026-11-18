@@ -19,7 +19,7 @@ HERE = Path(__file__).parent
 SUMMARY = HERE / "study_summary.min.json"
 SUMMARY_SHA256 = "4918cd8be77a42925aad63540a69a38f9bc4febb982b2681e7765923783824a5"
 ANALYSIS = HERE / "pfix_analysis.json"
-ANALYSIS_SHA256 = "646228b09557d8d117d71b984018f8e8e43c077abfd731b1a0d99960cde8cb96"
+ANALYSIS_SHA256 = "23f5f085a6b96c8f7ec68c4185cc94cf4a6a4b3088fdde16e473417317fc9cef"
 CORE = ["qwen-coder-32b", "mistral-small-24b", "granite-8b", "olmo3-7b", "phi4-mini"]
 EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-general-14b",
              "qwen-general-7b", "qwen3-30b-a3b", "qwen3-4b", "deepseek-r1-distill-14b",
