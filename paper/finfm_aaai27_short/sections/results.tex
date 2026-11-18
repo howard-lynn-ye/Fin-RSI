@@ -20,21 +20,24 @@ Pooled over \FixModels{} models and \FixArm{} episodes per arm, F0 was valid in
 worse in \FixFTwoMinusFZeroWorse{} (\FixFTwoMinusFZero{} points pooled); F1 did better than F0 in
 \FixFOneMinusFZeroBetter{} and worse in \FixFOneMinusFZeroWorse{} (\FixFOneMinusFZero{} points).
 With the interface alone (F1), models imported \texttt{fin\_skills} in
-\FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs, but mostly to wrap a rule they
-wrote themselves: \FixFOneUsesSignalPositions{} called \texttt{signal\_positions()} and
-\FixFOneUsesPositions{} \texttt{positions()}. One sentence naming the call (F2) moved them to it:
-\FixFTwoUsesPositions{} programs called \texttt{positions()}, and in \FixFTwoLastCalls{} episodes
-the last program called the library. \FixFTwoLastCallsChecked{} of those ran and passed the
-checks, and \FixFTwoLastCallsValid{} were valid, against \FixFTwoLastOwnValid{} of the
-\FixFTwoLastOwn{} episodes whose last program did not call it.
+\FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs, mostly to wrap a rule they wrote
+themselves: \FixFOneUsesSignalPositions{} programs passed their own states to
+\texttt{signal\_positions()}, which lags, fills and scales them, and \FixFOneUsesPositions{}
+called \texttt{positions()}. Most of F1's valid episodes came from that wrapping
+(\FixFOneLastUsesSignalPositionsValid{} of \FixFOneValid). One sentence naming the call (F2)
+moved models to \texttt{positions()}: \FixFTwoUsesPositions{} programs called it, and in
+\FixFTwoLastCalls{} episodes the last program called \texttt{positions()} or \texttt{run()}.
+\FixFTwoLastCallsChecked{} of those ran and passed the checks, and \FixFTwoLastCallsValid{} were
+valid, against \FixFTwoLastOwnValid{} of the \FixFTwoLastOwn{} episodes whose last program did
+not call them.
 
 \paragraph{What still goes wrong.}
-\FixFTwoLastCallsAcceptedWrong{} library programs that passed the checks were wrong;
-\FixFTwoLastCallsRescaled{} of them divided the library's result, which is already scaled, by the
-number of assets again, which the interface text warns against and no check can see. Of the
-\FixLibErrors{} library calls that raised, the commonest errors were
+In F2, \FixFTwoLastCallsAcceptedWrong{} programs that called the library and passed the checks
+were wrong; \FixFTwoLastCallsRescaled{} of them divided its result, which is already scaled, by
+the number of assets again, which the interface text warns against and no check can see. Of the
+\FixLibErrors{} library calls in F1 and F2 that raised, the commonest errors were
 \FixLibErrorOne{} (\FixLibErrorOneCount), \FixLibErrorTwo{} (\FixLibErrorTwoCount) and
-\FixLibErrorThree{} (\FixLibErrorThreeCount). Each error names the call to make, but small models
+\FixLibErrorThree{} (\FixLibErrorThreeCount). Most errors name the call to make, but small models
 rarely recovered within three programs: \FixFTwoNoneValid{} models had no valid F2 episode.
 
 \paragraph{Feedback and self-improvement without the library.}
