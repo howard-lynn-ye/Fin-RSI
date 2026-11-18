@@ -8,8 +8,8 @@ Table~\ref{tab:results} lists every model's valid episodes. The numbers are desc
 \centering\scriptsize\setlength{\tabcolsep}{2pt}
 \input{results_table}
 \caption{Valid episodes per model ($^\ast$: core). Library study: of \FixEpisodesPerArm{} per
-arm, and the library calls that ran out of all programs that called it in F1 and F2. No library:
-of 18 per arm in the study fixed on 8~November.}
+arm; ran: programs in F1 and F2 that called \texttt{positions()} or \texttt{run()} and ran, of all
+that called them. No library: of 18 per arm in the study fixed on 8~November.}
 \label{tab:results}
 \end{table}
 
@@ -19,6 +19,7 @@ Pooled over \FixModels{} models and \FixArm{} episodes per arm, F0 was valid in
 \FixFTwoValid{} (\FixFTwoPct\%). F2 did better than F0 in \FixFTwoMinusFZeroBetter{} models and
 worse in \FixFTwoMinusFZeroWorse{} (\FixFTwoMinusFZero{} points pooled); F1 did better than F0 in
 \FixFOneMinusFZeroBetter{} and worse in \FixFOneMinusFZeroWorse{} (\FixFOneMinusFZero{} points).
+The best F2 model, \texttt{\FixFTwoBestModel}, was valid in \FixFTwoBest{} of 18 episodes.
 With the interface alone (F1), models imported \texttt{fin\_skills} in
 \FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs, mostly to wrap a rule they wrote
 themselves: \FixFOneUsesSignalPositions{} programs passed their own states to
@@ -32,7 +33,8 @@ valid, against \FixFTwoLastOwnValid{} of the \FixFTwoLastOwn{} episodes whose la
 not call them.
 
 \paragraph{What still goes wrong.}
-In F2, \FixFTwoLastCallsAcceptedWrong{} programs that called the library and passed the checks
+The visible checks passed many wrong final programs: \FixFZeroAcceptedWrong, \FixFOneAcceptedWrong{}
+and \FixFTwoAcceptedWrong{} episodes in F0, F1 and F2. In F2, \FixFTwoLastCallsAcceptedWrong{} programs that called the library and passed the checks
 were wrong; \FixFTwoLastCallsRescaled{} of them divided its result, which is already scaled, by
 the number of assets again, which the interface text warns against and no check can see. Of the
 \FixLibErrors{} library calls in F1 and F2 that raised, the commonest errors were
@@ -56,8 +58,8 @@ newer tasks and the real panel are released but not evaluated here. All tasks ar
 model may have seen them. No experiment measures returns, and we make no claim about them. The
 checks reject only the failures they were written for. The library study ran on a cluster whose
 kernel lacks Landlock: programs could not open sockets or start processes, but file access was
-not confined, so we scanned every program afterwards (\FixScanFlagged{} mention file or process
-access; Appendix). Its refusals of silent mistakes were added after a first run of the same
+not confined, so we scanned every program afterwards; none reads or writes files, opens a
+connection or starts a process. Its refusals of silent mistakes were added after a first run of the same
 design, whose records we release; F0 never imports the library and is taken from that run. All
 models are open-weight, with at most \FixOutputCap{} generated tokens per reply in the library
 study and \StudyOutputCap{} in the earlier one, which cuts off long reasoning.

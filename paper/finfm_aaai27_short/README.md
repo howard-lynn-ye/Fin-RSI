@@ -19,29 +19,25 @@ Portal: https://openreview.net/group?id=AAAI.org%2F2027%2FWorkshop%2FFinFM
 
 ## Layout
 
-Since 2026-11-10 the text describes the study that actually ran (section 5, "Study
-protocol": tracks P, E and S, frozen on 2026-11-08), not the earlier four-arm design. Its
-numbers are in `study_numbers.tex`, read from the frozen plan.
+Since 2026-11-18 the paper reports experiments on the library as it now is (decided with the
+author): section 5 "Study" has two parts, and section 6 reports them.
 
-Section 6 reports all 20 models for P and E and the five core models for S (complete
-2026-11-17), one row per model, plus the frozen pooled summaries from read-only job 3658422
-(analyze_frozen_study.py P/E all20, analyze_seven_study.py S; numbers in make_results.py FACTS
-with output hashes). `extract_summary.py <dir> <v> <t> <z>` builds `study_summary.min.json` from
-the outputs of three read-only Slurm jobs (2026-11-17: 3658423 verification, 3658424 triage,
-3658425 library calls; earlier runs 3620741/3620783/3620797 and 3655749/50/51 used the same
-scripts, and no field of an already complete model changed). `make_results.py` checks the
-digest's SHA-256 and writes `results_numbers.tex` and `results_table.tex`; it also asserts the
-patterns the track S paragraph states, so a refreshed digest that no longer supports the
-wording stops the build. Three further facts carry their job IDs in the script. Track E is reported within 1% (BizBench's own criterion) rather than by exact match,
-because 115 of the 200 CodeFinQA labels are float32 leftovers; see
-`docs/E_ENDPOINT_DEVIATION_20261112.md` on branch `claude/frozen-study-fixes`. Figure 2 moved to
-the appendix to keep the technical content within four pages; it now ends about two thirds
-down the right column of page 4. All frozen jobs have finished; the numbers are final.
+- **The library on held-out tasks (P-fix).** Arms F0 (no library), F1 (the position interface)
+  and F2 (F1 plus one sentence naming the call), Check feedback, 3 programs, 4,096 tokens per
+  reply, 6 held-out tasks x 3 seeds, 20 models, on Zaratan H100s. Design and amendment:
+  `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix`. `pfix_analysis.json` is the
+  output of `scripts/analyze_p_fix.py runs/main out.json --fix-root runs-v2/main` (F0 from the
+  first run; F1/F2 from the rerun with the library at 001ea472, identical prompts), sha256
+  646228b0...; `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and
+  `results_table.tex`, and asserts every direction the prose states.
+- **Feedback and self-improvement without the library.** The no-library cells of the study frozen
+  on 2026-11-08 (`study_summary.min.json`, pinned in both generators). Its library conditions
+  and track E used an earlier interface text; they are released, not reported.
 
-The method table, rule cards and task table are in the appendix; the skill-arm figure is
-commented out here because that ablation was not run. Numbers, figures and tables come from
-`../latex_acl2027/` (`make_numbers.py`), so the three versions cannot disagree. The condensed
-text is in `sections/`.
+One positions() call with each task's parameters and factor convention is valid on all 18
+held-out task x seed pairs (checked with the judge on 2026-11-18). Technical content ends on
+page 4. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
+macros; the text no longer uses its numbers.
 
 ## Template and build
 
