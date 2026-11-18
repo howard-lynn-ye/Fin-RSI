@@ -57,6 +57,7 @@ def test_first_complete_run_contrasts_funnel_and_scan(tmp_path):
     assert out["library_errors"]["F1"] == {"algorithm id not in the catalogue": 1}
     assert out["infrastructure_suspect"] == []
     assert out["pooled"]["F0"]["accepted_wrong"] == 0 and out["pooled"]["F2"]["models_none_valid"] == 0
+    assert out["programs"]["F2"].get("uses_imports_fin_skills", 0) == 0
     flagged = out["scan"]["flagged"]
     assert len(flagged) == 1 and set(flagged[0]["matched"]) == {"file", "process"}
 
@@ -76,3 +77,18 @@ def test_runtime_file_errors_are_listed(tmp_path):
     write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") + episodes("check_F2"))
     out = ap.analyze(tmp_path)
     assert [(x["task"], x["seed"]) for x in out["infrastructure_suspect"]] == [("macd_b", 101)]
+
+
+def test_library_use_read_from_program_text(tmp_path):
+    code = ("from fin_skills.algorithms import positions, signal_positions, adjust_prices\n"
+            "def solve(prices, split_factors):\n"
+            "    p = adjust_prices(prices, split_factors)\n"
+            "    return signal_positions(p > p.rolling(5).mean())\n")
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0"))
+    write_unit(tmp_path, "m1", "check_fix", 7,
+               episodes("check_F1", code=code) + episodes("check_F2", code="signal = 1"))
+    out = ap.analyze(tmp_path)
+    f1 = out["programs"]["F1"]
+    assert f1["uses_imports_fin_skills"] == f1["uses_signal_positions"] == f1["uses_adjust_prices"] == 18
+    assert f1["uses_positions"] == 0 and f1["last_uses_signal_positions_valid"] == 9
+    assert out["scan"]["counts"] == {}

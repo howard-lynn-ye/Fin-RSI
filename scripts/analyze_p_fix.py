@@ -27,11 +27,17 @@ SCAN = {
             r"pickle|json|excel)\s*\(|\bnp\.(?:load|save|fromfile)\b|\.to_(?:csv|pickle|parquet)\(",
     "network": r"\bsocket\b|\brequests\b|\burllib\b|\bhttp\.client\b|\bhttpx\b|\baiohttp\b",
     "process": r"\bsubprocess\b|\bos\.(?:system|popen|exec\w*|spawn\w*|fork|kill)\b|"
-               r"\bmultiprocessing\b|\bthreading\b|\bsignal\b",
+               r"\bmultiprocessing\b|\bimport threading\b|\bthreading\.|\bimport signal\b|"
+               r"\bsignal\.(?:signal|alarm|SIG\w+)",
     "introspection": r"\b__import__\b|\bimportlib\b|\bsys\.modules\b|\binspect\b|\bglobals\s*\(|"
                      r"\b__builtins__\b|\beval\s*\(|\bexec\s*\(|\bcompile\s*\(",
     "private_package": r"fin_skills\.(?:tasks|rsi|agents)\b",
 }
+# Library functions a program calls, read from its text: the worker's trace counts positions(),
+# run() and rolling() (library_calls) but not signal_positions(), and stores no trace in the row.
+USES = {"imports_fin_skills": r"^\s*(?:from|import)\s+fin_skills\b",
+        "positions": r"(?<![\w.])positions\s*\(", "signal_positions": r"\bsignal_positions\s*\(",
+        "adjust_prices": r"\badjust_prices\s*\(", "run": r"(?<![\w.])run\s*\("}
 # A program error that is really the cluster's: a runtime file the filesystem failed to return
 # (Zaratan scratch returned ENOENT for venv files under load in two jobs on 2026-11-18).
 INFRASTRUCTURE = r"No such file or directory: '/scratch/|site-packages/[^']*' not found"
@@ -126,7 +132,14 @@ def analyze(root: Path, models=None):
                 if re.search(INFRASTRUCTURE, s.get("error") or ""):
                     infrastructure.append(dict(model=model, arm=arm, task=r["task_id"],
                                                seed=r["seed"], attempt=i + 1))
-                hits = [k for k, rx in SCAN.items() if re.search(rx, s.get("code") or "")]
+                code = s.get("code") or ""
+                if re.search(USES["imports_fin_skills"], code, re.M):
+                    for k, rx in USES.items():
+                        p["uses_" + k] += bool(re.search(rx, code, re.M))
+                        if i == len(steps) - 1:
+                            p["last_uses_" + k] += bool(re.search(rx, code, re.M))
+                            p["last_uses_" + k + "_valid"] += bool(re.search(rx, code, re.M)) and bool(r["valid"])
+                hits = [k for k, rx in SCAN.items() if re.search(rx, code)]
                 for k in hits:
                     scan[k] += 1
                 if hits:
