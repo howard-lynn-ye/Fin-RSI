@@ -52,3 +52,13 @@ All arms:
 - **Confinement.** Zaratan's kernel (4.18) has no Landlock. Model programs keep Beacon's system-call denials (no sockets, exec, fork, signals, namespaces or mounts) and resource limits, but not its filesystem rules (`confine_without_landlock`, accepted only with `FIN_TASKS_DECLARED_DEVIATION=no-landlock` and recorded in each run's protocol). Afterwards, every executed program is scanned for file access outside its inputs. Any such episode is reported.
 - **Model weights.** The group's scratch quota (100 GB) cannot hold the 20 models, and Zaratan compute nodes cannot reach the Hugging Face file CDN. Each job therefore receives its model's frozen-revision files from the login node into node-local disk, streamed through its own Slurm allocation. Every file's SHA-256 is compared on both ends, and weight files are also compared with the Hub's recorded SHA-256, before the model loads.
 - **Validation first.** One `--dev` job on a small model must finish both units, and every declared first prompt must reach the model. It reads no grade.
+
+## Amendment 1 (2026-11-18, before any v2 run)
+
+The first run (v1, library at commit 01b2ea44) showed two library behaviours that let a wrong call return a plausible result. `positions()` ignored `window=` and `rebalance_every=` for signal algorithms, so a rule kept its default lookback (19 of 98 signal `positions()` calls in the first 12 models passed `window=`). `adjust_prices()` read event ratios as cumulative factors when `factors=` was left at its default (154 variant-b programs that let the library adjust event ratios ran and then failed the split check). The library now refuses both and names the right call, and it points states passed to `positions()` to `signal_positions()` (commits 6eeb9ddc, 321168d4, 001ea472).
+
+- The interface text, prompts, seeds, budgets, arms and contrasts are unchanged: `interface_text()` is the same 5,312 characters, so F1 and F2 send byte-identical messages.
+- v2 reruns the `check_fix` unit (F1 and F2) for all 20 models with the library at 001ea472, into a separate output root. F0 never imports the library and is read from v1.
+- The analysis reads F0 from v1 and F1/F2 from v2 (`analyze_p_fix.py --fix-root`). v1's F1/F2 records are kept and released, not analysed. v1 jobs still running are stopped once their F0 unit is complete.
+- Decided with the user on 2026-11-18, after the v1 results above and before any v2 job ran.
+
