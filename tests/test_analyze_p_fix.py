@@ -1,0 +1,65 @@
+"""P-fix analysis on synthetic runs: first complete run per unit, denominators, funnel, scan."""
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts import analyze_p_fix as ap  # noqa: E402
+
+TASKS = [("macd", "macd_a"), ("macd", "macd_b"), ("rsi_reversion", "rsi_reversion_a"),
+         ("rsi_reversion", "rsi_reversion_b"), ("bollinger", "bollinger_a"),
+         ("bollinger", "bollinger_b")]
+
+
+def row(method, fam, task, seed, valid, calls=0, executed=True, code="x = 1", error=""):
+    step = dict(accepted=valid, attempt_index=0, checks={}, code=code, error=error,
+                executed=executed, feedback="", library_calls=calls, number=1,
+                reply_format="fenced")
+    return dict(method=method, task_algorithm=fam, task_id=task, seed=seed, valid=valid,
+                first_valid=valid, library_used=calls > 0, steps=[step])
+
+
+def write_unit(root, model, unit, job, rows, status="complete"):
+    d = root / model / unit / f"job-{job}"
+    d.mkdir(parents=True)
+    (d / f"{unit}.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
+    (d / f"{unit}.jsonl.terminal.json").write_text(json.dumps(dict(status=status)))
+
+
+def episodes(method, valid_every=2, **kw):
+    return [row(method, f, t, s, i % valid_every == 0, **kw)
+            for i, ((f, t), s) in enumerate((ft, s) for ft in TASKS for s in (101, 211, 307))]
+
+
+def test_first_complete_run_contrasts_funnel_and_scan(tmp_path):
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0", valid_every=3))
+    write_unit(tmp_path, "m1", "check_F0", 3, episodes("check_F0", valid_every=1),
+               status="interrupted")
+    fix = episodes("check_F1", calls=1) + episodes("check_F2", valid_every=1, calls=1)
+    fix[0]["steps"][0].update(executed=False, error="ValueError: unknown algorithm 'foo'")
+    fix[1]["steps"][0]["code"] = "import subprocess\nopen('/etc/passwd')"
+    write_unit(tmp_path, "m1", "check_fix", 7, fix)
+    write_unit(tmp_path, "m1", "check_fix", 9, [])  # later complete run is ignored
+    write_unit(tmp_path, "m2", "check_F0", 4, episodes("check_F0"))  # no check_fix: missing
+    out = ap.analyze(tmp_path)
+    assert out["missing"] == ["m2"] and out["runs"]["m1"] == {"check_F0": "job-5",
+                                                               "check_fix": "job-7"}
+    c = out["per_model"]["m1"]
+    assert (c["F0"]["valid"], c["F1"]["valid"], c["F2"]["valid"]) == (6, 9, 18)
+    contrasts = {x["contrast"]: x for x in out["contrasts"]}
+    assert contrasts["F2-F0"]["pooled_pct_points"] == round(100 * 12 / 18, 1)
+    assert contrasts["F1-F0"]["better"] == 1
+    assert out["funnel"]["F1"]["last_calls_library"] == 18
+    assert out["funnel"]["F1"]["last_calls_library_ran"] == 17
+    assert out["library_errors"]["F1"] == {"algorithm id not in the catalogue": 1}
+    flagged = out["scan"]["flagged"]
+    assert len(flagged) == 1 and set(flagged[0]["matched"]) == {"file", "process"}
+
+
+def test_wrong_denominator_fails(tmp_path):
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0")[:-1])
+    write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") + episodes("check_F2"))
+    with pytest.raises(ValueError, match="episodes per arm"):
+        ap.analyze(tmp_path)
