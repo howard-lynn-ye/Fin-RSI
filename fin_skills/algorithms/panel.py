@@ -86,10 +86,35 @@ def adjust_prices(prices: pd.DataFrame | pd.Series, split_factors=None, *,
     f = _frame(split_factors, "split_factors")
     if not (p.index.equals(f.index) and list(p.columns) == list(f.columns)):
         raise ValueError("prices and split_factors must have identical index and columns")
+    _refuse_other_convention(f, factors)
     if factors == "ratio":
         f = f.cumprod()
     out = p * f
     return _mark_adjusted(out.iloc[:, 0].copy()) if series else _mark_adjusted(out)
+
+
+def _refuse_other_convention(f: pd.DataFrame, factors: str) -> None:
+    """Factors in the other convention would adjust every row after a split wrongly and still
+    return a plausible price table. Event ratios are 1.0 except on split days, so a split shows
+    as a one-row deviation; cumulative factors change on a split day and stay changed."""
+    v = f.to_numpy(dtype=float)
+    if len(v) < 3 or not np.isfinite(v).all():
+        return
+    if factors == "cumulative":
+        spike = (v[1:-1] != v[:-2]) & (v[2:] == v[:-2])
+        if spike.any():
+            raise ValueError(
+                "split_factors look like event ratios (1.0 except on split days), but "
+                "factors='cumulative' (the default) reads each row as the running product of "
+                "all splits so far. Pass factors='ratio' for event ratios.")
+    else:
+        held = (v[1:] != 1.0) & (v[:-1] != 1.0)
+        if held.any():
+            raise ValueError(
+                "split_factors look cumulative (they stay away from 1.0 after a split), but "
+                "factors='ratio' multiplies them up again. Pass factors='cumulative' for "
+                "running products, or event ratios (1.0 except on split days) with "
+                "factors='ratio'.")
 
 
 def _refuse_readjusting(prices) -> None:

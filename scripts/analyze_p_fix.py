@@ -72,8 +72,10 @@ def rate(valid, n):
     return round(100 * valid / n, 1) if n else None
 
 
-def analyze(root: Path, models=None):
-    out = dict(models={}, runs={}, missing=[])
+def analyze(root: Path, models=None, fix_root: Path | None = None):
+    """fix_root: read check_fix from another runs/main (a later library version with identical
+    prompts); check_F0 never imports the library and is read from root."""
+    out = dict(models={}, runs={}, missing=[], fix_root=str(fix_root) if fix_root else None)
     rows_by = collections.defaultdict(list)
     for model_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         model = model_dir.name
@@ -81,7 +83,8 @@ def analyze(root: Path, models=None):
             continue
         got = {}
         for unit, methods in UNITS.items():
-            run, rows = first_complete(model_dir / unit)
+            base = fix_root / model if fix_root is not None and unit == "check_fix" else model_dir
+            run, rows = first_complete(base / unit)
             if rows is None:
                 break
             got[unit] = run
@@ -219,8 +222,10 @@ def main(argv=None):
     parser.add_argument("root", type=Path)
     parser.add_argument("out", type=Path)
     parser.add_argument("--models", default="")
+    parser.add_argument("--fix-root", type=Path, default=None,
+                        help="runs/main of a later library version, for check_fix only")
     args = parser.parse_args(argv)
-    out = analyze(args.root, set(filter(None, args.models.split(","))) or None)
+    out = analyze(args.root, set(filter(None, args.models.split(","))) or None, args.fix_root)
     args.out.write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
     report(out)
 

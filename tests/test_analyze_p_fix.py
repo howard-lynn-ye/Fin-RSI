@@ -92,3 +92,14 @@ def test_library_use_read_from_program_text(tmp_path):
     assert f1["uses_imports_fin_skills"] == f1["uses_signal_positions"] == f1["uses_adjust_prices"] == 18
     assert f1["uses_positions"] == 0 and f1["last_uses_signal_positions_valid"] == 9
     assert out["scan"]["counts"] == {}
+
+
+def test_check_fix_from_a_later_version(tmp_path):
+    v1, v2 = tmp_path / "v1", tmp_path / "v2"
+    write_unit(v1, "m1", "check_F0", 5, episodes("check_F0", valid_every=3))
+    write_unit(v1, "m1", "check_fix", 7, episodes("check_F1") + episodes("check_F2"))
+    write_unit(v2, "m1", "check_fix", 9, episodes("check_F1", valid_every=1) +
+               episodes("check_F2", valid_every=1))
+    out = ap.analyze(v1, fix_root=v2)
+    assert out["runs"]["m1"] == {"check_F0": "job-5", "check_fix": "job-9"}
+    assert out["per_model"]["m1"]["F1"]["valid"] == 18 and out["per_model"]["m1"]["F0"]["valid"] == 6

@@ -174,3 +174,33 @@ def test_scale_is_refused_for_portfolio_algorithms(prices):
     with pytest.raises(TypeError, match="signal algorithms only and would be ignored"):
         positions("inverse_volatility", prices, scale=0.5)
     assert positions("inverse_volatility", prices, window=30).notna().all().all()
+
+
+def _split_panel():
+    idx = pd.bdate_range("2021-01-01", periods=60)
+    raw = pd.DataFrame({"A": np.r_[np.full(30, 100.0), np.full(30, 50.0)],
+                        "B": np.r_[np.full(45, 90.0), np.full(15, 30.0)]}, index=idx)
+    ratio = pd.DataFrame(1.0, index=idx, columns=raw.columns)
+    ratio.iloc[30, 0], ratio.iloc[45, 1] = 2.0, 3.0
+    return raw, ratio, ratio.cumprod()
+
+
+def test_event_ratios_read_as_cumulative_are_refused():
+    from fin_skills.algorithms import adjust_prices
+    raw, ratio, cumulative = _split_panel()
+    with pytest.raises(ValueError, match="look like event ratios.*factors='ratio'"):
+        adjust_prices(raw, ratio)
+    with pytest.raises(ValueError, match="look like event ratios"):
+        positions("bollinger_reversion", raw, ratio)
+    flat = adjust_prices(raw, ratio, factors="ratio")
+    assert np.allclose(flat.to_numpy(), adjust_prices(raw, cumulative).to_numpy())
+    assert np.allclose(flat["A"], 100.0) and np.allclose(flat["B"], 90.0)
+
+
+def test_cumulative_factors_read_as_ratios_are_refused():
+    from fin_skills.algorithms import adjust_prices
+    raw, ratio, cumulative = _split_panel()
+    with pytest.raises(ValueError, match="look cumulative.*factors='cumulative'"):
+        adjust_prices(raw, cumulative, factors="ratio")
+    unit = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
+    assert adjust_prices(raw, unit).equals(adjust_prices(raw, unit, factors="ratio"))
