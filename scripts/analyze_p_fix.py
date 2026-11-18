@@ -95,13 +95,15 @@ def analyze(root: Path, models=None):
     flagged, infrastructure = [], []
     programs = {a: collections.Counter() for a in ARMS.values()}
     for model, rows in sorted(rows_by.items()):
-        counts = {a: dict(n=0, valid=0, first_valid=0) for a in ARMS.values()}
+        counts = {a: dict(n=0, valid=0, first_valid=0, accepted_wrong=0, calling=0, calling_ran=0)
+                  for a in ARMS.values()}
         for r in rows:
             arm = ARMS[r["method"]]
             c = counts[arm]
             c["n"] += 1
             c["valid"] += bool(r["valid"])
             c["first_valid"] += bool(r["first_valid"])
+            c["accepted_wrong"] += bool(r["accepted"]) and not r["valid"]
             fam, var = r["task_algorithm"], r["task_id"].rsplit("_", 1)[-1]
             families[(fam, arm)]["n"] += 1
             families[(fam, arm)]["valid"] += bool(r["valid"])
@@ -114,6 +116,8 @@ def analyze(root: Path, models=None):
                 p["programs"] += bool(s.get("code"))
                 p["executed"] += bool(s["executed"])
                 calls = s["library_calls"] > 0
+                c["calling"] += calls
+                c["calling_ran"] += calls and bool(s["executed"])
                 if arm != "F0":
                     p["calling"] += calls
                     p["calling_ran"] += calls and bool(s["executed"])
@@ -150,7 +154,9 @@ def analyze(root: Path, models=None):
         n = sum(m[arm]["n"] for m in per_model.values())
         v = sum(m[arm]["valid"] for m in per_model.values())
         fv = sum(m[arm]["first_valid"] for m in per_model.values())
-        pooled[arm] = dict(n=n, valid=v, valid_pct=rate(v, n), first_valid=fv)
+        aw = sum(m[arm]["accepted_wrong"] for m in per_model.values())
+        pooled[arm] = dict(n=n, valid=v, valid_pct=rate(v, n), first_valid=fv, accepted_wrong=aw,
+                           models_none_valid=sum(m[arm]["valid"] == 0 for m in per_model.values()))
     contrasts = []
     for a, b in CONTRASTS:
         diffs = {m: c[a]["valid"] - c[b]["valid"] for m, c in per_model.items()}

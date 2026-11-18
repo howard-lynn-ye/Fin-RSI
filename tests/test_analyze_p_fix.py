@@ -13,11 +13,12 @@ TASKS = [("macd", "macd_a"), ("macd", "macd_b"), ("rsi_reversion", "rsi_reversio
          ("bollinger", "bollinger_b")]
 
 
-def row(method, fam, task, seed, valid, calls=0, executed=True, code="x = 1", error=""):
+def row(method, fam, task, seed, valid, calls=0, executed=True, code="x = 1", error="", accepted=None):
     step = dict(accepted=valid, attempt_index=0, checks={}, code=code, error=error,
                 executed=executed, feedback="", library_calls=calls, number=1,
                 reply_format="fenced")
     return dict(method=method, task_algorithm=fam, task_id=task, seed=seed, valid=valid,
+                accepted=valid if accepted is None else accepted,
                 first_valid=valid, library_used=calls > 0, steps=[step])
 
 
@@ -55,6 +56,7 @@ def test_first_complete_run_contrasts_funnel_and_scan(tmp_path):
     assert out["funnel"]["F1"]["last_calls_library_ran"] == 17
     assert out["library_errors"]["F1"] == {"algorithm id not in the catalogue": 1}
     assert out["infrastructure_suspect"] == []
+    assert out["pooled"]["F0"]["accepted_wrong"] == 0 and out["pooled"]["F2"]["models_none_valid"] == 0
     flagged = out["scan"]["flagged"]
     assert len(flagged) == 1 and set(flagged[0]["matched"]) == {"file", "process"}
 
