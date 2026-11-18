@@ -77,14 +77,20 @@ def _signature(fn) -> str:
 FROZEN_INTERFACE_SHA256 = "f0940c646523ca388a970de725e9088510d33e4248506d2ce2eeba08e4058a4f"
 
 
-def library_text(*, rolling: bool = True) -> str:
+def library_text(*, rolling: bool = True, frozen: bool | None = None) -> str:
     """The interface shown to the model.
 
     rolling=False returns, byte for byte, the interface the frozen RSI study and P-adopt showed
     (position tasks only), kept in frozen_interface.py and checked by hash, so later changes
     to the library's docstrings cannot change what reproducing those studies sends.
+    rolling=False, frozen=False is the current library's interface for position tasks only
+    (no rolling()), built from the current docstrings: what P-fix shows.
     """
-    if not rolling:
+    if frozen is None:
+        frozen = not rolling
+    if frozen and rolling:
+        raise ValueError("the frozen interface has no rolling(); use rolling=False")
+    if frozen:
         from .frozen_interface import FROZEN_INTERFACE
         if hashlib.sha256(FROZEN_INTERFACE.encode()).hexdigest() != FROZEN_INTERFACE_SHA256:
             raise RuntimeError("frozen_interface.py differs from the interface the studies showed")
@@ -93,12 +99,13 @@ def library_text(*, rolling: bool = True) -> str:
     from fin_skills.algorithms import rolling as rolling_fn
     from fin_skills.algorithms import run
     ready = {c["id"]: c for c in catalog() if c["status"] == "ready"}
-    lines = ["from fin_skills.algorithms import positions, signal_positions, rolling, "
-             "adjust_prices, run",
+    lines = ["from fin_skills.algorithms import positions, signal_positions, "
+             + ("rolling, " if rolling else "") + "adjust_prices, run",
              "", _signature(positions), _doc(positions),
-             "", _signature(signal_positions), _doc(signal_positions),
-             "", _signature(rolling_fn), _doc(rolling_fn),
-             "", _signature(adjust_prices), _doc(adjust_prices),
+             "", _signature(signal_positions), _doc(signal_positions)]
+    if rolling:
+        lines += ["", _signature(rolling_fn), _doc(rolling_fn)]
+    lines += ["", _signature(adjust_prices), _doc(adjust_prices),
              "", "run" + _signature(run)[len(run.__name__):],
              "Run one algorithm once on its inputs: a dict keyed by input name, or the input "
              "itself when the algorithm has one; returns one allocation (portfolio) or one "
@@ -109,6 +116,8 @@ def library_text(*, rolling: bool = True) -> str:
         card = ready[algorithm_id]
         shown = ", ".join(f"{k}={v!r}" for k, v in defaults.items()) or "no parameters"
         lines.append(f"  {algorithm_id}: {card['task']}, {' '.join(card['inputs'])}; {shown}")
+    if not rolling:
+        return "\n".join(lines)
     lines += ["", "Algorithms usable with rolling() (id: task, inputs; defaults):"]
     for algorithm_id, defaults in ROLLING_DEFAULTS.items():
         card = ready[algorithm_id]
