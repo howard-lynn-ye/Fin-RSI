@@ -204,3 +204,11 @@ def test_cumulative_factors_read_as_ratios_are_refused():
         adjust_prices(raw, cumulative, factors="ratio")
     unit = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
     assert adjust_prices(raw, unit).equals(adjust_prices(raw, unit, factors="ratio"))
+
+
+def test_states_given_to_positions_point_to_signal_positions(prices):
+    states = (prices.pct_change().fillna(0) > 0).astype(float) * 2 - 1
+    with pytest.raises(ValueError, match=r"signal_positions\(states\)"):
+        positions("donchian_breakout", states)
+    with pytest.raises(TypeError, match=r"no states= argument.*signal_positions\(states\)"):
+        positions("bollinger_reversion", prices, states=states)

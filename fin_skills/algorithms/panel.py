@@ -53,7 +53,8 @@ def _frame(x: Any, name: str) -> pd.DataFrame:
     if not np.isfinite(values).all():
         raise ValueError(f"{name} contains missing or nonfinite values")
     if (values <= 0).any():
-        hint = (" (closing prices, not returns: positions() computes returns itself)"
+        hint = (" (raw closes, not returns or states: positions() computes the rule from prices "
+                "itself; for states your own rule computed, call signal_positions(states))"
                 if name == "prices" else "")
         raise ValueError(f"{name} must be positive{hint}")
     return x.astype(float)
@@ -243,6 +244,11 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
         raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
     spec = _spec_for_positions(reg, algorithm_id)
     _refuse_unused_arguments(spec, algorithm_id, window, rebalance_every, scale)
+    given_states = sorted(set(params) & {"states", "state", "signal", "signals", "positions"})
+    if given_states:
+        raise TypeError(f"positions() has no {given_states[0]}= argument: it computes "
+                        f"{algorithm_id} from prices. To lag, fill and scale states your own rule "
+                        "computed, call signal_positions(states) instead.")
     if split_factors is not None:
         _refuse_readjusting(prices)
     close = adjust_prices(_frame(prices, "prices"), split_factors, factors=factors)
