@@ -32,6 +32,9 @@ SCAN = {
                      r"\b__builtins__\b|\beval\s*\(|\bexec\s*\(|\bcompile\s*\(",
     "private_package": r"fin_skills\.(?:tasks|rsi|agents)\b",
 }
+# A program error that is really the cluster's: a runtime file the filesystem failed to return
+# (Zaratan scratch returned ENOENT for venv files under load in two jobs on 2026-11-18).
+INFRASTRUCTURE = r"No such file or directory: '/scratch/|site-packages/[^']*' not found"
 
 
 def first_complete(unit_dir: Path):
@@ -89,7 +92,7 @@ def analyze(root: Path, models=None):
     funnel = {a: collections.Counter() for a in ("F1", "F2")}
     errors = {a: collections.Counter() for a in ("F1", "F2")}
     scan = collections.Counter()
-    flagged = []
+    flagged, infrastructure = [], []
     programs = {a: collections.Counter() for a in ARMS.values()}
     for model, rows in sorted(rows_by.items()):
         counts = {a: dict(n=0, valid=0, first_valid=0) for a in ARMS.values()}
@@ -116,6 +119,9 @@ def analyze(root: Path, models=None):
                     p["calling_ran"] += calls and bool(s["executed"])
                     if calls and not s["executed"]:
                         errors[arm][error_group(s.get("error"))] += 1
+                if re.search(INFRASTRUCTURE, s.get("error") or ""):
+                    infrastructure.append(dict(model=model, arm=arm, task=r["task_id"],
+                                               seed=r["seed"], attempt=i + 1))
                 hits = [k for k, rx in SCAN.items() if re.search(rx, s.get("code") or "")]
                 for k in hits:
                     scan[k] += 1
@@ -163,7 +169,8 @@ def analyze(root: Path, models=None):
         funnel={a: dict(c) for a, c in funnel.items()},
         programs={a: dict(c) for a, c in programs.items()},
         library_errors={a: dict(c.most_common()) for a, c in errors.items()},
-        scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged))
+        scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged),
+        infrastructure_suspect=infrastructure)
     return out
 
 
@@ -183,6 +190,8 @@ def report(out):
         print(f"library calls that raised, {a}: {e}")
     print(f"programs: {out['programs']}")
     print(f"scan: {out['scan']['counts']}; flagged programs {len(out['scan']['flagged'])}")
+    print(f"steps whose error is a runtime file the filesystem failed to return: "
+          f"{len(out['infrastructure_suspect'])}")
 
 
 def main(argv=None):

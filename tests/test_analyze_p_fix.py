@@ -54,6 +54,7 @@ def test_first_complete_run_contrasts_funnel_and_scan(tmp_path):
     assert out["funnel"]["F1"]["last_calls_library"] == 18
     assert out["funnel"]["F1"]["last_calls_library_ran"] == 17
     assert out["library_errors"]["F1"] == {"algorithm id not in the catalogue": 1}
+    assert out["infrastructure_suspect"] == []
     flagged = out["scan"]["flagged"]
     assert len(flagged) == 1 and set(flagged[0]["matched"]) == {"file", "process"}
 
@@ -63,3 +64,13 @@ def test_wrong_denominator_fails(tmp_path):
     write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") + episodes("check_F2"))
     with pytest.raises(ValueError, match="episodes per arm"):
         ap.analyze(tmp_path)
+
+
+def test_runtime_file_errors_are_listed(tmp_path):
+    f0 = episodes("check_F0")
+    f0[3]["steps"][0].update(executed=False, error="FileNotFoundError: [Errno 2] No such file or "
+                             "directory: '/scratch/zt1/x/venv/lib/python3.12/site-packages/jinja2/a.py'")
+    write_unit(tmp_path, "m1", "check_F0", 5, f0)
+    write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1") + episodes("check_F2"))
+    out = ap.analyze(tmp_path)
+    assert [(x["task"], x["seed"]) for x in out["infrastructure_suspect"]] == [("macd_b", 101)]
