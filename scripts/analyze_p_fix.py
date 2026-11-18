@@ -26,9 +26,10 @@ SCAN = {
             r"rename|makedirs|mkdir|chdir|path)\b|\bshutil\b|\bglob\b|\.read_(?:csv|parquet|"
             r"pickle|json|excel)\s*\(|\bnp\.(?:load|save|fromfile)\b|\.to_(?:csv|pickle|parquet)\(",
     "network": r"\bsocket\b|\brequests\b|\burllib\b|\bhttp\.client\b|\bhttpx\b|\baiohttp\b",
-    "process": r"\bsubprocess\b|\bos\.(?:system|popen|exec\w*|spawn\w*|fork|kill)\b|"
-               r"\bmultiprocessing\b|\bimport threading\b|\bthreading\.|\bimport signal\b|"
-               r"\bsignal\.(?:signal|alarm|SIG\w+)",
+    "process": r"^\s*import\s+(?:subprocess|multiprocessing|threading|signal)\b|"
+               r"^\s*from\s+(?:subprocess|multiprocessing|threading|signal)\s+import\b|"
+               r"\bsubprocess\.|\bos\.(?:system|popen|exec\w*|spawn\w*|fork|kill)\b|"
+               r"\bmultiprocessing\.|\bthreading\.|\bsignal\.(?:signal|alarm|SIG\w+)",
     "introspection": r"\b__import__\b|\bimportlib\b|\bsys\.modules\b|\binspect\b|\bglobals\s*\(|"
                      r"\b__builtins__\b|\beval\s*\(|\bexec\s*\(|\bcompile\s*\(",
     "private_package": r"fin_skills\.(?:tasks|rsi|agents)\b",
@@ -158,7 +159,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
                         if i == len(steps) - 1:
                             p["last_uses_" + k] += bool(re.search(rx, code, re.M))
                             p["last_uses_" + k + "_valid"] += bool(re.search(rx, code, re.M)) and bool(r["valid"])
-                hits = [k for k, rx in SCAN.items() if re.search(rx, code)]
+                # Full-line comments are not code: models often leave commented-out example I/O.
+                live = "\n".join(x for x in code.splitlines() if not x.lstrip().startswith("#"))
+                hits = [k for k, rx in SCAN.items() if re.search(rx, live, re.M)]
                 for k in hits:
                     scan[k] += 1
                 if hits:

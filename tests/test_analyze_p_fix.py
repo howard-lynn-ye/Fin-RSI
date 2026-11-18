@@ -130,3 +130,14 @@ def test_rescaled_library_output_is_counted(tmp_path):
                episodes("check_F2", valid_every=1000, calls=1, code=code, accepted=True))
     f = ap.analyze(tmp_path)["funnel"]["F2"]
     assert f["last_calls_library_accepted_wrong"] == 17 and f["last_calls_library_accepted_wrong_rescaled"] == 17
+
+
+def test_scan_ignores_comments_and_scipy_signal(tmp_path):
+    quiet = "from scipy import signal\n# prices = pd.read_csv('prices.csv')\nx = 1\n"
+    loud = "import subprocess\nopen('/etc/passwd')\n"
+    write_unit(tmp_path, "m1", "check_F0", 5, episodes("check_F0", code=quiet))
+    write_unit(tmp_path, "m1", "check_fix", 7, episodes("check_F1", code=quiet) +
+               episodes("check_F2", code=loud))
+    out = ap.analyze(tmp_path)
+    assert {f["arm"] for f in out["scan"]["flagged"]} == {"F2"}
+    assert out["scan"]["counts"] == {"file": 18, "process": 18}
