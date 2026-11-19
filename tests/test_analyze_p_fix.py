@@ -230,3 +230,34 @@ def test_scan_skips_text_that_is_not_a_program(tmp_path):
     out = ap.analyze(tmp_path)
     assert out["scan"]["not_python"] == 1 and out["scan"]["counts"] == {"network": 1}
     assert [f["task"] for f in out["scan"]["flagged"]] == [rows[1]["task_id"]]
+
+
+def test_told_the_rule_and_repair_after_a_property_check(tmp_path):
+    call = "from fin_skills.algorithms import positions\ndef solve(p, f):\n    return positions('macd', p, f)\n"
+    own = "def solve(p, f):\n    return p * 0\n"
+    f0 = episodes("check_F0", valid_every=3)
+    f0[0]["steps"][0]["checks"] = dict(finite_output=True, takes_positions=False)   # flagged, no attempt left
+    second = dict(f0[1]["steps"][0], checks=dict(takes_positions=True))
+    f0[1]["steps"] = [dict(f0[1]["steps"][0], checks=dict(position_scale=False)), second]
+    f0[1]["valid"] = True                                                            # flagged, then valid
+    f0[2]["steps"] = [dict(f0[2]["steps"][0], checks=dict(warmup_rows_zero=False)), dict(second)]
+    f0[2]["valid"] = False                                                           # flagged, not repaired
+    f2 = episodes("check_F2", valid_every=2, calls=1, code=call)
+    f4 = episodes("check_F4", valid_every=2, code=own)
+    for i, r in enumerate(f4):
+        r["extra"] = dict(routed=r["task_algorithm"] if i < 12 else None)
+        if i < 6:
+            r["steps"][0]["code"] = call
+    for m in ("big-32b",):
+        write_unit(tmp_path, m, "check_F0", 5, f0)
+        write_unit(tmp_path, m, "check_fix", 5, episodes("check_F1") + f2)
+        write_unit(tmp_path, m, "check_route", 5, f4)
+    out = ap.analyze(tmp_path, route_root=tmp_path)
+    assert out["repair"]["F0"] == dict(episodes_flagged=3, with_another_attempt=2, then_valid=1)
+    assert out["told"]["F2"]["episodes"] == 18 and out["told"]["F2"]["last_calls_positions"] == 18
+    assert out["told"]["F2"]["last_calls_positions_valid"] == 9 == out["told"]["F2"]["valid"]
+    t4 = out["told"]["F4"]                       # 12 right routes; 6 of those call positions()
+    assert (t4["episodes"], t4["last_calls_positions"], t4["last_own_rule"]) == (12, 6, 6)
+    assert t4["last_calls_positions_valid"] == 3 and t4["last_own_rule_valid"] == 3
+    assert out["by_size"]["ge14b"]["told"]["F4"] == t4 and out["by_size"]["lt14b"]["told"]["F4"] == {}
+    assert out["told_by_model"]["F4"]["big-32b"]["no_program_ran"] == 0

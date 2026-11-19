@@ -38,6 +38,8 @@ CONTRASTS = (("F1", "F0"), ("F2", "F0"), ("F2", "F1"))
 EXPLORATORY_CONTRASTS = (("F3", "F1"), ("F3", "F2"), ("F3", "F0"),
                          ("F4", "F1"), ("F4", "F2"), ("F4", "F0"))
 LIBRARY_ARMS = ("F1", "F2", "F3", "F4")
+POINTER_ARMS = ("F2", "F4")   # the task carries the sentence naming a positions() id
+PROPERTY_CHECKS = ("takes_positions", "position_scale", "warmup_rows_zero")  # Amendment 3
 # Total parameters in billions: the number in the model's name (qwen3-30b-a3b counts its 30B
 # total, not its 3B active), and phi4-mini's 3.8B from its model card. Post-hoc split at 14B.
 SIZE_OVERRIDES = {"phi4-mini": 3.8}
@@ -189,6 +191,8 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
     programs = {a: collections.Counter() for a in ARMS.values()}
     failed_checks = {a: collections.Counter() for a in ARMS.values()}
     scan_not_python = 0
+    repair = {a: collections.Counter() for a in ARMS.values()}
+    told_by_model = {a: {} for a in POINTER_ARMS}
     routing = collections.Counter()
     routing_by_model = {}
     for model, rows in sorted(rows_by.items()):
@@ -207,6 +211,7 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
             variants[(var, arm)]["n"] += 1
             variants[(var, arm)]["valid"] += bool(r["valid"])
             steps = r["steps"]
+            named = fam if arm == "F2" else None
             if arm == "F4":
                 # What the model named when asked which catalogue rule computes the task's rule.
                 named = (r.get("extra") or {}).get("routed")
@@ -215,6 +220,28 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
                     if k:
                         routing[k] += 1
                         routing_by_model.setdefault(model, collections.Counter())[k] += 1
+            if arm in POINTER_ARMS and named == fam:
+                # The sentence named the task's own rule (F2 always, F4 after a right route):
+                # did the last program call positions(), and how did the episode end?
+                code = (steps[-1].get("code") or "") if steps else ""
+                called = bool(re.search(USES["positions"], code, re.M))
+                t = told_by_model[arm].setdefault(model, collections.Counter())
+                t["episodes"] += 1
+                t["valid"] += bool(r["valid"])
+                t["last_calls_positions"] += called
+                t["last_calls_positions_valid"] += called and bool(r["valid"])
+                t["last_own_rule"] += not called
+                t["last_own_rule_valid"] += (not called) and bool(r["valid"])
+                t["no_program_ran"] += not any(x["executed"] for x in steps)
+            # A property check flagged a program that ran: was there another attempt, and did
+            # the episode end valid? (Check feedback names the failed checks only.)
+            caught = [i for i, x in enumerate(steps) if x["executed"] and any(
+                (x.get("checks") or {}).get(k) is False for k in PROPERTY_CHECKS)]
+            if caught:
+                repair[arm]["episodes_flagged"] += 1
+                if caught[0] < len(steps) - 1:
+                    repair[arm]["with_another_attempt"] += 1
+                    repair[arm]["then_valid"] += bool(r["valid"])
             for i, s in enumerate(steps):
                 p = programs[arm]
                 if s["executed"]:
@@ -301,7 +328,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
             exploratory_contrasts=[contrast(group, a, b) for a, b in EXPLORATORY_CONTRASTS
                                    if a in arms],
             routing=dict(sum((routing_by_model.get(m, collections.Counter()) for m in group),
-                             collections.Counter())))
+                             collections.Counter())),
+            told={a: dict(sum((told_by_model[a].get(m, collections.Counter()) for m in group),
+                              collections.Counter())) for a in POINTER_ARMS})
     out.update(
         per_model=per_model, pooled=pooled, contrasts=contrasts,
         exploratory_contrasts=exploratory,
@@ -315,6 +344,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
         library_errors={a: dict(c.most_common()) for a, c in errors.items()},
         failed_checks={a: dict(c) for a, c in failed_checks.items()},
         routing=dict(routing), routing_by_model={m: dict(c) for m, c in routing_by_model.items()},
+        told={a: dict(sum(told_by_model[a].values(), collections.Counter())) for a in POINTER_ARMS},
+        told_by_model={a: {m: dict(c) for m, c in told_by_model[a].items()} for a in POINTER_ARMS},
+        repair={a: dict(c) for a, c in repair.items()},
         scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged,
                   not_python=scan_not_python),
         infrastructure_suspect=infrastructure)
@@ -346,9 +378,13 @@ def report(out):
         print(f"library calls that raised, {a}: {e}")
     for a, c in out["failed_checks"].items():
         print(f"checks failed by programs that ran, {a}: {c}")
+    for a, c in out["repair"].items():
+        print(f"episodes with a program flagged by a property check, {a}: {c}")
+    for a, c in out["told"].items():
+        print(f"told the task's own rule, {a}: {c}")
     print(f"F4 routing (episodes; _valid: of those, valid): {out['routing']}")
     for label, g in out["by_size"].items():
-        print(f"  {label}: {g['routing']}")
+        print(f"  {label}: {g['routing']}; told {g['told']}")
     print(f"programs: {out['programs']}")
     print(f"scan: {out['scan']['counts']}; flagged programs {len(out['scan']['flagged'])}")
     print(f"steps whose error is a runtime file the filesystem failed to return: "
