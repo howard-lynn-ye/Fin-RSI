@@ -14,49 +14,50 @@ for smaller ones. Right: what \texttt{route()} named in each model's F4 episodes
 \begin{figure*}[t]
 \centering
 \includegraphics{figures/pfix_analysis}
-\caption{Why the library helps and where it stops. (a)~How episodes ended, by arm and size group;
-accepted but wrong: passed every visible check, wrong output. (b)~The \FixArm{} F4 episodes, from
-what \texttt{route()} named, through whether the last program called \texttt{positions()}, to the
-outcome (band width: episodes). (c)~Share of the programs that ran that failed each check, with what a failure means: F0
-open, F4 filled, F1--F3 grey; right, F0 and F4 in percent.}
+\caption{Why the library helps and where it stops. (a)~How episodes ended, by arm and size
+group; accepted but wrong means the program passed every visible check and was still wrong.
+(b)~The \FixArm{} F4 episodes, from what \texttt{route()} named, through whether the last
+program called \texttt{positions()}, to the outcome (band width: episodes). (c)~Share of the
+programs that ran that failed each check, with what a failure means: F0 open, F4 filled, F1--F3
+grey; right, F0 and F4 in percent.}
 \label{fig:analysis}
 \end{figure*}
 
-\NTasks{} tasks cover \NTaskAlgorithms{} algorithms in \NFamilies{} families, two variants
-each (Appendix Table~\ref{tab:tasks}). A task states a rule in prose; the model implements
-\texttt{solve(prices, split\_factors)} returning positions, or for volatility, risk and
-forecast tasks the value known at the previous close. Each task can be solved by hand or by
-one library call. The rules are the momentum, volatility-scaling and allocation baselines
-that learned strategies are measured against
-\citep{lim2019enhancing,wood2022slow,zhang2020deep}.
+The suite has \NTasks{} tasks: \NTaskAlgorithms{} algorithms in \NFamilies{} families, in two
+variants each (Appendix Table~\ref{tab:tasks}). Each states a rule in prose and asks for
+\texttt{solve(prices, split\_factors)}, returning positions or, for volatility, risk and
+forecast tasks, the value known at the previous close. Every task can be solved by hand or with
+one library call. The rules are the momentum, volatility-scaling and allocation baselines that
+learned strategies are measured against \citep{lim2019enhancing,wood2022slow,zhang2020deep}; an
+agent that gets them wrong cannot be trusted with the strategies built on them.
 
 \paragraph{Data.}
-Synthetic panels have four assets and \NRows{} business days of seeded Gaussian returns,
-with four splits at fixed rows (2-for-1, 3-for-1, 3-for-2, 1-for-2), on \NSeeds{} seeds.
-Variant~a gives cumulative factors in alphabetical order; variant~b gives event ratios,
-shuffled columns and other parameters. The suite also has a real panel of as-traded closes of
-four stocks that all split within \NRealRows{} sessions in 2022 (Appendix Figure~\ref{fig:real});
-we release the code that rebuilds it from a checked split table and the file's SHA-256, since
-the prices may not be redistributed.
+Synthetic panels hold four assets over \NRows{} business days of seeded Gaussian returns, with
+four splits at fixed rows (2-for-1, 3-for-1, 3-for-2 and 1-for-2), on \NSeeds{} seeds. Variant~a
+gives cumulative factors with columns in alphabetical order; variant~b gives per-event ratios,
+shuffled columns and other parameters. A real panel adds the as-traded closes of four stocks
+that all split within \NRealRows{} sessions in 2022 (Appendix Figure~\ref{fig:real}). The prices
+may not be redistributed, so we release the code that rebuilds the panel from a checked split
+table, with the file's SHA-256.
 
 \paragraph{Judge and hidden grader.}
-The judge runs each program in a separate process with a memory limit and a 120-second
-timeout (in our runs also confined with seccomp, and with Landlock where the kernel has it), refuses \texttt{import fin\_skills} without library access, and applies the visible checks
-of \S\ref{sec:library}. A program is \emph{valid} only if it
-ran, passed every check and matches an independent numpy reference within $10^{-8}$
-($10^{-5}$ for \texttt{min\_variance}). A program that passes the checks but is wrong is
-\emph{accepted but wrong}; we report that rate because the checks cannot see it.
+The judge runs each program in its own process under a memory limit and a 120-second timeout,
+refuses \texttt{import fin\_skills} when the arm has no library, and applies the visible checks
+of \S\ref{sec:library}. A program is \emph{valid} only if it ran, passed every check and matches
+an independent numpy reference within $10^{-8}$ ($10^{-5}$ for \texttt{min\_variance}). A
+program that passes every check and is still wrong is \emph{accepted but wrong}; we report it
+separately, because no check can see it.
 
 \paragraph{Qualification.}
-Before any model ran, the reference agreed with the library on every task and panel (within
-$\RefGapOther$; $\RefGapMinVariance$ for \texttt{min\_variance}), a correct program passed every
-check, and planted versions of each failure failed their check and the grade.
+Before any model ran, we confirmed that the reference and the library agree on every task and
+panel (within $\RefGapOther$; $\RefGapMinVariance$ for \texttt{min\_variance}), that a correct
+program passes every check, and that a planted version of each failure fails both its check and
+the grade.
 
 \paragraph{Split.}
-The split is by algorithm. The \NForcedDev{} algorithms a model has already seen go to
-development, and a seeded draw sends \NDrawnDev{} of the other \NDrawn{} there too:
-\NDevTasks{} development and \NHeldTasks{} held-out tasks, the latter covering all
-\NFamilies{} families. The study of \S\ref{sec:study} used the suite as it stood on
-8~November 2026: \StudyDevTasks{} development and \StudyHeldTasks{} held-out tasks, the
-held-out ones the Bollinger, RSI and Donchian rules. Bollinger is a development task in the
-current split.
+Tasks are split by algorithm, so a held-out task asks for a rule that no development task uses.
+The \NForcedDev{} algorithms a model has already seen go to development, and a seeded draw adds
+\NDrawnDev{} of the other \NDrawn{}: \NDevTasks{} development and \NHeldTasks{} held-out tasks,
+covering all \NFamilies{} families. The study (\S\ref{sec:study}) used the split of 8~November
+2026, whose \StudyHeldTasks{} held-out tasks are the Bollinger, RSI and Donchian rules; the
+current split has since moved Bollinger to development.

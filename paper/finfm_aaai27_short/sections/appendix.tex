@@ -1,7 +1,8 @@
 \section{The library study}
 \label{app:pfix}
 
-The tables below give the library study per model and the no-library study of 8~November.
+Table~\ref{tab:results} gives the library study per model, and Table~\ref{tab:frozen} the
+self-improvement study without the library.
 
 \begin{figure*}[!htb]
 \centering
@@ -15,9 +16,9 @@ The tables below give the library study per model and the no-library study of 8~
 \begin{table}[!htb]
 \centering\scriptsize\setlength{\tabcolsep}{2pt}
 \input{results_table}
-\caption{Valid episodes per model, of \FixEpisodesPerArm{} per arm ($^\ast$: core). Rt.: F4
-episodes in which \texttt{route()} returned the task's rule. No library: the study fixed on
-8~November, judged with three checks.}
+\caption{Valid episodes per model and arm, of \FixEpisodesPerArm{} ($^\ast$: core model). Rt.:
+F4 episodes in which \texttt{route()} named the task's rule. No library: the earlier study of
+\S\ref{sec:study}, judged with three checks.}
 \label{tab:results}
 \end{table}
 
@@ -27,8 +28,8 @@ episodes in which \texttt{route()} returned the task's rule. No library: the stu
 \begin{table*}[!htb]
 \centering\scriptsize\setlength{\tabcolsep}{4pt}
 \input{frozen_table}
-\caption{The study fixed on 8~November, without the library and judged with three checks: valid
-episodes of \FixEpisodesPerArm{} per core model for each method. Every gain over
+\caption{The self-improvement methods without the library, judged with three checks: valid
+episodes of \FixEpisodesPerArm{} per core model. Every gain over
 \texttt{NoImprove} comes from the two models that \texttt{NoImprove} already solved sometimes.
 Over all \StudyModels{} models and \FrozenArm{} episodes per arm, \texttt{Repeat} was valid in
 \FrozenRepeat, \texttt{Check} in \FrozenCheck{} and \texttt{Explain} in \FrozenExplain.}
@@ -67,17 +68,16 @@ systems.}
 \label{tab:methods}
 \end{table*}
 
-\texttt{Reflexion} asks for a reflection of at most five sentences, without code, and keeps
-the reflections for the rest of the episode. In \texttt{Team}, a reviewer is asked only when a
-check of its own family failed; it sees the program, the failed checks, their causes and its
-family's cards, and answers with a diagnosis rather than code. \texttt{Evolve} rewrites a
-prompt addendum of at most 1,200 characters from the visible failures of the current best
-addendum, and keeps a candidate only if it scores strictly higher on the same development
-tasks. The playbook is a list of short entries on three surfaces (tool usage, retrieval,
-experience). Its loop rejects whitespace-only and repeated edits, and appends every proposal,
-evaluation and decision to a journal whose receipts carry evidence hashes; a frozen playbook
-cannot change. A stricter \emph{all-pass} rule, which vetoes any candidate while a single
-task fails, blocks learning for a weak model, so we use no-regression.
+\texttt{Reflexion} asks for a reflection of at most five sentences, without code, and keeps it
+for the rest of the episode. In \texttt{Team}, a reviewer speaks only when a check of its own
+family failed; it sees the program, the failed checks with their causes and its family's cards,
+and replies with a diagnosis, not code. \texttt{Evolve} rewrites a prompt addendum of at most
+1,200 characters from the visible failures of the best addendum so far, and keeps a candidate
+only if it scores strictly higher on the same development tasks. The playbook is a list of short
+entries on three surfaces (tool usage, retrieval, experience). Its loop rejects empty and
+repeated edits and logs every proposal, evaluation and decision with hashes of the evidence; a
+frozen playbook cannot change. We gate on no regression rather than on all tasks passing: an
+all-pass rule vetoes every candidate while a single task fails, so a weak model never learns.
 
 \begin{figure*}[t]
 \centering
@@ -90,21 +90,7 @@ higher and no task that passed before now fails.}
 \label{fig:gate}
 \end{figure*}
 
-% Not in this version: the four skill arms (rule cards x library) are implemented but the
-% study reported here ran the feedback arms of Section 3 with and without the library.
-% \section{Experiment design}
-% \label{app:design}
-%
-% \begin{figure}[!htb]
-% \centering
-% \input{../latex_acl2027/figures/arms}
-% \caption{(a) The four skill arms, from two switches: the library interface (columns) and the
-% task's rule cards (rows). Bold cells are the two arms of the main comparison, which every method
-% runs; the other two run only in the component ablation. (b)~Within one arm, \texttt{NoImprove}
-% versus \texttt{CheckFeedback} measures the checks and \texttt{CheckFeedback} versus
-% \texttt{PlaybookLearning} measures self-improvement.}
-% \label{fig:arms}
-% \end{figure}
+
 
 
 \begin{figure*}[!htb]

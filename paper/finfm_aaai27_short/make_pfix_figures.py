@@ -253,6 +253,12 @@ def fig_families(d, name="pfix_models"):
         fams.setdefault(SERIES[m], []).append(m)
     for f in fams:
         fams[f].sort(key=lambda m: (sizes[m], m))
+    # results text: in every series with a model of 14B or more, each such model gained more
+    # (F4 - F0) than each smaller model of the same series
+    gain = {m: per[m]["F4"]["valid"] - per[m]["F0"]["valid"] for m in per}
+    for f, ms in fams.items():
+        large = [m for m in ms if sizes[m] >= 14]
+        assert all(gain[b] > gain[s] for b in large for s in ms if sizes[s] < 14), f
     # series from the one with the largest model, a series' models from small to large; the
     # models alone in their series last, under one bracket
     alone = sorted((fams.pop(f)[0] for f in [f for f in fams if len(fams[f]) == 1]),

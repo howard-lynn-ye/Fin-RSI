@@ -264,6 +264,9 @@ def main(argv):
             fix["funnel"]["F4"]["last_calls_library_accepted_wrong_rescaled"], "a call scaled twice"
         f4 = fix["funnel"]["F4"]
         assert sorted(gain.values())[-2] <= 1, "a second smaller model gained more than one episode"
+        bp = big["pooled"]
+        assert abs(bp["F4"]["valid"] - bp["F2"]["valid"]) <= 2, "results: >=14B F4 level with F2"
+        assert arms["repeat"] < arms["check"] < arms["explain"], "results: more said, more valid"
         same = {x["contrast"]: x for x in fix["exploratory_contrasts"]}["F4-F0"]["same"]
         assert num["FixFFourSameAtZero"] == same, "a model unchanged in F4 is not at 0"
         assert per["qwen3-30b-a3b"]["F2"]["valid"] == per["qwen3-30b-a3b"]["F4"]["valid"] == 18, "best"
