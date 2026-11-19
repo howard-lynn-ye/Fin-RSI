@@ -38,13 +38,23 @@ Not changed: unknown ids, wrong input types and `run()` given a table (small mod
 
 ## 5. Confirmatory run (to be frozen)
 
-Agreed with the user on 2026-11-19; details are filled in and frozen before any run.
+Agreed with the user on 2026-11-19 (24 tasks, two seeds, the BM25 baseline). It is frozen when section 6 names the library commit, the task-set hash and the feedback. Until then no model sees a task of this section.
 
-- **Tasks.** 24 new position tasks: 16 whose rule `positions()` has, 8 whose rule it does not have (near misses included, such as an RSI with Wilder smoothing), so that the right answer to `route()` is NONE. New parameter values, new wording, both factor conventions. Each has an independent numpy reference and is qualified like the suite's tasks. Written without any model output on them.
-- **Seeds.** Two per task: 48 episodes per model and arm.
-- **Models.** The 20 of P-fix. Primary population: the eight of at least 14B, named above.
-- **Arms** (`fin_skills/rsi/pconfirm.py`): C0 no library; C1 interface; C2 interface after `route()` with the hint; C3 the hint for the task's own rule when the catalogue has it (upper bound); C4 the hint for the top BM25 entry (text retrieval, cannot abstain). Same prompts, budget and six checks as P-fix; feedback as chosen in section 4.
-- **Primary hypothesis.** On the 16 catalogued tasks, in the primary population, C2 is valid more often than C0.
-- **Secondary.** C2 against C4 (the model's routing against retrieval) and C3 minus C2 (distance to the upper bound) on catalogued tasks; C2 against C1 on the 8 other tasks (does a routing step do harm when the library lacks the rule?); how often `route()` is right (the id, or NONE); all of these for the 12 smaller models and for all 20.
-- **Analysis.** Every episode stays in the denominator. Differences in valid rate with 95% intervals from a bootstrap that resamples tasks and, within the population, models; a sign-flip test over tasks for the primary hypothesis. One run; no arm, task or model is added or dropped after results are seen.
-- **Budget.** About 10k SU estimated from P-fix v4 (2.2 SU per episode; 4,800 episodes), of 16.6k left before the development run.
+- **Tasks** (`fin_skills/tasks/confirm.py`, 24, written 2026-11-19 before any model output on them):
+  - 16 whose rule `positions()` has: one for each of the eleven catalogued rules that depend on prices, and a second for five of them drawn once (`default_rng(20261119)`: bollinger_reversion, cross_sectional_momentum, donchian_breakout, hrp, inverse_volatility). Parameter values no earlier task used, new wording.
+  - 8 whose rule it does not have, each a near miss of a catalogued rule: RSI with Wilder's recursive averages, a z-score band traded as a breakout with its own exit level, an EMA crossover, momentum with a dead band, position in the trailing range, a moving-average envelope, long-short cross-sectional momentum, inverse-variance weights. The right answer to `route()` is none.
+  - No task names its rule. Factor convention alternates; four column orders; 120, 128 or 144 rows.
+  - Qualification (`tests/test_confirm_tasks.py`): every reference passes the six checks; the library equals the reference on every catalogued task (1e-8; 1e-5 for min_variance) and one hinted call with the task's values is graded valid; a hand-written pandas program, written apart from the numpy reference, is graded valid on each of the other eight; on those, the nearest catalogued rule and its negative are wrong on every seed.
+- **Seeds.** 409 and 523: 48 episodes per model and arm, 4,800 in all.
+- **Models.** The 20 of P-fix. Primary population: the eight of at least 14B named in section 4 (`pconfirm.PRIMARY_MODELS`).
+- **Arms** (`fin_skills/rsi/pconfirm.py`): C0 no library; C1 interface; C2 interface after `route()` with the hint; C3 the hint for the task's own rule when the catalogue has it, none otherwise (upper bound); C4 the hint for the top BM25 entry over catalogue entries with their rule lines, queried with the task prompt (text retrieval; it cannot abstain). Same prompts, budget (three programs, 4,096 generated tokens per reply, routing reply capped at 1,024) and six checks as P-fix v4; feedback as chosen in section 4.
+- **Primary hypothesis.** On the 16 catalogued tasks, in the primary population, C2 is valid more often than C0. Supported if the 95% interval of C2 minus C0 excludes 0 from below; the exact sign-flip test over the eleven rules is reported with it.
+- **No harm.** On the 8 other tasks, primary population, C2 minus C1 has a 95% lower bound above -10 points.
+- **Secondary, descriptive.** C2 against C4 and C3 minus C2 on catalogued tasks; C1 and C4 against C0; how often `route()` is right (the id, or none); BM25's hits; each for the twelve smaller models and for all twenty; per-model and per-task tables.
+- **Analysis** (`scripts/analyze_p_confirm.py`, fixed with this section). Every episode stays in the denominator. Intervals: percentile bootstrap, 10,000 draws, seed 20261119, resampling rules (a rule's tasks and seeds stay together) and models. A model enters when its three units are complete.
+- **One run.** No arm, task, model or analysis choice changes after a confirmatory result is seen. A failed job is resubmitted unchanged (the runner skips complete units); anything else is reported as a deviation.
+- **Budget.** About 10k SU estimated from P-fix v4 (2.2 SU per episode), of about 15.5k expected to remain after the development run.
+
+## 6. Freeze record
+
+Not frozen yet.
