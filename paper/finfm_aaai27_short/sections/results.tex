@@ -5,14 +5,13 @@
 Pooled over \FixModels{} models and \FixArm{} episodes per arm (Figures~\ref{fig:headline}
 and~\ref{fig:analysis}a), F0 was valid in \FixFZeroValid{} episodes (\FixFZeroPct\%), F1 in
 \FixFOneValid{} (\FixFOnePct\%) and F2 in \FixFTwoValid{} (\FixFTwoPct\%), better than F0 in
-\FixFTwoMinusFZeroBetter{} models and worse in none. With the interface alone, models imported
-\texttt{fin\_skills} in \FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs but mostly
-wrapped a rule of their own: \FixFOneUsesSignalPositions{} passed their own states to
-\texttt{signal\_positions()}, \FixFOneUsesPositions{} called \texttt{positions()}. Documenting
+\FixFTwoMinusFZeroBetter{} models and worse in none. With the interface alone, models mostly wrapped a
+rule of their own: \FixFOneUsesSignalPositions{} of \FixFOnePrograms{} programs passed their own
+states to \texttt{signal\_positions()}, \FixFOneUsesPositions{} called \texttt{positions()}. Documenting
 each rule did not change that: F3 matched F1 (\FixFThreeValid{} valid) and only
 \FixFThreeLastCalls{} episodes ended on a library call. Asking the model did. \texttt{route()}
 returned the task's rule in \FixRouteRight{} of \FixArm{} F4 episodes, nothing in
-\FixRouteNone{} and a wrong rule in \FixRouteWrong{} (Appendix Figure~\ref{fig:routing}), and F4
+\FixRouteNone{} and a wrong rule in \FixRouteWrong{} (Figure~\ref{fig:analysis}b), and F4
 was valid in \FixFFourValid{} (\FixFFourPct\%): \FixFFourMinusFTwo{} points from F2,
 \FixFFourMinusFZero{} over F0, better in \FixFFourMinusFZeroBetter{} models, worse in none, and
 at 0 in both for the other \FixFFourSameAtZero.
@@ -23,26 +22,21 @@ The \FixLargeModels{} models of \FixSizeCut{} parameters or more named the right
 \FixLargeFFourPct\% (F2 \FixLargeFTwoPct\%); each did better, \FixLargeFFourByOne{} by one
 episode. Told the rule, they still kept a rule of their own in \FixLargeFFourToldOwn{} of
 \FixLargeFFourTold{} episodes (Figure~\ref{fig:analysis}b). The \FixSmallModels{} smaller models
-never exceeded \FixSmallMaxPct\%: after \FixSmallFFourTold{} right routes their last program
-called \texttt{positions()} in \FixSmallFFourToldCalls, and in \FixSmallFFourToldNoProgram{} no
-program ran at all; no wrong route gave a valid episode.
+never exceeded \FixSmallMaxPct\%: after \FixSmallFFourTold{} right routes, no program ran at
+all in \FixSmallFFourToldNoProgram; no wrong route gave a valid episode.
 
 \paragraph{What the checks see.}
 Of the programs that ran, \FixFZeroFailedExecutionLag{} of \FixFZeroRan{} in F0 traded on a
 close they read and \FixFZeroFailedWarmupRowsZero{} held positions in warm-up rows; in F4,
 \FixFFourFailedExecutionLag{} and \FixFFourFailedWarmupRowsZero{} of \FixFFourRan{}
-(Figure~\ref{fig:analysis}c; every arm: Appendix Figure~\ref{fig:checks}). Final programs that passed all six checks but were wrong numbered
+(Figure~\ref{fig:analysis}c). Final programs that passed all six checks but were wrong numbered
 \FixFZeroAcceptedWrong, \FixFOneAcceptedWrong, \FixFTwoAcceptedWrong, \FixFThreeAcceptedWrong{}
 and \FixFFourAcceptedWrong{} in F0--F4; no property check sees another rule or a one-row delay.
-Models rarely fixed what the new checks flagged: \FixFZeroFlaggedThenValid{} of
-\FixFZeroFlaggedRetry{} such episodes ended valid in F0, \FixFFourFlaggedThenValid{} of
-\FixFFourFlaggedRetry{} in F4 (Figure~\ref{fig:analysis}d).
+Models rarely fixed what the new checks flagged (Figure~\ref{fig:analysis}d).
 
 \paragraph{Feedback and self-improvement without the library.}
 Of \FrozenArm{} episodes per arm, \texttt{Repeat} was valid in \FrozenRepeat, \texttt{Check} in
-\FrozenCheck{} and \texttt{Explain} in \FrozenExplain{} (\texttt{Check}$-$\texttt{Repeat}
-\FrozenCheckRepeat{} points, \texttt{Explain}$-$\texttt{Check} \FrozenExplainCheck; Appendix
-Figure~\ref{fig:frozen}). Of \SNoLibEpisodes{} episodes on the core models, \texttt{NoImprove} was valid in \SNoLibNoImprove{} and the
+\FrozenCheck{} and \texttt{Explain} in \FrozenExplain{} (Appendix Table~\ref{tab:frozen}). Of \SNoLibEpisodes{} episodes on the core models, \texttt{NoImprove} was valid in \SNoLibNoImprove{} and the
 other methods in \SNoLibSelfDebug{} (\texttt{SelfDebug}) to \SNoLibCheckFeedback{}
 (\texttt{CheckFeedback}, \texttt{Evolve}); every gain came from the two core models that
 \texttt{NoImprove} already solved sometimes.
@@ -55,6 +49,6 @@ library fixed in advance; a frozen library on unseen tasks is the next step. The
 public position rules on synthetic panels, all among the library's own. No experiment measures
 returns. The library study's cluster lacks Landlock: programs could not open sockets or start
 processes, but file access was not confined, and a scan of every program found none that
-touches files, the network or other processes (\FixScanNotPython{} recorded program texts did
-not parse and could not run). All models are open-weight, at most 32B, with at most
+touches files, the network or other processes (\FixScanNotPython{} texts did not parse and
+could not run). All models are open-weight, at most 32B, with at most
 \FixOutputCap{} generated tokens per reply (\StudyOutputCap{} in the earlier study).

@@ -49,25 +49,30 @@ held-out tasks are those of the suite of 8 November; in the current 34-task spli
 development task, and section 4 says so. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
 macros; the text no longer uses its numbers.
 
-## Figures (2026-11-19)
+## Figures (2026-11-19, second design)
 
-One figure on each of the four main pages, in a journal style (bold lower-case panel letters,
-thin axes with outward ticks, no grid, every model shown as a point or line).
-`make_pfix_figures.py` draws the data figures from the same pinned files as
-`make_pfix_results.py` (it checks both hashes) into `figures/`, at the exact column or text
-width so LaTeX places them unscaled; colours and font come from `../latex_acl2027/figstyle.py`.
-Colour is the model-size group (blue: 14B or more; magenta: smaller; validated pair), orange
-the checks, aqua self-improvement.
+Figure 1 is the system overview (Howard). The three data figures were redesigned after an
+independent review and a survey of result figures in benchmark and Nature papers (project doc
+`claude/PAPER_FIGURES.md`): each shows every model, carries the paper's argument rather than
+repeating the text, and is drawn in a journal style (bold lower-case panel letters, thin axes,
+outward ticks, no grid). `make_pfix_figures.py` draws them from the pinned analysis (it imports
+the hash from `make_pfix_results.py`) at the exact column or text width, and refuses to save a
+figure with text below 7 pt, text outside the figure or overlapping labels. `--png` also
+writes previews.
 
-- Page 1, Figure 1 `pfix_headline.pdf`: each model's valid rate in F0, F1 and F4, pooled line,
-  F2 as a reference; (a) models of 14B or more, (b) smaller. Defined in `main.tex` before the
-  overview, because a figure cannot print before an earlier-numbered one.
-- Page 2, Figure 2: the library overview (shared with the ACL draft).
-- Page 3, Figure 3 `figures/arms_pfix.tex` (TikZ): what each arm adds, with pooled valid rates.
-- Page 4, Figure 4 `pfix_analysis.pdf` (full width): (a) valid rate per arm by size group with
-  every model, (b) F4 after a right route: called `positions()` or kept an own rule, and valid,
-  (c) checks failed among programs that ran, F0 against F4, (d) flagged then fixed.
-- Appendix: per-model table, `pfix_checks.pdf`, `pfix_routing.pdf`, `frozen_nolib.pdf`.
+- Page 2, Figure 1: the library overview (shared with the ACL draft).
+- Page 2, Figure 2 `pfix_models.pdf`: one column per model ordered by size; F0 open, F4 filled,
+  F2 dash; pooled numbers per size group; qwen3-4b and qwen3-30b-a3b labelled.
+- Page 3, Figure 3 `pfix_arms.pdf`: what each arm adds (design matrix) beside a strip per arm
+  with every model and the two size-group pools.
+- Page 4, Figure 4 `pfix_analysis.pdf` (full width): (a) how episodes ended (valid first, valid
+  later, accepted but wrong, rejected) by arm and size group; (b) the 360 F4 episodes as a flow
+  from what `route()` named to the last program to the outcome; (c) checks failed among programs
+  that ran, all arms; (d) flagged then fixed.
+- Page 1 has no figure: a full-width figure cannot print on page 1, and no figure may precede
+  Figure 1.
+- Appendix: per-model table (`results_table.tex`) and the no-library study as a table
+  (`frozen_table.tex`, written by `make_pfix_results.py`).
 
 Track: Benchmark (Howard, 2026-11-19).
 
