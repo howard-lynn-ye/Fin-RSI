@@ -261,7 +261,113 @@ def mean(p, *, window):
     return out
 
 
+# Rules positions() does not have (P-confirm) --------------------------------------------------
+# Written for docs/P_CONFIRM_STUDY_DESIGN_20261119.md after the library was frozen. Each is a
+# near miss of a catalogued rule, so that the right answer to "which catalogued rule is this?"
+# is none.
+
+def wilder_rsi_reversion(p, *, lookback, lower, upper):
+    """RSI with Wilder's recursive averages (rsi_reversion uses plain means)."""
+    n, d = p.shape[1], np.full(p.shape, np.nan)
+    for j in range(n):
+        delta = np.diff(p[:, j])                               # delta[t-1] = P_t - P_{t-1}
+        up, down = np.clip(delta, 0, None), np.clip(-delta, 0, None)
+        rsi = np.full(len(p), np.nan)
+        gain = loss = 0.0
+        for t in range(lookback, len(p)):
+            if t == lookback:
+                gain, loss = up[:lookback].mean(), down[:lookback].mean()
+            else:
+                gain = (gain * (lookback - 1) + up[t - 1]) / lookback
+                loss = (loss * (lookback - 1) + down[t - 1]) / lookback
+            rsi[t] = 50.0 if gain + loss == 0 else 100 * gain / (gain + loss)
+        d[:, j] = _walk(rsi, lower, upper, 50.0)
+    return _lagged(d, n)
+
+
+def band_breakout(p, *, lookback, entry_z, exit_z):
+    """Trend version of the z-score band: enter beyond the band, leave inside exit_z."""
+    n, d = p.shape[1], np.full(p.shape, np.nan)
+    for j in range(n):
+        state = 0.0
+        for t in range(lookback - 1, len(p)):
+            x = p[t - lookback + 1:t + 1, j]
+            s = x.std(ddof=1)
+            z = 0.0 if s == 0 else (p[t, j] - x.mean()) / s
+            if z > entry_z:
+                state = 1.0
+            elif z < -entry_z:
+                state = -1.0
+            elif (state > 0 and z < exit_z) or (state < 0 and z > -exit_z):
+                state = 0.0
+            d[t, j] = state
+    return _lagged(d, n)
+
+
+def ema_crossover(p, *, fast, slow):
+    """Sign of fast EMA minus slow EMA (ma_crossover uses simple means; macd adds a signal line)."""
+    n, d = p.shape[1], np.full(p.shape, np.nan)
+    for j in range(n):
+        d[:, j] = np.sign(_ema(p[:, j], fast) - _ema(p[:, j], slow))   # defined from slow-1
+    return _lagged(d, n)
+
+
+def threshold_momentum(p, *, lookback, threshold):
+    """Momentum with a dead band: no position unless the move exceeds the threshold."""
+    n, w = p.shape[1], np.zeros_like(p)
+    for t in range(lookback + 1, len(p)):
+        move = p[t - 1] / p[t - 1 - lookback] - 1
+        w[t] = np.where(move > threshold, 1.0, np.where(move < -threshold, -1.0, 0.0)) / n
+    return w
+
+
+def range_position_reversion(p, *, lookback, lower, upper):
+    """Where the close sits in its trailing range (0 at the low, 1 at the high), with the same
+    walk as the reversion rules and the centre at 0.5."""
+    n, d = p.shape[1], np.full(p.shape, np.nan)
+    for j in range(n):
+        k = np.full(len(p), np.nan)
+        for t in range(lookback - 1, len(p)):
+            x = p[t - lookback + 1:t + 1, j]
+            k[t] = 0.5 if x.max() == x.min() else (p[t, j] - x.min()) / (x.max() - x.min())
+        d[:, j] = _walk(k, lower, upper, 0.5)
+    return _lagged(d, n)
+
+
+def ma_envelope(p, *, lookback, band):
+    """Long above the average times (1 + band), short below it times (1 - band), else flat."""
+    n, w = p.shape[1], np.zeros_like(p)
+    for t in range(lookback, len(p)):
+        mean = p[t - lookback:t].mean(axis=0)                  # the lookback closes ending at t-1
+        last = p[t - 1]
+        w[t] = np.where(last > mean * (1 + band), 1.0,
+                        np.where(last < mean * (1 - band), -1.0, 0.0)) / n
+    return w
+
+
+def long_short_momentum(p, *, lookback):
+    """Best asset +1, worst asset -1 by compounded return (cross_sectional_momentum is long-only)."""
+    ret, n, w = _returns(p), p.shape[1], np.zeros_like(p)
+    for t in range(lookback + 1, len(p)):
+        m = np.prod(1 + ret[t - 1 - lookback:t - 1], axis=0) - 1
+        order = np.argsort(-m, kind="stable")                  # best first; ties keep column order
+        if m[order[0]] > m[order[-1]]:
+            w[t, order[0]], w[t, order[-1]] = 1 / n, -1 / n
+    return w
+
+
+def inverse_variance(p, *, window):
+    """Weights proportional to 1 / variance (inverse_volatility uses 1 / standard deviation)."""
+    ret, w = _returns(p), np.zeros_like(p)
+    for t in range(window + 1, len(p)):
+        inv = 1 / ret[t - 1 - window:t - 1].var(axis=0, ddof=1)
+        w[t] = inv / inv.sum()
+    return w
+
+
 REFERENCES = {f.__name__: f for f in (
     inverse_volatility, cross_sectional_momentum, ma_crossover, vol_target_momentum, momentum,
     macd, bollinger_reversion, rsi_reversion, donchian_breakout, min_variance, hrp,
-    historical_volatility, ewma_volatility, historical_var_es, normal_var_es, drift, mean)}
+    historical_volatility, ewma_volatility, historical_var_es, normal_var_es, drift, mean,
+    wilder_rsi_reversion, band_breakout, ema_crossover, threshold_momentum,
+    range_position_reversion, ma_envelope, long_short_momentum, inverse_variance)}

@@ -32,7 +32,11 @@ CAUSES = {
                         "rows must be 0",
 }
 STATE_RULES = frozenset({"ma_crossover", "momentum", "macd", "bollinger_reversion",
-                         "rsi_reversion", "donchian_breakout"})   # value at a close is -1, 0 or +1
+                         "rsi_reversion", "donchian_breakout",
+                         # rules of the confirmatory tasks that positions() does not have
+                         "wilder_rsi_reversion", "band_breakout", "ema_crossover",
+                         "threshold_momentum", "range_position_reversion", "ma_envelope",
+                         "long_short_momentum"})   # value at a close is -1, 0 or +1
 TOLERANCE = 1e-6
 
 
@@ -48,6 +52,13 @@ def first_position_row(task) -> int | None:
         "momentum": lambda: p["lookback"] + 1,                   # lookback returns: row lookback
         "vol_target_momentum": lambda: p["lookback"] + 1,
         "macd": lambda: p["slow"] + p["signal_span"] - 1,        # line from slow-1, then its EMA
+        "wilder_rsi_reversion": lambda: p["lookback"] + 1,
+        "band_breakout": lambda: p["lookback"],
+        "ema_crossover": lambda: p["slow"],
+        "threshold_momentum": lambda: p["lookback"] + 1,
+        "range_position_reversion": lambda: p["lookback"],
+        "ma_envelope": lambda: p["lookback"],
+        "long_short_momentum": lambda: p["lookback"] + 1,
     }.get(task.algorithm)
     try:
         return int(rows()) if rows else None
