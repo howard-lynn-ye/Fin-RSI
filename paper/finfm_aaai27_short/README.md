@@ -49,6 +49,22 @@ held-out tasks are those of the suite of 8 November; in the current 34-task spli
 development task, and section 4 says so. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
 macros; the text no longer uses its numbers.
 
+## Figures (2026-11-19)
+
+`make_pfix_figures.py` draws the data figures from the same pinned files as
+`make_pfix_results.py` (it checks both hashes) into `figures/`, at the exact column width so
+LaTeX places them unscaled; colours and font come from `../latex_acl2027/figstyle.py`. Colour is
+the model-size group (blue: 14B or more; magenta: smaller; validated pair), orange the checks,
+aqua self-improvement.
+
+- `pfix_main.pdf` (main text, Figure 2): (a) valid episodes per arm by size group; (b) every
+  model's F0 and F4. It replaced the per-model table, which moved to the appendix.
+- Appendix: `figures/arms_pfix.tex` (TikZ, what each arm adds, with pooled valid rates as
+  macros), `pfix_checks.pdf` (failed checks among programs that ran), `pfix_routing.pdf` (what
+  `route()` returned per model), `frozen_nolib.pdf` (the 8 November study without the library).
+
+Track: Benchmark (Howard, 2026-11-19).
+
 ## Template and build
 
 `aaai2027.sty` and `aaai2027.bst` are the official AAAI-27 author-kit files, unmodified, with

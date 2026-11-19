@@ -1,18 +1,19 @@
 \section{Results}
 \label{sec:results}
 
-\begin{table}[t]
-\centering\scriptsize\setlength{\tabcolsep}{2pt}
-\input{results_table}
-\caption{Valid episodes per model, of \FixEpisodesPerArm{} per arm ($^\ast$: core). Rt.: F4
-episodes in which \texttt{route()} returned the task's rule. No library: the study fixed on
-8~November, judged with three checks.}
-\label{tab:results}
-\end{table}
+\begin{figure}[t]
+\centering
+\includegraphics{figures/pfix_main}
+\caption{The library study. (a)~Valid episodes per arm, pooled over the \FixLargeModels{} models
+of \FixSizeCut{} parameters or more and the \FixSmallModels{} smaller ones. (b)~Each model's valid
+episodes of \FixEpisodesPerArm{} without the library (F0, ring) and with it after
+\texttt{route()} (F4, dot). Every arm per model: Appendix Table~\ref{tab:results}.}
+\label{fig:results}
+\end{figure}
 
 \paragraph{Knowing the call is what helps.}
-Pooled over \FixModels{} models (Table~\ref{tab:results}) and \FixArm{} episodes per arm, F0 was
-valid in \FixFZeroValid{}
+Pooled over \FixModels{} models (Figure~\ref{fig:results}) and \FixArm{} episodes per arm, F0
+was valid in \FixFZeroValid{}
 episodes (\FixFZeroPct\%), F1 in \FixFOneValid{} (\FixFOnePct\%) and F2 in \FixFTwoValid{}
 (\FixFTwoPct\%); F2 did better than F0 in \FixFTwoMinusFZeroBetter{} models and worse in none.
 With the interface alone, models imported \texttt{fin\_skills} in \FixFOneUsesImportsFinSkills{}
@@ -22,15 +23,16 @@ and \FixFOneUsesPositions{} called \texttt{positions()}. Documenting each rule d
 that: F3 was valid in \FixFThreeValid{} episodes, as F1, and only \FixFThreeLastCalls{} ended on
 a library call. Asking the model did: \texttt{route()} returned the task's rule in
 \FixRouteRight{} of \FixArm{} F4 episodes, nothing in \FixRouteNone{} and a wrong rule in
-\FixRouteWrong{}. F4 was valid in \FixFFourValid{} (\FixFFourPct\%), \FixFFourMinusFTwo{} points
+\FixRouteWrong{} (Appendix Figure~\ref{fig:routing}). F4 was valid in \FixFFourValid{} (\FixFFourPct\%), \FixFFourMinusFTwo{} points
 from F2 and \FixFFourMinusFZero{} over F0, better than F0 in \FixFFourMinusFZeroBetter{} models
-and worse in none. Of the \FixFFourLastCalls{} F4 episodes whose last program called the library,
+and worse in none; the other \FixFFourSameAtZero{} stayed at 0. Of the \FixFFourLastCalls{} F4 episodes whose last program called the library,
 \FixFFourLastCallsRan{} ran and \FixFFourLastCallsValid{} were valid, against
 \FixFFourLastOwnValid{} of the \FixFFourLastOwn{} whose last program did not.
 
 \paragraph{The gain is in the larger models.}
 The \FixLargeModels{} models of \FixSizeCut{} parameters or more named the right rule in all
-\FixLargeRouteRight{} of their F4 episodes and each did better than in F0: \FixLargeFZeroPct\%
+\FixLargeRouteRight{} of their F4 episodes and each did better than in F0, \FixLargeFFourByOne{} by
+one episode: \FixLargeFZeroPct\%
 in F0, \FixLargeFOnePct\% in F1, \FixLargeFTwoPct\% in F2 and \FixLargeFFourPct\% in F4. The best,
 \texttt{\FixFFourBestModel}, was valid in all \FixFFourBest{} F2 and F4 episodes. The
 \FixSmallModels{} smaller models never exceeded \FixSmallMaxPct\%: after \FixSmallFFourTold{} right
@@ -39,19 +41,20 @@ routes their last program called \texttt{positions()} in \FixSmallFFourToldCalls
 a valid episode.
 
 \paragraph{What the checks see.}
-Of the programs that ran, \FixFZeroFailedExecutionLag{} of \FixFZeroRan{} in F0 traded on a
+Of the programs that ran (Appendix Figure~\ref{fig:checks}), \FixFZeroFailedExecutionLag{} of
+\FixFZeroRan{} in F0 traded on a
 close they read and \FixFZeroFailedWarmupRowsZero{} held positions in warm-up rows; in F4,
 \FixFFourFailedExecutionLag{} and \FixFFourFailedWarmupRowsZero{} of \FixFFourRan. Final programs
 that passed all six checks but were wrong numbered \FixFZeroAcceptedWrong, \FixFOneAcceptedWrong,
-\FixFTwoAcceptedWrong, \FixFThreeAcceptedWrong{} and \FixFFourAcceptedWrong{} in F0--F4; an
-earlier run of F0 judged with the first three checks accepted \FixEarlierFZeroAcceptedWrong. No
+\FixFTwoAcceptedWrong, \FixFThreeAcceptedWrong{} and \FixFFourAcceptedWrong{} in F0--F4. No
 property check sees a program that computes another rule or trades one row late. Models rarely
 fixed what the new checks flagged: with an attempt left, \FixFZeroFlaggedThenValid{} of
 \FixFZeroFlaggedRetry{} such episodes ended valid in F0 and \FixFFourFlaggedThenValid{} of
 \FixFFourFlaggedRetry{} in F4.
 
 \paragraph{Feedback and self-improvement without the library.}
-In the study fixed on 8~November, out of \FrozenArm{} episodes per arm, \texttt{Repeat} was
+In the study fixed on 8~November (Appendix Figure~\ref{fig:frozen}), out of \FrozenArm{} episodes
+per arm, \texttt{Repeat} was
 valid in \FrozenRepeat, \texttt{Check} in \FrozenCheck{} and \texttt{Explain} in
 \FrozenExplain: \texttt{Check} minus \texttt{Repeat} \FrozenCheckRepeat{} points and
 \texttt{Explain} minus \texttt{Check} \FrozenExplainCheck. Out of \SNoLibEpisodes{} episodes on

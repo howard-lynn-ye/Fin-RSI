@@ -40,10 +40,6 @@ SIZE = {"ge14b": "Large", "lt14b": "Small"}
 DESIGN = dict(FixInterfaceChars="5,657", FixInterfaceAlgorithms=12, FixOutputCap="4,096",
               FixEpisodesPerArm=18, FixVisibleChecks=6, FixRouteCap="1,024", FixAttempts=3,
               FixCalls=6, FixTokens="12,288")
-# From the analysis of the runs before amendment 3 (pfix_analysis.json at commit 49891186, sha256
-# 1b5ac441666a...): pooled["F0"]["accepted_wrong"] (F0 from run v1, judged with the first three
-# checks).
-EARLIER = dict(FixEarlierFZeroAcceptedWrong=81)
 # How each library-error group of analyze_p_fix.py reads in a sentence.
 PROSE = {"argument that does not apply to the algorithm": "an argument that does not apply to the algorithm",
          "too few rows (called on a slice)": r"a call on a slice of the rows",
@@ -88,7 +84,7 @@ def main(argv):
     if not draft:
         assert models == CORE + EXTENSION and not fix["missing"], "P-fix must cover all 20 models"
     assert not fix["infrastructure_suspect"], "a program error names a missing runtime file"
-    pooled, num = fix["pooled"], dict(DESIGN, **EARLIER)
+    pooled, num = fix["pooled"], dict(DESIGN)
     num["FixModels"] = len(models)
     num["FixArm"] = f'{pooled["F0"]["n"]:,}'
     arms_run = [a for a in TAG if a in pooled]  # F3 (Amendment 2) once its runs are in
@@ -201,6 +197,10 @@ def main(argv):
     for arm in arms_run:
         num[f"Fix{TAG[arm]}Ran"] = fix["failed_checks"][arm]["programs_ran"]
         num[f"Fix{TAG[arm]}Programs"] = f'{fix["programs"][arm]["programs"]:,}'
+    # F4 against F0 per model: larger models that gained exactly one episode; models unchanged at 0.
+    large = fix["by_size"]["ge14b"]["models"]
+    num["FixLargeFFourByOne"] = sum(per[m]["F4"]["valid"] - per[m]["F0"]["valid"] == 1 for m in large)
+    num["FixFFourSameAtZero"] = sum(per[m]["F4"]["valid"] == per[m]["F0"]["valid"] == 0 for m in models)
     num["FixScanFlagged"] = len(fix["scan"]["flagged"])
     num["FixScanNotPython"] = fix["scan"]["not_python"]
     num["FixScanFlaggedRan"] = sum(x["executed"] for x in fix["scan"]["flagged"])
@@ -254,6 +254,8 @@ def main(argv):
         assert f2["last_calls_library_accepted_wrong_rescaled"] == 0 == \
             fix["funnel"]["F4"]["last_calls_library_accepted_wrong_rescaled"], "a call scaled twice"
         f4 = fix["funnel"]["F4"]
+        same = {x["contrast"]: x for x in fix["exploratory_contrasts"]}["F4-F0"]["same"]
+        assert num["FixFFourSameAtZero"] == same, "a model unchanged in F4 is not at 0"
         assert per["qwen3-30b-a3b"]["F2"]["valid"] == per["qwen3-30b-a3b"]["F4"]["valid"] == 18, "best"
         assert num["FixFFourBestModel"] == num["FixFTwoBestModel"] == "qwen3-30b-a3b"
         assert sum(frozen[m]["S"]["no_improve|0"][0] > 0 for m in s_models) == 2, "two core models"
@@ -269,7 +271,7 @@ def main(argv):
              f"{hashlib.sha256(raw).hexdigest()[:12]}) and study_summary.min.json; do not edit.{mark}"]
     for k, v in num.items():
         text = str(v).replace("_", "\\_") if k.endswith("Model") else str(v)
-        if draft and not k.startswith(("Frozen", "SNoLib")) and k not in DESIGN and k not in EARLIER:
+        if draft and not k.startswith(("Frozen", "SNoLib")) and k not in DESIGN:
             text = "\\pending{" + text + "}"
         lines.append(f"\\newcommand{{\\{k}}}{{{text}}}")
     (HERE / "pfix_numbers.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
