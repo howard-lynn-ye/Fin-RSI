@@ -2,27 +2,31 @@
 \label{sec:study}
 
 \paragraph{Tasks and models.}
-Both parts below use the \StudyHeldTasks{} held-out position tasks on synthetic panels
-(Bollinger, RSI and Donchian rules, two variants each) with \StudySeeds{} seeds, and
+Both parts below use those \StudyHeldTasks{} held-out position tasks (\StudyAlgorithms{} rules,
+two variants each) on synthetic panels with \StudySeeds{} seeds, and
 \StudyModels{} open-weight instruction models from \StudyFamilies{} families, 2B to 32B
 parameters, in BF16 at temperature 0.1. Every refusal, context stop, truncated reply and
-failed program stays in the denominator. The tasks cover only \StudyAlgorithms{} algorithms,
-and variants and seeds are not independent of them: with three clusters a sign-flip test
-cannot go below $p=0.25$, so we report effects per model and pooled, without significance
-claims.
+failed program stays in the denominator. Variants and seeds are not independent of the three
+rules: with three clusters a sign-flip test cannot go below $p=0.25$, so we report effects per
+model and pooled, without significance claims.
 
 \paragraph{The library on held-out tasks.}
-Three arms share the system prompt, the task text and \texttt{Check} feedback, with at most
-three programs per episode and \FixOutputCap{} generated tokens per reply. F0 has no library.
-F1 adds the library's position interface to the system prompt (\FixInterfaceChars{}
-characters: \texttt{positions()}, \texttt{signal\_positions()}, \texttt{adjust\_prices()},
-\texttt{run()} and the \FixInterfaceAlgorithms{} algorithms \texttt{positions()} accepts) and
-allows \texttt{import fin\_skills}. F2 adds one sentence to the task: \emph{The fin\_skills
-library implements this rule as \texttt{positions("<id>", ...)}}. The held-out rules are among
-the library's algorithms, so one \texttt{positions()} call with the task's parameters and
-factor convention solves every task; F2 tells the model which. Each arm has
-\FixEpisodesPerArm{} episodes per model. The arms, prompts and contrasts (F1$-$F0,
-F2$-$F0, F2$-$F1) were fixed before any run.
+Five arms share the system prompt, the task text and \texttt{Check} feedback, with at most
+\FixAttempts{} programs, \FixCalls{} model calls and \FixTokens{} generated tokens per episode
+(\FixOutputCap{} per reply). F0 has no library. F1 adds the library's position interface to the
+system prompt (\FixInterfaceChars{} characters: \texttt{positions()},
+\texttt{signal\_positions()}, \texttt{adjust\_prices()}, \texttt{run()} and the
+\FixInterfaceAlgorithms{} algorithms \texttt{positions()} accepts) and allows
+\texttt{import fin\_skills}. F2 adds one sentence to the task, with the id supplied by us:
+\emph{The fin\_skills library implements this rule as \texttt{positions("<id>", ...)}}. One
+\texttt{positions()} call with the task's parameters and factor convention solves every task,
+so F2 shows what finding the call can give. F3 is F1 with one line after each listed algorithm
+stating the rule it computes. F4 first calls \texttt{route()} on the task text (reply capped at
+\FixRouteCap{} tokens, charged to the episode) and continues as F2 with the id the model named,
+or as F1 if it named none. Every arm is judged with the \FixVisibleChecks{} checks and has
+\FixEpisodesPerArm{} episodes per model. F1$-$F0, F2$-$F0 and F2$-$F1 were declared before the
+first run; F3, F4 and a split at \FixSizeCut{} parameters were added after seeing results and
+are exploratory.
 
 \paragraph{Feedback and self-improvement without the library.}
 A study fixed before any test run, on the suite as it stood on 8~November 2026, ran the
@@ -32,5 +36,5 @@ without the library), and the \NMethods{} methods for \StudyCoreModels{} core mo
 (\StudySEpisodes{} episodes and \StudySFits{} fits on the development tasks; unlike the arms,
 the methods' first prompt includes the rule cards that apply). Two contrasts were declared
 without the library: \texttt{Check} against \texttt{Repeat} and \texttt{Explain} against
-\texttt{Check}. We report its runs without the library; its library conditions used an earlier
-version of the interface text and are released with the rest.
+\texttt{Check}. We report its runs without the library, judged with the first three checks; its
+library conditions used an earlier interface and are released.

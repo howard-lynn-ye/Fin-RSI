@@ -1,65 +1,71 @@
 \section{Results}
 \label{sec:results}
 
-Table~\ref{tab:results} lists every model's valid episodes. The numbers are descriptive
-(\S\ref{sec:study}).
-
 \begin{table}[t]
 \centering\scriptsize\setlength{\tabcolsep}{2pt}
 \input{results_table}
-\caption{Valid episodes per model ($^\ast$: core). Library study: of \FixEpisodesPerArm{} per
-arm; ran: programs in F1 and F2 that called \texttt{positions()} or \texttt{run()} and ran, of all
-that called them. No library: of 18 per arm in the study fixed on 8~November.}
+\caption{Valid episodes per model, of \FixEpisodesPerArm{} per arm ($^\ast$: core). Rt.: F4
+episodes in which \texttt{route()} returned the task's rule. No library: the study fixed on
+8~November, judged with three checks.}
 \label{tab:results}
 \end{table}
 
-\paragraph{The library helps the models that call it.}
-Pooled over \FixModels{} models and \FixArm{} episodes per arm, F0 was valid in
-\FixFZeroValid{} episodes (\FixFZeroPct\%), F1 in \FixFOneValid{} (\FixFOnePct\%) and F2 in
-\FixFTwoValid{} (\FixFTwoPct\%). F2 did better than F0 in \FixFTwoMinusFZeroBetter{} models and
-worse in \FixFTwoMinusFZeroWorse{} (\FixFTwoMinusFZero{} points pooled); F1 did better than F0 in
-\FixFOneMinusFZeroBetter{} and worse in \FixFOneMinusFZeroWorse{} (\FixFOneMinusFZero{} points).
-The best F2 model, \texttt{\FixFTwoBestModel}, was valid in \FixFTwoBest{} of 18 episodes.
-With the interface alone (F1), models imported \texttt{fin\_skills} in
-\FixFOneUsesImportsFinSkills{} of \FixFOnePrograms{} programs, mostly to wrap a rule they wrote
-themselves: \FixFOneUsesSignalPositions{} programs passed their own states to
-\texttt{signal\_positions()}, which lags, fills and scales them, and \FixFOneUsesPositions{}
-called \texttt{positions()}. Most of F1's valid episodes came from that wrapping
-(\FixFOneLastUsesSignalPositionsValid{} of \FixFOneValid). One sentence naming the call (F2)
-moved models to \texttt{positions()}: \FixFTwoUsesPositions{} programs called it, and in
-\FixFTwoLastCalls{} episodes the last program called \texttt{positions()} or \texttt{run()}.
-\FixFTwoLastCallsChecked{} of those ran and passed the checks, and \FixFTwoLastCallsValid{} were
-valid, against \FixFTwoLastOwnValid{} of the \FixFTwoLastOwn{} episodes whose last program did
-not call them.
+\paragraph{Knowing the call is what helps.}
+Pooled over \FixModels{} models (Table~\ref{tab:results}) and \FixArm{} episodes per arm, F0 was
+valid in \FixFZeroValid{}
+episodes (\FixFZeroPct\%), F1 in \FixFOneValid{} (\FixFOnePct\%) and F2 in \FixFTwoValid{}
+(\FixFTwoPct\%); F2 did better than F0 in \FixFTwoMinusFZeroBetter{} models and worse in none.
+With the interface alone, models imported \texttt{fin\_skills} in \FixFOneUsesImportsFinSkills{}
+of \FixFOnePrograms{} programs but mostly wrapped a rule of their own:
+\FixFOneUsesSignalPositions{} programs passed their own states to \texttt{signal\_positions()}
+and \FixFOneUsesPositions{} called \texttt{positions()}. Documenting each rule did not change
+that: F3 was valid in \FixFThreeValid{} episodes, as F1, and only \FixFThreeLastCalls{} ended on
+a library call. Asking the model did: \texttt{route()} returned the task's rule in
+\FixRouteRight{} of \FixArm{} F4 episodes, nothing in \FixRouteNone{} and a wrong rule in
+\FixRouteWrong{}. F4 was valid in \FixFFourValid{} (\FixFFourPct\%), \FixFFourMinusFTwo{} points
+from F2 and \FixFFourMinusFZero{} over F0, better than F0 in \FixFFourMinusFZeroBetter{} models
+and worse in none. Of the \FixFFourLastCalls{} F4 episodes whose last program called the library,
+\FixFFourLastCallsRan{} ran and \FixFFourLastCallsValid{} were valid, against
+\FixFFourLastOwnValid{} of the \FixFFourLastOwn{} whose last program did not.
 
-\paragraph{What still goes wrong.}
-The visible checks passed many wrong final programs: \FixFZeroAcceptedWrong, \FixFOneAcceptedWrong{}
-and \FixFTwoAcceptedWrong{} episodes in F0, F1 and F2. In F2, \FixFTwoLastCallsAcceptedWrong{} programs that called the library and passed the checks
-were wrong; \FixFTwoLastCallsRescaled{} of them divided by the number of assets a second time,
-although the library's result is already scaled, as its interface text says; no check can see it. Of the
-\FixLibErrors{} library calls in F1 and F2 that raised, the commonest errors were
-\FixLibErrorOne{} (\FixLibErrorOneCount), \FixLibErrorTwo{} (\FixLibErrorTwoCount) and
-\FixLibErrorThree{} (\FixLibErrorThreeCount). Most errors name the call to make, but small models
-rarely recovered within three programs: \FixFTwoNoneValid{} models had no valid F2 episode.
+\paragraph{The gain is in the larger models.}
+The \FixLargeModels{} models of \FixSizeCut{} parameters or more named the right rule in all
+\FixLargeRouteRight{} of their F4 episodes and each did better than in F0: \FixLargeFZeroPct\%
+in F0, \FixLargeFOnePct\% in F1, \FixLargeFTwoPct\% in F2 and \FixLargeFFourPct\% in F4. The best,
+\texttt{\FixFFourBestModel}, was valid in all \FixFFourBest{} F2 and F4 episodes. The
+\FixSmallModels{} smaller models stayed below 7\% in every arm: \FixSmallRouteRight{} right routes
+gave \FixSmallRouteRightValid{} valid episodes, and none of the \FixRouteWrong{} wrong routes did.
+
+\paragraph{What the checks see.}
+Of the programs that ran, \FixFZeroFailedExecutionLag{} of \FixFZeroRan{} in F0 traded on a
+close they read and \FixFZeroFailedWarmupRowsZero{} held positions in warm-up rows; in F4,
+\FixFFourFailedExecutionLag{} and \FixFFourFailedWarmupRowsZero{} of \FixFFourRan. Final programs
+that passed all six checks but were wrong numbered \FixFZeroAcceptedWrong, \FixFOneAcceptedWrong,
+\FixFTwoAcceptedWrong, \FixFThreeAcceptedWrong{} and \FixFFourAcceptedWrong{} in F0--F4; an
+earlier run of F0 judged with the first three checks accepted \FixEarlierFZeroAcceptedWrong. No
+property check sees a program that computes another rule or trades one row late. None of the
+wrong library calls that passed the checks (\FixFTwoLastCallsAcceptedWrong{} in F2,
+\FixFFourLastCallsAcceptedWrong{} in F4) divided the scaled result by the number of assets again,
+as \FixEarlierFTwoRescaled{} had in an earlier F2 run.
 
 \paragraph{Feedback and self-improvement without the library.}
 In the study fixed on 8~November, out of \FrozenArm{} episodes per arm, \texttt{Repeat} was
 valid in \FrozenRepeat, \texttt{Check} in \FrozenCheck{} and \texttt{Explain} in
 \FrozenExplain: \texttt{Check} minus \texttt{Repeat} \FrozenCheckRepeat{} points and
 \texttt{Explain} minus \texttt{Check} \FrozenExplainCheck. Out of \SNoLibEpisodes{} episodes on
-the \SNoLibModels{} core models, \texttt{NoImprove} was valid in \SNoLibNoImprove,
-\texttt{CheckFeedback} and \texttt{Evolve} in \SNoLibCheckFeedback{} and \SNoLibEvolve,
-\texttt{PlaybookLearning} in \SNoLibPlaybook, \texttt{Reflexion} in \SNoLibReflexion,
-\texttt{Team} in \SNoLibTeam{} and \texttt{SelfDebug} in \SNoLibSelfDebug.
+the \SNoLibModels{} core models, \texttt{NoImprove} was valid in \SNoLibNoImprove{} and the
+other methods in \SNoLibSelfDebug{} (\texttt{SelfDebug}) to \SNoLibCheckFeedback{}
+(\texttt{CheckFeedback}, \texttt{Evolve}); every gain came from the two core models that
+\texttt{NoImprove} already solved sometimes.
 
 \paragraph{Limitations.}
-The study covers three position rules on synthetic panels, all among the library's own; the
-newer tasks and the real panel are released but not evaluated here. All tasks are public, so a
-model may have seen them. No experiment measures returns, and we make no claim about them. The
-checks reject only the failures they were written for. The library study ran on a cluster whose
-kernel lacks Landlock: programs could not open sockets or start processes, but file access was
-not confined, so we scanned every program afterwards and found none that touches files, the
-network or other processes. Its refusals of silent mistakes were added after a first run of the same
-design, whose records we release; F0 never imports the library and is taken from that run. All
-models are open-weight, with at most \FixOutputCap{} generated tokens per reply in the library
-study and \StudyOutputCap{} in the earlier one, which cuts off long reasoning.
+We revised the library three times after seeing results on these six held-out tasks (each run
+is released): the new checks, the factor reading and \texttt{route()} answer what those runs
+showed, and every arm was rerun on the last revision. The tasks therefore no longer test a library fixed in advance; a
+frozen library on unseen tasks is the next step. The tasks are three position rules on synthetic
+panels, all among the library's own, and public. No experiment measures returns. The library
+study ran on a cluster whose kernel lacks Landlock: programs could not open sockets or start
+processes, but file access was not confined, so we scanned every program and found none that
+touches files, the network or other processes (\FixScanNotPython{} recorded program texts did
+not parse and could not run). All models are open-weight, at most 32B, with at most
+\FixOutputCap{} generated tokens per reply (\StudyOutputCap{} in the earlier study).

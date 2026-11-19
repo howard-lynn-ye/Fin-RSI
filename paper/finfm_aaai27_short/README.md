@@ -22,21 +22,29 @@ Portal: https://openreview.net/group?id=AAAI.org%2F2027%2FWorkshop%2FFinFM
 Since 2026-11-18 the paper reports experiments on the library as it now is (decided with the
 author): section 5 "Study" has two parts, and section 6 reports them.
 
-- **The library on held-out tasks (P-fix).** Arms F0 (no library), F1 (the position interface)
-  and F2 (F1 plus one sentence naming the call), Check feedback, 3 programs, 4,096 tokens per
-  reply, 6 held-out tasks x 3 seeds, 20 models, on Zaratan H100s. Design and amendment:
-  `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix`. `pfix_analysis.json` is the
-  output of `scripts/analyze_p_fix.py runs/main out.json --fix-root runs-v2/main` (F0 from the
-  first run; F1/F2 from the rerun with the library at 001ea472, identical prompts), sha256
-  23f5f085...; `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and
-  `results_table.tex`, and asserts every direction the prose states.
+- **The library on held-out tasks (P-fix v4).** Arms F0 (no library), F1 (the position
+  interface), F2 (F1 plus one sentence naming the call, id from the harness), F3 (F1 with each
+  algorithm's rule documented) and F4 (`route()` first, then F2's sentence with the id the model
+  named), Check feedback, six visible checks, 3 programs, 6 calls, 12,288 tokens per episode,
+  4,096 per reply, 6 held-out tasks x 3 seeds, 20 models, on Zaratan H100s. F1-F0, F2-F0 and
+  F2-F1 were declared first; F3, F4 and the 14B split are exploratory. Design and amendments 1-3:
+  `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix` (library source b8417dcc).
+  `pfix_analysis.json` is `scripts/analyze_p_fix.py runs-v4/main out.json --doc-root
+  runs-v4/main --route-root runs-v4/main` at 6a782a8d, sha256 e2eb603d78cb...;
+  `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and `results_table.tex`, and
+  asserts every direction the prose states. Two numbers come from the analysis before amendment 3
+  (commit 49891186, sha256 1b5ac441666a...) and are documented constants in the script: 81
+  accepted-but-wrong F0 programs under the first three checks, and 15 F2 library calls scaled
+  twice.
 - **Feedback and self-improvement without the library.** The no-library cells of the study frozen
   on 2026-11-08 (`study_summary.min.json`, pinned in both generators). Its library conditions
   and track E used an earlier interface text; they are released, not reported.
 
 One positions() call with each task's parameters and factor convention is valid on all 18
-held-out task x seed pairs (checked with the judge on 2026-11-18). Technical content ends on
-page 4. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
+held-out task x seed pairs (checked with the judge on 2026-11-18). Technical content ends at
+the bottom of page 4 (2026-11-19, with no spare line): any addition needs a cut. The study's six
+held-out tasks are those of the suite of 8 November; in the current 34-task split Bollinger is a
+development task, and section 4 says so. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
 macros; the text no longer uses its numbers.
 
 ## Template and build

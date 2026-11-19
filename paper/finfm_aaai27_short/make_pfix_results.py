@@ -33,11 +33,17 @@ CHECK_TAG = {"takes_positions": "TakesPositions", "position_scale": "PositionSca
              "split_representation": "SplitRepresentation", "execution_lag": "ExecutionLag"}
 # The post-hoc size split of analyze_p_fix.py (by_size): total parameters >= 14B, or fewer.
 SIZE = {"ge14b": "Large", "lt14b": "Small"}
-# Fixed by the P-fix design (branch claude/pfix, commit bf782d72): fin_skills.rsi.pfix.interface_text()
-# is 5,312 characters and lists 12 algorithms that positions() accepts; adopt.OUTPUT_CAP is 4,096
-# tokens; 6 held-out tasks x 3 seeds per arm.
+# Fixed by the P-fix design (branch claude/pfix, docs/P_FIX_STUDY_DESIGN_20261118.md, amendment 3 at
+# b8417dcc): the v4 interface text is 5,657 characters and lists 12 algorithms that positions()
+# accepts; 4,096 generated tokens per reply; at most 3 programs, 6 calls and 12,288 generated tokens
+# per episode; route() replies are capped at 1,024 tokens; 6 held-out tasks x 3 seeds per arm.
 DESIGN = dict(FixInterfaceChars="5,657", FixInterfaceAlgorithms=12, FixOutputCap="4,096",
-              FixEpisodesPerArm=18, FixVisibleChecks=6, FixRouteCap="1,024")
+              FixEpisodesPerArm=18, FixVisibleChecks=6, FixRouteCap="1,024", FixAttempts=3,
+              FixCalls=6, FixTokens="12,288")
+# From the analysis of the runs before amendment 3 (pfix_analysis.json at commit 49891186, sha256
+# 1b5ac441666a...): pooled["F0"]["accepted_wrong"] (F0 from run v1, judged with the first three
+# checks) and funnel["F2"]["last_calls_library_accepted_wrong_rescaled"] (F2 from run v2).
+EARLIER = dict(FixEarlierFZeroAcceptedWrong=81, FixEarlierFTwoRescaled=15)
 # How each library-error group of analyze_p_fix.py reads in a sentence.
 PROSE = {"argument that does not apply to the algorithm": "an argument that does not apply to the algorithm",
          "too few rows (called on a slice)": r"a call on a slice of the rows",
@@ -82,7 +88,7 @@ def main(argv):
     if not draft:
         assert models == CORE + EXTENSION and not fix["missing"], "P-fix must cover all 20 models"
     assert not fix["infrastructure_suspect"], "a program error names a missing runtime file"
-    pooled, num = fix["pooled"], dict(DESIGN)
+    pooled, num = fix["pooled"], dict(DESIGN, **EARLIER)
     num["FixModels"] = len(models)
     num["FixArm"] = f'{pooled["F0"]["n"]:,}'
     arms_run = [a for a in TAG if a in pooled]  # F3 (Amendment 2) once its runs are in
@@ -192,7 +198,11 @@ def main(argv):
             num[f"Fix{TAG[arm]}Failed{tag}"] = n
             total += n
         num[f"FixFailed{tag}"] = total
+    for arm in arms_run:
+        num[f"Fix{TAG[arm]}Ran"] = fix["failed_checks"][arm]["programs_ran"]
+        num[f"Fix{TAG[arm]}Programs"] = f'{fix["programs"][arm]["programs"]:,}'
     num["FixScanFlagged"] = len(fix["scan"]["flagged"])
+    num["FixScanNotPython"] = fix["scan"]["not_python"]
     num["FixScanFlaggedRan"] = sum(x["executed"] for x in fix["scan"]["flagged"])
     # The pre-registered study, no-library cells only: feedback arms and the seven methods.
     arms = {a: sum(frozen[m]["P"][f"{a}|0"][0] for m in CORE + EXTENSION)
@@ -225,12 +235,35 @@ def main(argv):
         assert c["F2-F0"]["worse"] == 0, "abstract: no model did worse with the sentence"
         assert 2 * f2["last_calls_library_valid"] > f2["last_calls_library_ran"], "most calls that ran valid"
         assert not fix["scan"]["flagged"], "limitations: the scan found no file, network or process access"
+        ex = {x["contrast"]: x for x in fix["exploratory_contrasts"]}
+        assert abs(pooled["F4"]["valid"] - pooled["F2"]["valid"]) <= 3, "F4 no longer matches F2"
+        assert ex["F4-F0"]["worse"] == 0, "no model did worse with route()"
+        assert pooled["F3"]["valid"] == pooled["F1"]["valid"], "F3 is no longer equal to F1"
+        big, small = fix["by_size"]["ge14b"], fix["by_size"]["lt14b"]
+        assert big["routing"]["right"] == big["pooled"]["F4"]["n"], "a large model misrouted"
+        assert {x["contrast"]: x for x in big["exploratory_contrasts"]}["F4-F0"]["better"] == \
+            len(big["models"]), "not every large model did better with route()"
+        assert all(100 * p["valid"] / p["n"] < 7 for p in small["pooled"].values()), "small >= 7%"
+        assert fix["routing"].get("wrong_valid", 0) == 0, "a wrong route was valid"
+        assert f2["last_calls_library_accepted_wrong_rescaled"] == 0 == \
+            fix["funnel"]["F4"]["last_calls_library_accepted_wrong_rescaled"], "a call scaled twice"
+        f4 = fix["funnel"]["F4"]
+        assert per["qwen3-30b-a3b"]["F2"]["valid"] == per["qwen3-30b-a3b"]["F4"]["valid"] == 18, "best"
+        assert num["FixFFourBestModel"] == num["FixFTwoBestModel"] == "qwen3-30b-a3b"
+        assert sum(frozen[m]["S"]["no_improve|0"][0] > 0 for m in s_models) == 2, "two core models"
+        gains = {k: num["SNoLib" + "".join(w.capitalize() for w in k.split("_"))] for k in METHODS}
+        assert min(gains.values()) == gains["self_debug"] and \
+            max(gains.values()) == gains["check_feedback"] == gains["evolve"], "range of the methods"
+        assert 2 * f4["last_calls_library_valid"] > f4["last_calls_library_ran"], "F4 calls mostly valid"
+        for m in s_models:  # the seven methods gained only where NoImprove was already valid
+            if frozen[m]["S"]["no_improve|0"][0] == 0:
+                assert all(frozen[m]["S"][f"{k}|0"][0] == 0 for k in METHODS), m
     mark = " (DRAFT)" if draft else ""
     lines = [f"% Generated by make_pfix_results.py from {path.name} (sha256 "
              f"{hashlib.sha256(raw).hexdigest()[:12]}) and study_summary.min.json; do not edit.{mark}"]
     for k, v in num.items():
         text = str(v).replace("_", "\\_") if k.endswith("Model") else str(v)
-        if draft and not k.startswith(("Frozen", "SNoLib")) and k not in DESIGN:
+        if draft and not k.startswith(("Frozen", "SNoLib")) and k not in DESIGN and k not in EARLIER:
             text = "\\pending{" + text + "}"
         lines.append(f"\\newcommand{{\\{k}}}{{{text}}}")
     (HERE / "pfix_numbers.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -241,10 +274,8 @@ def main(argv):
         rce = " & ".join(str(fr[f"{a}|0"][0]) for a in ("repeat", "check", "explain"))
         if m in per:
             c = per[m]
-            lib = ("F1", "F2")  # the caption's "ran": the declared library arms
-            calls = sum(c[a]["calling"] for a in lib)
-            ran = sum(c[a]["calling_ran"] for a in lib)
-            cells = [str(c[a]["valid"]) if c[a]["n"] else "--" for a in arms_run] + [f"{ran}/{calls}"]
+            right = fix["routing_by_model"].get(m, {}).get("right", 0)  # the caption's "Rt."
+            cells = [str(c[a]["valid"]) if c[a]["n"] else "--" for a in arms_run] + [str(right)]
         else:
             cells = [f"\\multicolumn{{{len(arms_run) + 1}}}{{c}}{{\\emph{{running}}}}"]
         rows.append(" & ".join([name, *cells, rce]) + " \\\\" + (" \\midrule" if m == CORE[-1] else ""))
@@ -253,7 +284,7 @@ def main(argv):
              "\\begin{tabular}{@{}l" + "r" * (k + 3) + "@{}}", "\\toprule",
              f" & \\multicolumn{{{k}}}{{c}}{{Library study}} & \\multicolumn{{3}}{{c}}{{No library}} \\\\",
              f"\\cmidrule(lr){{2-{k + 1}}}\\cmidrule(l){{{k + 2}-{k + 4}}}",
-             "Model & " + " & ".join(arms_run) + " & ran & Rep. & Check & Expl. \\\\",
+             "Model & " + " & ".join(arms_run) + " & Rt. & Rep. & Check & Expl. \\\\",
              "\\midrule", *rows, "\\bottomrule", "\\end{tabular}"]
     (HERE / "results_table.tex").write_text("\n".join(table) + "\n", encoding="utf-8")
     print(f"{len(models)} P-fix models{mark}; wrote pfix_numbers.tex and results_table.tex")
