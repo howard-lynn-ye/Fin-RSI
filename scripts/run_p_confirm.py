@@ -5,7 +5,9 @@ Design: docs/P_CONFIRM_STUDY_DESIGN_20261119.md. Stages:
   dev   development, on the six earlier held-out tasks (now development material) and their
         three seeds: arm C2 with "check" and with "cause" feedback (unit dev_hint, 36 episodes).
         Its grades are read; it chooses the feedback and tells whether the pre-freeze fixes work.
-  main  the confirmatory run on the tasks written after the freeze (added with those tasks).
+  main  the confirmatory run: the 24 tasks of fin_skills/tasks/confirm.py and their two seeds,
+        arms C0-C4 with the feedback chosen from the development run (units c0, route, lib;
+        240 episodes). It refuses to start until pconfirm.MAIN_FEEDBACK is set.
 
 Everything else is P-adopt's runner (scripts/run_p_adopt.py): units write under
 <output>/<stage>/<model_id>/<unit>/job-<SLURM_JOB_ID>/, a unit with a complete terminal receipt
@@ -32,15 +34,27 @@ from scripts.run_p_adopt import FIT_SEEDS, complete, design, load_model, sha, wr
 DEV_UNITS = {"dev_hint": ((pconfirm.C2, pconfirm.C2Cause), True)}
 
 
+def main_units(feedback=None):
+    """c0: no library; lib: interface, upper bound and retrieval; route: the routed arm."""
+    feedback = feedback or pconfirm.MAIN_FEEDBACK
+    if feedback not in pconfirm.FEEDBACK:
+        raise RuntimeError("the confirmatory feedback is not chosen yet (pconfirm.MAIN_FEEDBACK)")
+    x0, x1, x2, x3, x4 = pconfirm.METHODS[feedback]
+    return {"c0": ((x0,), False), "route": ((x2,), True), "lib": ((x1, x3, x4), True)}
+
+
 def stage_design(stage, pipeline):
-    """(suite, held-out tasks, seeds, fit budget, units) for a stage."""
-    if stage != "dev":
-        raise NotImplementedError("the confirmatory tasks are not frozen yet")
-    tasks, seeds, fit_budget = design(False)
+    """(suite, test tasks, seeds, fit budget, units) for a stage."""
+    _, seeds, fit_budget = design(False)
+    if stage == "dev":
+        tasks, units = design(False)[0], DEV_UNITS
+    else:
+        from fin_skills.tasks.confirm import CONFIRM_SEEDS, confirm_suite
+        tasks, seeds, units = confirm_suite(), CONFIRM_SEEDS, main_units()
     heldout = list(tasks.heldout)
     if pipeline:
         heldout, seeds = heldout[:1], seeds[:1]
-    return tasks, heldout, seeds, fit_budget, DEV_UNITS
+    return tasks, heldout, seeds, fit_budget, units
 
 
 def check_first_prompts(manifest, methods, forwarded):

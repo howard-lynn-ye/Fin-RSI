@@ -118,7 +118,25 @@ def test_manifest_and_runner_units():
     tasks, heldout, seeds, _, units = stage_design("dev", False)
     assert [t.id for t in heldout] == [t.id for t in HELDOUT] and seeds == (101, 211, 307)
     assert len(stage_design("dev", True)[1]) == 1
-    with pytest.raises(NotImplementedError):
-        stage_design("main", False)
     main = pconfirm.manifest(HELDOUT, pconfirm.METHODS["check"], seeds=(1, 2))
     assert not main["exploratory"] and len(main["packets"]) == 5 * 6 * 2
+
+
+def test_the_confirmatory_stage_is_the_24_tasks_and_waits_for_the_feedback(monkeypatch):
+    from scripts import run_p_confirm as runner
+    from fin_skills.tasks.confirm import CONFIRM_SEEDS
+    if pconfirm.MAIN_FEEDBACK is None:
+        with pytest.raises(RuntimeError, match="not chosen yet"):
+            runner.stage_design("main", False)
+    monkeypatch.setattr(pconfirm, "MAIN_FEEDBACK", "cause")
+    suite, tasks, seeds, _, units = runner.stage_design("main", False)
+    assert len(tasks) == 24 and seeds == CONFIRM_SEEDS and suite.dev == ()
+    methods = [m for unit in units.values() for m in unit[0]]
+    assert sorted(m.name for m in methods) == [f"confirm_C{i}_cause" for i in range(5)]
+    assert [lib for _, lib in units.values()] == [False, True, True]
+    m = pconfirm.manifest(tasks, methods, seeds=seeds)
+    assert len(m["packets"]) == 5 * 24 * 2 and sum(p["catalogued"] for p in m["packets"]) == 5 * 16 * 2
+    other = next(t for t in tasks if not pconfirm.catalogued(t))
+    assert pconfirm.C3(library=True).named(other, seeds[0]) is None            # upper bound: no hint
+    assert pconfirm.C4(library=True).named(other, seeds[0]) in routing.RULES   # retrieval cannot abstain
+    assert len(pconfirm.PRIMARY_MODELS) == 8

@@ -11,7 +11,7 @@ catalogued rules with a task (equal_weight has none: its output does not depend 
 """
 from __future__ import annotations
 
-from .spec import Task
+from .spec import Task, TaskSet
 
 CONFIRM_SEEDS = (409, 523)
 DRAW_SEED = 20261119
@@ -270,3 +270,10 @@ def confirm_tasks() -> list[Task]:
         tasks.append(_task(f"c_{algorithm}_1", algorithm, family, text, parameters,
                            len(catalogued) + i, rows=rows, traits=traits))
     return tasks
+
+
+def confirm_suite() -> TaskSet:
+    """All 24 tasks are test tasks; the confirmatory arms learn nothing, so there is no
+    development split here (the earlier suite is the development material)."""
+    tasks = tuple(confirm_tasks())
+    return TaskSet(tasks, {t.algorithm: "heldout" for t in tasks})

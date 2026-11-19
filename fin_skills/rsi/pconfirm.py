@@ -29,6 +29,12 @@ from .study import RETRY, StudyArm
 
 ARMS = ("C0", "C1", "C2", "C3", "C4")
 FEEDBACK = ("check", "cause")
+# The feedback of the confirmatory run, set once from the development run by the rule in the
+# design (cause only if it is valid in at least three more of the 144 episodes). None: not
+# chosen yet, and the confirmatory run refuses to start.
+MAIN_FEEDBACK = None
+PRIMARY_MODELS = ("deepseek-r1-distill-14b", "mistral-small-24b", "phi4-14b", "qwen-coder-14b",
+                  "qwen-coder-32b", "qwen-general-14b", "qwen-general-32b", "qwen3-30b-a3b")
 ROUTE_CAP = pfix.ROUTE_CAP
 VISIBLE_CHECKS = pfix.VISIBLE_CHECKS
 
