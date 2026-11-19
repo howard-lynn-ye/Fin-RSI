@@ -109,8 +109,11 @@ def test_signal_positions_lags_fills_and_scales_once():
     assert got.attrs["lag_bars"] == 1 and got.attrs["warmup_rows"] == 2
     one = signal_positions(states["A"], scale=1.0, warmup="nan")
     assert one.iloc[:3, 0].isna().all() and one.iloc[3, 0] == 1.0
-    with pytest.raises(ValueError, match="missing values after"):
+    with pytest.raises(ValueError, match="missing values after") as err:
         signal_positions(states.assign(A=[np.nan, 1, np.nan, 1, 1, 1]))
+    # The error names the first gap, so a program can be fixed where it is wrong.
+    assert "First gap: column 'A' at " in str(err.value) and "(row 2)" in str(err.value)
+    assert "1 cells in all" in str(err.value)
     with pytest.raises(ValueError, match="no decision"):
         signal_positions(pd.DataFrame({"A": [np.nan] * 3}, index=idx[:3]))
 
@@ -159,13 +162,29 @@ def test_returns_passed_as_prices_say_so(prices):
         positions("rsi_reversion", prices.pct_change().fillna(0.0))
 
 
-@pytest.mark.parametrize("kwargs", [dict(window=15), dict(rebalance_every=5),
-                                    dict(window=15, rebalance_every=2)])
-def test_portfolio_only_arguments_are_refused_for_signal_rules(prices, kwargs):
-    # window=15 used to be ignored for a signal rule, which kept its default lookback of 20.
+def test_window_is_read_as_the_lookback_of_a_rule_that_has_one(prices):
+    # window=15 was first ignored (the rule kept lookback=20), then refused. A rule with one
+    # rolling window can only mean that window, and 44 recorded programs of larger models
+    # passed it this way.
+    for rule in ("bollinger_reversion", "rsi_reversion", "donchian_breakout", "momentum"):
+        w = positions(rule, prices, window=15)
+        assert w.equals(positions(rule, prices, lookback=15))
+        assert w.attrs["parameters"]["lookback"] == 15
+        assert not w.equals(positions(rule, prices))
+    with pytest.raises(TypeError, match="both given.*Pass lookback only"):
+        positions("bollinger_reversion", prices, window=15, lookback=20)
+    with pytest.raises(ValueError, match="window must be None or an integer >= 2"):
+        positions("bollinger_reversion", prices, window=1.5)
+
+
+@pytest.mark.parametrize("rule, kwargs", [("macd", dict(window=15)),
+                                          ("ma_crossover", dict(window=15)),
+                                          ("bollinger_reversion", dict(rebalance_every=5)),
+                                          ("macd", dict(window=15, rebalance_every=2))])
+def test_portfolio_only_arguments_are_refused_for_signal_rules(prices, rule, kwargs):
     with pytest.raises(TypeError, match="portfolio algorithms only and would be ignored") as err:
-        positions("bollinger_reversion", prices, **kwargs)
-    assert "lookback=15" in str(err.value)
+        positions(rule, prices, **kwargs)
+    assert "defaults: " in str(err.value)
     explicit = positions("bollinger_reversion", prices, rebalance_every=1)
     assert explicit.equals(positions("bollinger_reversion", prices))
 

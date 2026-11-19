@@ -54,10 +54,12 @@ class Visible:
     def check_text(self, *, tools: bool, rules: bool = True) -> str:
         """Failed checks with their causes and, when rules is True, their rule cards (cards
         carry library hints only when tools is True). Empty when the program ran and passed."""
+        from .properties import CAUSES as PROPERTY_CAUSES
         known = [n for n in self.failed if n in CAUSES]
-        if not known:
-            return ""
-        return explain(known, tools=tools, rules=rules)
+        declared = [f"Check {n} failed: likely {PROPERTY_CAUSES[n]}." for n in self.failed
+                    if n in PROPERTY_CAUSES]
+        parts = ([explain(known, tools=tools, rules=rules)] if known else []) + declared
+        return "\n".join(parts)
 
 
 def reference(task: Task, seed: int | str) -> np.ndarray:

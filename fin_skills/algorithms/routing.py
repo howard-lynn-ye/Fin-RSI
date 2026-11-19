@@ -48,7 +48,26 @@ RULES = {
                          "a close below lower, otherwise unchanged.",
 }
 
+# Position-capable ready algorithms and the defaults they use when a parameter is omitted.
+PARAMETERS = {
+    "equal_weight": {}, "inverse_volatility": {}, "min_variance": {},
+    "hrp": {"linkage": "required, e.g. 'single'"},
+    "cross_sectional_momentum": {"lookback": 60, "top_k": 3},
+    "ma_crossover": {"fast": 5, "slow": 20},
+    "momentum": {"lookback": 20},
+    "vol_target_momentum": {"lookback": 20, "target_vol": 0.10, "periods_per_year": 252,
+                            "max_exposure": 1.0},
+    "macd": {"fast": 12, "slow": 26, "signal_span": 9},
+    "bollinger_reversion": {"lookback": 20, "entry_z": 2.0},
+    "rsi_reversion": {"lookback": 14, "lower": 30.0, "upper": 70.0},
+    "donchian_breakout": {"lookback": 20},
+}
+PORTFOLIO = frozenset({"equal_weight", "inverse_volatility", "min_variance", "hrp",
+                       "cross_sectional_momentum"})
 POINTER = 'The fin_skills library implements this rule as positions("{algorithm}", ...).'
+HINT = ("The fin_skills library computes this rule: {call}. Call it with the task's values in "
+        "place of each ... instead of writing the rule yourself; the result is already lagged, "
+        "filled and scaled.")
 ROUTE_SYSTEM = ("You match a rule described in words to a library catalogue. Reply with one line: "
                 "the id of the catalogue rule that computes it, or NONE.")
 ROUTE_QUESTION = ("Which catalogue id computes the rule above, apart from parameter values? Reply "
@@ -85,6 +104,25 @@ def parse_route(reply: str) -> str | None:
         return None
     everything = named(text)
     return everything.pop() if len(everything) == 1 else None
+
+
+def call_text(algorithm_id: str) -> str:
+    """The positions() call for one algorithm with its parameter names and no values, e.g.
+    positions("rsi_reversion", prices, split_factors, lookback=..., lower=..., upper=...).
+    A portfolio algorithm also lists window= and rebalance_every=, which only those take."""
+    if algorithm_id not in PARAMETERS:
+        raise KeyError(f"unknown algorithm: {algorithm_id!r}. positions() accepts: "
+                       + ", ".join(sorted(PARAMETERS)))
+    names = list(PARAMETERS[algorithm_id])
+    if algorithm_id in PORTFOLIO:
+        names += ["window", "rebalance_every"]
+    return (f'positions("{algorithm_id}", prices, split_factors'
+            + "".join(f", {name}=..." for name in names) + ")")
+
+
+def hint(algorithm_id: str) -> str:
+    """One sentence for the task once the rule is known: the call, with its parameter names."""
+    return HINT.format(call=call_text(algorithm_id))
 
 
 def route(description: str, generate) -> str | None:

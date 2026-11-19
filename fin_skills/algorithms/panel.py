@@ -185,19 +185,31 @@ def _merge_parameters(parameters, extra) -> dict:
     return params
 
 
+def _label(value) -> str:
+    return value.date().isoformat() if hasattr(value, "date") else repr(value)
+
+
+def _signal_parameters(algorithm_id) -> dict:
+    """The parameters (with defaults) of a rule positions() lists; empty for any other id."""
+    from .routing import PARAMETERS
+    return dict(PARAMETERS.get(algorithm_id, {}))
+
+
 def _refuse_unused_arguments(spec, algorithm_id, window, rebalance_every, scale):
     """An argument that does not apply to this kind of algorithm would otherwise be ignored and
-    the result would look right: window=15 for a signal rule keeps its default lookback."""
+    the result would look right: window=15 for a rule with fast= and slow= changes nothing.
+    (positions() has already read window= as lookback for a rule that has one.)"""
     if spec.task == "signal":
         unused = [f"{k}={v!r}" for k, v in (("window", window), ("rebalance_every", rebalance_every))
                   if v is not None and not (k == "rebalance_every" and v == 1)]
         if unused:
             verb = "apply" if len(unused) > 1 else "applies"
+            own = ", ".join(f"{k}={v!r}" for k, v in _signal_parameters(algorithm_id).items())
             raise TypeError(f"{' and '.join(unused)} {verb} to portfolio algorithms only and would "
                             f"be ignored: {algorithm_id} is a signal algorithm. Pass the rule's own "
-                            f"parameters as keywords instead, e.g. positions({algorithm_id!r}, "
-                            f"prices, split_factors, lookback=15) for its rolling window; an "
-                            f"unknown keyword raises and lists the accepted ones.")
+                            f"parameters as keywords instead"
+                            + (f" (defaults: {own})" if own else "")
+                            + "; an unknown keyword raises and lists the accepted ones.")
     elif spec.task == "portfolio" and not (isinstance(scale, str) and scale == "equal"):
         raise TypeError(f"scale={scale!r} applies to signal algorithms only and would be ignored: "
                         f"{algorithm_id} is a portfolio algorithm, whose weights are returned as "
@@ -230,9 +242,11 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     prices         : raw closes, one column per asset (a Series is one asset).
     split_factors  : see adjust_prices(); None means prices are already adjusted. The output
                      of adjust_prices() must come with split_factors=None, or this raises.
-    window         : portfolio algorithms only - how many trailing simple returns each
+    window         : portfolio algorithms - how many trailing simple returns each
                      decision sees. None passes the whole available history. Rows without
-                     enough history are warm-up rows.
+                     enough history are warm-up rows. For a signal rule whose one rolling
+                     window is lookback, window= is read as that lookback; other signal
+                     rules refuse it.
     rebalance_every: portfolio algorithms only - recompute every n rows from the first
                      decision row and hold the target weights in between.
     lag            : bars between the last close a position may read and the row it is on.
@@ -261,6 +275,14 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     if warmup not in WARMUP:
         raise ValueError(f"warmup must be one of {WARMUP}, got {warmup!r}")
     spec = _spec_for_positions(reg, algorithm_id)
+    if (spec.task == "signal" and window is not None
+            and "lookback" in _signal_parameters(algorithm_id)):
+        # The rule has one rolling window and calls it lookback; window= can only mean that.
+        if "lookback" in params:
+            raise TypeError(f"window={window!r} and lookback={params['lookback']!r} were both "
+                            f"given: {algorithm_id} has one rolling window, lookback. Pass "
+                            "lookback only.")
+        params["lookback"], window = int(window), None
     _refuse_unused_arguments(spec, algorithm_id, window, rebalance_every, scale)
     given_states = sorted(set(params) & {"states", "state", "signal", "signals", "positions"})
     if given_states:
@@ -380,9 +402,17 @@ def signal_positions(states: pd.DataFrame | pd.Series, *, lag: int = 1, warmup: 
     if np.isinf(values.to_numpy()).any():
         raise ValueError("states contain infinite values")
     started = values.notna().cummax()
-    if (values.isna() & started).to_numpy().any():
+    gaps = values.isna() & started
+    if gaps.to_numpy().any():
+        column = gaps.any().idxmax()
+        row = gaps[column].idxmax()
+        first = values[column].first_valid_index()
         raise ValueError("states have missing values after a column's first decision; only "
-                         "warm-up rows before it may be NaN")
+                         "warm-up rows before it may be NaN. First gap: column "
+                         f"{column!r} at {_label(row)} (row {values.index.get_loc(row)}), after "
+                         f"its first decision at {_label(first)}; {int(gaps.to_numpy().sum())} "
+                         "cells in all. Give every row from the first decision on a state "
+                         "(for example carry the previous one forward).")
     if isinstance(scale, str):
         if scale != "equal":
             raise ValueError("scale must be a number or 'equal'")

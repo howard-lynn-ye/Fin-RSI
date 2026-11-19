@@ -41,7 +41,8 @@ def test_interface_is_the_current_positions_only_text():
 def test_documented_interface_only_adds_the_rules():
     from fin_skills.tasks.prompts import DEFAULTS, RULES
     plain, documented = pfix.interface_text(), pfix.interface_text(documented=True)
-    assert hashlib.sha256(plain.encode()).hexdigest().startswith("04fbb48cc1a5")  # v4 text
+    # v4 ran with the text at b8417dcc (5,657 characters, 04fbb48cc1a5); the live text moves
+    # with the library's docstrings, so only its structure is checked here.
     assert "factors='auto'" in plain
     assert set(RULES) == set(DEFAULTS)
     added = {"      " + rule for rule in RULES.values()}

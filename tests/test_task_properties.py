@@ -52,8 +52,35 @@ def test_the_default_judge_keeps_the_three_frozen_checks():
     assert old.accepted
     new = Judge(task, seed=101, library=True, properties=True).check(code)
     assert new.failed == ["position_scale"] and not new.accepted
-    assert new.check_text(tools=False) == ""      # the frozen explanations are unchanged
     assert set(CAUSES) == set(CHECKS)
+    text = new.check_text(tools=False)             # Explain feedback names the cause
+    assert text == f"Check position_scale failed: likely {CAUSES['position_scale']}."
+    assert old.check_text(tools=False) == ""       # accepted by the three frozen checks
+
+
+def test_explain_text_joins_frozen_and_declared_causes():
+    from fin_skills.tasks.judge import Visible
+    seen = Visible(code="", executed=True, checks=dict(finite_output=True, execution_lag=False,
+                                                       warmup_rows_zero=False))
+    text = seen.check_text(tools=False)
+    assert text.startswith("Check execution_lag failed") and text.endswith(
+        f"Check warmup_rows_zero failed: likely {CAUSES['warmup_rows_zero']}.")
+
+
+def test_hint_names_the_call_and_its_parameters():
+    assert routing.call_text("rsi_reversion") == (
+        'positions("rsi_reversion", prices, split_factors, lookback=..., lower=..., upper=...)')
+    assert routing.call_text("inverse_volatility").endswith("window=..., rebalance_every=...)")
+    assert set(routing.PARAMETERS) == set(routing.RULES)
+    for name in routing.PARAMETERS:
+        assert routing.call_text(name) in routing.hint(name)
+    from fin_skills.algorithms.technical import SIGNAL_DEFAULTS
+    for name, defaults in SIGNAL_DEFAULTS.items():      # the hint lists what the rule accepts
+        if name in routing.PARAMETERS:
+            assert set(routing.PARAMETERS[name]) <= set(defaults), name
+    with pytest.raises(KeyError, match="positions\\(\\) accepts"):
+        routing.call_text("rsi")
+    assert routing.POINTER == 'The fin_skills library implements this rule as positions("{algorithm}", ...).'
 
 
 @pytest.mark.parametrize("reply, want", [

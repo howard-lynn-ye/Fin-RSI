@@ -17,20 +17,7 @@ from fin_skills.api.rules import prompt_block, rules_for
 from .data import panel, sample_text
 from .spec import FACTOR_TEXT, Task
 
-# Position-capable ready algorithms and the defaults they use when a parameter is omitted.
-DEFAULTS = {
-    "equal_weight": {}, "inverse_volatility": {}, "min_variance": {},
-    "hrp": {"linkage": "required, e.g. 'single'"},
-    "cross_sectional_momentum": {"lookback": 60, "top_k": 3},
-    "ma_crossover": {"fast": 5, "slow": 20},
-    "momentum": {"lookback": 20},
-    "vol_target_momentum": {"lookback": 20, "target_vol": 0.10, "periods_per_year": 252,
-                            "max_exposure": 1.0},
-    "macd": {"fast": 12, "slow": 26, "signal_span": 9},
-    "bollinger_reversion": {"lookback": 20, "entry_z": 2.0},
-    "rsi_reversion": {"lookback": 14, "lower": 30.0, "upper": 70.0},
-    "donchian_breakout": {"lookback": 20},
-}
+from fin_skills.algorithms.routing import PARAMETERS as DEFAULTS  # noqa: E402  (listing)
 # Ready algorithms usable with rolling(), and the defaults they use when a parameter is omitted.
 ROLLING_DEFAULTS = {
     "historical_volatility": {"periods_per_year": 1},
