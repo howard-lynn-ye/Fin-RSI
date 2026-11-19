@@ -9,6 +9,8 @@ held-out tasks right with it. It reuses P-adopt's machinery and its no-library a
   F0  no library: identical messages to P-adopt L0 (and to the frozen no-library first prompt)
   F1  the current library and its current position-task interface text
   F2  F1 plus P-adopt's one-sentence pointer naming the algorithm that implements the rule
+  F3  (amendment 2, exploratory) F1 with the documented interface: the rule each algorithm
+      computes, and that a matching task needs one positions() call; nothing task-specific
 
 Every arm uses the frozen system prompt (including "Implement the rule exactly"), no rule
 cards, names-only Check feedback (an execution error is shown in full, as in the frozen study),
@@ -22,12 +24,13 @@ from .adopt import BUDGET, OUTPUT_CAP, POINTER
 from .run_record import digest
 from .study import StudyArm
 
-ARMS = ("F0", "F1", "F2")
+ARMS = ("F0", "F1", "F2", "F3")
 
 
-def interface_text() -> str:
-    """What F1 and F2 append to the system prompt: the current positions-only interface."""
-    return library_text(rolling=False, frozen=False)
+def interface_text(*, documented: bool = False) -> str:
+    """What F1 and F2 append to the system prompt (the current positions-only interface);
+    documented=True is F3's, which adds the rule each algorithm computes."""
+    return library_text(rolling=False, frozen=False, documented=documented)
 
 
 def pfix_messages(task, *, seed, arm, extra=""):
@@ -38,7 +41,7 @@ def pfix_messages(task, *, seed, arm, extra=""):
                            timing=TIMING[task.kind])
     system += WITH_LIBRARY if library else NO_LIBRARY
     if library:
-        system += "\n\nfin_skills interface:\n" + interface_text()
+        system += "\n\nfin_skills interface:\n" + interface_text(documented=arm == "F3")
     messages = [dict(role="system", content=system),
                 dict(role="user", content=task_prompt(task, seed=seed))]
     if arm == "F2":
@@ -68,9 +71,13 @@ def _check(arm):
                                                 feedback="check"))
 
 
-CheckF0, CheckF1, CheckF2 = (_check(arm) for arm in ARMS)
+CheckF0, CheckF1, CheckF2, CheckF3 = (_check(arm) for arm in ARMS)
 SCRATCH = (CheckF0,)
 LIBRARY = (CheckF1, CheckF2)
+DOCUMENTED = (CheckF3,)
+EXPLORATORY_CONTRASTS = ((("check_F3", True), ("check_F1", True)),
+                         (("check_F3", True), ("check_F2", True)),
+                         (("check_F3", True), ("check_F0", False)))
 PRIMARY_CONTRASTS = ((("check_F1", True), ("check_F0", False)),
                      (("check_F2", True), ("check_F0", False)),
                      (("check_F2", True), ("check_F1", True)))
@@ -82,12 +89,16 @@ def manifest(tasks, *, seeds=(101, 211, 307), budget=BUDGET):
     packets = [dict(arm=method.fix_arm, method=method.name, library=method.fix_arm != "F0",
                     task_id=task.id, task_sha256=task.sha256, seed=seed,
                     messages_sha256=digest(pfix_messages(task, seed=seed, arm=method.fix_arm)))
-               for method in (CheckF0, CheckF1, CheckF2) for task in tasks for seed in seeds]
-    return dict(version="p-fix-v1", exploratory=True, publication_ready=False,
+               for method in (CheckF0, CheckF1, CheckF2, CheckF3) for task in tasks for seed in seeds]
+    return dict(version="p-fix-v3", exploratory=True, publication_ready=False,
                 design="docs/P_FIX_STUDY_DESIGN_20261118.md",
                 arms=dict(F0="no library (= P-adopt L0)", F1="current library interface",
-                          F2="F1 + " + POINTER),
-                interface_sha256=digest(interface_text()), pointer=POINTER,
+                          F2="F1 + " + POINTER,
+                          F3="F1 with the documented interface (amendment 2)"),
+                interface_sha256=digest(interface_text()),
+                documented_interface_sha256=digest(interface_text(documented=True)),
+                pointer=POINTER,
                 output_cap=OUTPUT_CAP, budget=budget.as_dict(), initial_teaching_cards=False,
                 feedback="failed check names; a failed run shows its error (Check)",
-                primary_contrasts=PRIMARY_CONTRASTS, packets=packets)
+                primary_contrasts=PRIMARY_CONTRASTS,
+                exploratory_contrasts=EXPLORATORY_CONTRASTS, packets=packets)

@@ -152,3 +152,43 @@ def test_scale_argument_is_not_counted_as_rescaling(tmp_path):
                episodes("check_F2", valid_every=1000, calls=1, code=code, accepted=True))
     f = ap.analyze(tmp_path)["funnel"]["F2"]
     assert f["last_calls_library_accepted_wrong"] == 17 and f["last_calls_library_accepted_wrong_rescaled"] == 0
+
+
+def test_documented_arm_is_exploratory_and_optional(tmp_path):
+    root, fix_root, doc_root = tmp_path / "v1", tmp_path / "v2", tmp_path / "v3"
+    for m in ("qwen-a-32b", "small-7b"):
+        write_unit(root, m, "check_F0", 5, episodes("check_F0", valid_every=3))
+        write_unit(fix_root, m, "check_fix", 7,
+                   episodes("check_F1", calls=1) + episodes("check_F2", valid_every=1, calls=1))
+    write_unit(doc_root, "qwen-a-32b", "check_doc", 8, episodes("check_F3", valid_every=1, calls=1))
+    write_unit(doc_root, "small-7b", "check_doc", 9, episodes("check_F3")[:5],
+               status="interrupted")  # not complete: keeps F0-F2, no F3
+    without = ap.analyze(root, fix_root=fix_root)
+    out = ap.analyze(root, fix_root=fix_root, doc_root=doc_root)
+    assert out["missing"] == [] and out["missing_doc"] == ["small-7b"]
+    assert out["contrasts"] == without["contrasts"]  # declared contrasts do not move
+    assert {a: out["pooled"][a] for a in without["pooled"]} == without["pooled"]
+    assert out["pooled"]["F3"] == dict(n=18, valid=18, valid_pct=100.0, models=1, first_valid=18,
+                                       accepted_wrong=0, models_none_valid=0)
+    e = {x["contrast"]: x for x in out["exploratory_contrasts"]}
+    assert e["F3-F1"]["models"] == 1 and e["F3-F1"]["per_model"] == {"qwen-a-32b": 9}
+    assert e["F3-F2"]["same"] == 1 and e["F3-F0"]["pooled_pct_points"] == round(100 * 12 / 18, 1)
+    assert out["funnel"]["F3"]["last_calls_library"] == 18
+    assert "F3" not in without["pooled"] and without["exploratory_contrasts"] == []
+
+
+def test_size_split(tmp_path):
+    for m in ("qwen3-30b-a3b", "phi4-mini", "phi4-14b", "granite-2b", "odd"):
+        write_unit(tmp_path, m, "check_F0", 5, episodes("check_F0", valid_every=3))
+        write_unit(tmp_path, m, "check_fix", 7,
+                   episodes("check_F1") + episodes("check_F2", valid_every=1))
+    out = ap.analyze(tmp_path)
+    assert out["sizes_b"] == {"granite-2b": 2.0, "odd": None, "phi4-14b": 14.0,
+                              "phi4-mini": 3.8, "qwen3-30b-a3b": 30.0}
+    assert out["unsized"] == ["odd"]
+    big, small = out["by_size"]["ge14b"], out["by_size"]["lt14b"]
+    assert big["models"] == ["phi4-14b", "qwen3-30b-a3b"]
+    assert small["models"] == ["granite-2b", "phi4-mini"]
+    assert big["pooled"]["F2"]["valid"] == 36 and small["pooled"]["F0"]["valid"] == 12
+    assert {c["contrast"]: c["models"] for c in big["contrasts"]} == {
+        "F1-F0": 2, "F2-F0": 2, "F2-F1": 2}

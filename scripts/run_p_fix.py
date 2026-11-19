@@ -29,9 +29,10 @@ from scripts.run_p_adopt import (FIT_SEEDS, check_first_prompts, complete, desig
                                  load_model, sha, write)
 
 UNITS = {"check_F0": ((pfix.CheckF0,), False),
-         "check_fix": ((pfix.CheckF1, pfix.CheckF2), True)}
+         "check_fix": ((pfix.CheckF1, pfix.CheckF2), True),
+         "check_doc": ((pfix.CheckF3,), True)}
 PARTS = {"check": ("check_F0", "check_fix"), "check_F0": ("check_F0",),
-         "check_fix": ("check_fix",)}
+         "check_fix": ("check_fix",), "check_doc": ("check_doc",)}
 
 
 def run(args):

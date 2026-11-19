@@ -1,6 +1,7 @@
 """P-fix analysis (exploratory, descriptive): docs/P_FIX_STUDY_DESIGN_20261118.md.
 
     python scripts/analyze_p_fix.py <runs/main> <out.json> [--models a,b,...]
+        [--fix-root <runs-v2/main>] [--doc-root <runs-v3/main>]
 
 For each model, the first complete run of each unit (lowest Slurm job id with a complete terminal
 record) is read; every refusal, context stop, truncated reply and failed program stays in the
@@ -8,6 +9,11 @@ denominator. Reports valid episodes per arm and model, the three primary contras
 pooled (by algorithm family and variant too), the library funnel, library-call errors by group,
 and a post-hoc scan of every program for file, network or process access (the no-Landlock
 deviation on Zaratan). Nothing here is a significance test.
+
+Amendment 2 adds arm F3 (documented interface, unit check_doc), read from --doc-root. Its
+contrasts are reported apart from the declared ones, over the models whose F3 run is complete;
+models without one keep their F0-F2 results. The split by model size (total parameters >= 14B
+or smaller) is post hoc and descriptive.
 """
 from __future__ import annotations
 
@@ -17,9 +23,16 @@ import json
 import re
 from pathlib import Path
 
-ARMS = {"check_F0": "F0", "check_F1": "F1", "check_F2": "F2"}
+ARMS = {"check_F0": "F0", "check_F1": "F1", "check_F2": "F2", "check_F3": "F3"}
 UNITS = {"check_F0": ("check_F0",), "check_fix": ("check_F1", "check_F2")}
+DOC_UNIT = ("check_doc", ("check_F3",))  # Amendment 2, optional
 CONTRASTS = (("F1", "F0"), ("F2", "F0"), ("F2", "F1"))
+EXPLORATORY_CONTRASTS = (("F3", "F1"), ("F3", "F2"), ("F3", "F0"))
+LIBRARY_ARMS = ("F1", "F2", "F3")
+# Total parameters in billions: the number in the model's name (qwen3-30b-a3b counts its 30B
+# total, not its 3B active), and phi4-mini's 3.8B from its model card. Post-hoc split at 14B.
+SIZE_OVERRIDES = {"phi4-mini": 3.8}
+LARGE_B = 14
 EPISODES_PER_ARM = 18
 SCAN = {
     "file": r"\bopen\s*\(|\bpathlib\b|\bPath\s*\(|\bos\.(?:listdir|walk|scandir|remove|unlink|"
@@ -89,10 +102,40 @@ def rate(valid, n):
     return round(100 * valid / n, 1) if n else None
 
 
-def analyze(root: Path, models=None, fix_root: Path | None = None):
+def size_b(model: str) -> float | None:
+    """Total parameters in billions, or None when the name carries none (listed as unsized)."""
+    if model in SIZE_OVERRIDES:
+        return SIZE_OVERRIDES[model]
+    m = re.search(r"(\d+(?:\.\d+)?)b(?![a-z])", model)
+    return float(m.group(1)) if m else None
+
+
+def contrast(per_model, a, b):
+    diffs = {m: c[a]["valid"] - c[b]["valid"] for m, c in per_model.items()
+             if c[a]["n"] and c[b]["n"]}
+    k = len(diffs)
+    return dict(
+        contrast=f"{a}-{b}", models=k,
+        pooled_pct_points=round(100 * sum(diffs.values()) / (k * EPISODES_PER_ARM), 1) if k else None,
+        better=sum(d > 0 for d in diffs.values()), worse=sum(d < 0 for d in diffs.values()),
+        same=sum(d == 0 for d in diffs.values()), per_model=diffs)
+
+
+def pool(per_model, arm):
+    rows = [m[arm] for m in per_model.values() if m[arm]["n"]]
+    n, v = sum(c["n"] for c in rows), sum(c["valid"] for c in rows)
+    return dict(n=n, valid=v, valid_pct=rate(v, n), models=len(rows),
+                first_valid=sum(c["first_valid"] for c in rows),
+                accepted_wrong=sum(c["accepted_wrong"] for c in rows),
+                models_none_valid=sum(c["valid"] == 0 for c in rows))
+
+
+def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Path | None = None):
     """fix_root: read check_fix from another runs/main (a later library version with identical
-    prompts); check_F0 never imports the library and is read from root."""
-    out = dict(models={}, runs={}, missing=[], fix_root=str(fix_root) if fix_root else None)
+    prompts); check_F0 never imports the library and is read from root. doc_root: read
+    check_doc (F3, Amendment 2) from its runs/main; a model without one keeps F0-F2."""
+    out = dict(models={}, runs={}, missing=[], fix_root=str(fix_root) if fix_root else None,
+               doc_root=str(doc_root) if doc_root else None, missing_doc=[])
     rows_by = collections.defaultdict(list)
     for model_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         model = model_dir.name
@@ -112,11 +155,19 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
             out["missing"].append(model)
             rows_by.pop(model, None)
             continue
+        if doc_root is not None:
+            unit, methods = DOC_UNIT
+            run, rows = first_complete(doc_root / model / unit)
+            if rows is None:
+                out["missing_doc"].append(model)
+            else:
+                got[unit] = run
+                rows_by[model].extend(r for r in rows if r["method"] in methods)
         out["runs"][model] = got
     per_model, families, variants = {}, collections.defaultdict(collections.Counter), \
         collections.defaultdict(collections.Counter)
-    funnel = {a: collections.Counter() for a in ("F1", "F2")}
-    errors = {a: collections.Counter() for a in ("F1", "F2")}
+    funnel = {a: collections.Counter() for a in LIBRARY_ARMS}
+    errors = {a: collections.Counter() for a in LIBRARY_ARMS}
     scan = collections.Counter()
     flagged, infrastructure = [], []
     programs = {a: collections.Counter() for a in ARMS.values()}
@@ -186,28 +237,31 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
                 elif last:
                     f["last_no_library"] += 1
                     f["last_no_library_valid"] += bool(r["valid"])
-        if any(c["n"] != EPISODES_PER_ARM for c in counts.values()):
-            raise ValueError(f"{model}: episodes per arm {[c['n'] for c in counts.values()]}")
+        expected = {a: EPISODES_PER_ARM for a in ("F0", "F1", "F2")}
+        if doc_root is not None and model not in out["missing_doc"]:
+            expected["F3"] = EPISODES_PER_ARM
+        got_n = {a: c["n"] for a, c in counts.items() if c["n"]}
+        if got_n != expected:
+            raise ValueError(f"{model}: episodes per arm {got_n}, expected {expected}")
         per_model[model] = counts
-    pooled = {}
-    for arm in ARMS.values():
-        n = sum(m[arm]["n"] for m in per_model.values())
-        v = sum(m[arm]["valid"] for m in per_model.values())
-        fv = sum(m[arm]["first_valid"] for m in per_model.values())
-        aw = sum(m[arm]["accepted_wrong"] for m in per_model.values())
-        pooled[arm] = dict(n=n, valid=v, valid_pct=rate(v, n), first_valid=fv, accepted_wrong=aw,
-                           models_none_valid=sum(m[arm]["valid"] == 0 for m in per_model.values()))
-    contrasts = []
-    for a, b in CONTRASTS:
-        diffs = {m: c[a]["valid"] - c[b]["valid"] for m, c in per_model.items()}
-        k = len(diffs)
-        contrasts.append(dict(
-            contrast=f"{a}-{b}", models=k,
-            pooled_pct_points=round(100 * sum(diffs.values()) / (k * EPISODES_PER_ARM), 1) if k else None,
-            better=sum(d > 0 for d in diffs.values()), worse=sum(d < 0 for d in diffs.values()),
-            same=sum(d == 0 for d in diffs.values()), per_model=diffs))
+    arms = [a for a in ARMS.values() if any(m[a]["n"] for m in per_model.values())]
+    pooled = {arm: pool(per_model, arm) for arm in arms}
+    contrasts = [contrast(per_model, a, b) for a, b in CONTRASTS]
+    exploratory = [contrast(per_model, a, b) for a, b in EXPLORATORY_CONTRASTS if "F3" in arms]
+    by_size = {}
+    sizes = {m: size_b(m) for m in per_model}
+    for label, keep in ((f"ge{LARGE_B}b", lambda m: sizes[m] is not None and sizes[m] >= LARGE_B),
+                        (f"lt{LARGE_B}b", lambda m: sizes[m] is not None and sizes[m] < LARGE_B)):
+        group = {m: c for m, c in per_model.items() if keep(m)}
+        by_size[label] = dict(
+            models=sorted(group), pooled={arm: pool(group, arm) for arm in arms},
+            contrasts=[contrast(group, a, b) for a, b in CONTRASTS],
+            exploratory_contrasts=[contrast(group, a, b) for a, b in EXPLORATORY_CONTRASTS
+                                   if "F3" in arms])
     out.update(
         per_model=per_model, pooled=pooled, contrasts=contrasts,
+        exploratory_contrasts=exploratory,
+        sizes_b=sizes, unsized=sorted(m for m, b in sizes.items() if b is None), by_size=by_size,
         by_family={f"{f}|{a}": dict(c, valid_pct=rate(c["valid"], c["n"]))
                    for (f, a), c in sorted(families.items())},
         by_variant={f"{v}|{a}": dict(c, valid_pct=rate(c["valid"], c["n"]))
@@ -221,15 +275,24 @@ def analyze(root: Path, models=None, fix_root: Path | None = None):
 
 
 def report(out):
-    print(f"models complete: {len(out['per_model'])}; missing: {out['missing']}")
-    print("model                      F0  F1  F2   (valid of 18)")
+    print(f"models complete: {len(out['per_model'])}; missing: {out['missing']}; "
+          f"without F3: {out['missing_doc']}")
+    arms = list(out["pooled"])
+    print("model                    " + "".join(f"{a:>4}" for a in arms) + "   (valid of 18)")
     for m, c in out["per_model"].items():
-        print(f"  {m:24} {c['F0']['valid']:3} {c['F1']['valid']:3} {c['F2']['valid']:3}")
+        print(f"  {m:24}" + "".join(f"{c[a]['valid']:4}" if c[a]["n"] else "   -" for a in arms))
     for a, p in out["pooled"].items():
-        print(f"pooled {a}: {p['valid']}/{p['n']} = {p['valid_pct']}%  (first attempt {p['first_valid']})")
-    for c in out["contrasts"]:
-        print(f"{c['contrast']}: {c['pooled_pct_points']:+} points; models better {c['better']}, "
-              f"worse {c['worse']}, same {c['same']}")
+        print(f"pooled {a}: {p['valid']}/{p['n']} = {p['valid_pct']}%  ({p['models']} models; "
+              f"first attempt {p['first_valid']})")
+    for kind in ("contrasts", "exploratory_contrasts"):
+        for c in out[kind]:
+            if c["models"]:
+                print(f"{c['contrast']}: {c['pooled_pct_points']:+} points over {c['models']} "
+                      f"models; better {c['better']}, worse {c['worse']}, same {c['same']}"
+                      + ("  [Amendment 2]" if kind != "contrasts" else ""))
+    for label, g in out["by_size"].items():
+        print(f"{label} ({len(g['models'])} models): " + ", ".join(
+            f"{a} {p['valid']}/{p['n']}" for a, p in g["pooled"].items()))
     for a, f in out["funnel"].items():
         print(f"funnel {a}: {f}")
     for a, e in out["library_errors"].items():
@@ -248,8 +311,11 @@ def main(argv=None):
     parser.add_argument("--models", default="")
     parser.add_argument("--fix-root", type=Path, default=None,
                         help="runs/main of a later library version, for check_fix only")
+    parser.add_argument("--doc-root", type=Path, default=None,
+                        help="runs/main holding check_doc (arm F3, Amendment 2)")
     args = parser.parse_args(argv)
-    out = analyze(args.root, set(filter(None, args.models.split(","))) or None, args.fix_root)
+    out = analyze(args.root, set(filter(None, args.models.split(","))) or None, args.fix_root,
+                  args.doc_root)
     args.out.write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
     report(out)
 

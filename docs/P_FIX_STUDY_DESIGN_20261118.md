@@ -62,3 +62,14 @@ The first run (v1, library at commit 01b2ea44) showed two library behaviours tha
 - The analysis reads F0 from v1 and F1/F2 from v2 (`analyze_p_fix.py --fix-root`). v1's F1/F2 records are kept and released, not analysed. v1 jobs still running are stopped once their F0 unit is complete.
 - Decided with the user on 2026-11-18, after the v1 results above and before any v2 job ran.
 
+
+## Amendment 2 (2026-11-19, before any F3 run)
+
+The v2 results were seen before this amendment was written: pooled valid F0 9.4%, F1 16.1%, F2 28.6%. In F1, models mostly wrote the rule themselves and passed the states to `signal_positions()` (547 programs, against 104 calling `positions()`). F2 adds a task-specific pointer naming the algorithm, which the interface alone does not provide. Amendment 2 adds one arm to separate those two things. It does not change F0, F1 or F2, their records, or the contrasts already declared.
+
+- **F3, documented interface.** F1's system prompt, except that each algorithm in the `positions()` listing is followed by one line stating the rule it computes (`fin_skills.tasks.prompts.RULES`), and the listing's header says that if a task's rule is one of these, one `positions()` call with the task's parameters and `factors=` convention computes it. The task prompt is F0's: nothing names the task's algorithm, parameters or variant. Text: `library_text(rolling=False, frozen=False, documented=True)`, 7,281 characters, SHA-256 prefix 9871fe83a0de; F1's text is unchanged (5,312 characters, 120c321f67cd). Every other setting is as for F1.
+- **Question.** Does a library that documents what each algorithm computes get used, and get held-out tasks right, without a per-task pointer?
+- **Contrasts.** F3 - F1 (rule documentation alone), F3 - F2 (documentation vs a per-task pointer) and F3 - F0, per model and pooled, with the same funnel and error groups. Everything stays descriptive. F3 was designed after seeing v2, so it is labelled exploratory wherever it is reported.
+- **Execution.** Library at the v2 commit (001ea472) plus this arm; the library code that programs import is unchanged. Unit `check_doc` (F3 only), all 20 models, on Zaratan, under the same deviations, into a third output root (v3). The analysis reads F0 from v1, F1 and F2 from v2, and F3 from v3. One `--dev` job on a small model runs first.
+- **Size split (post hoc).** All arms and contrasts are also reported for models with at least 14B total parameters (8 models; qwen3-30b-a3b counts its 30B total) and for the smaller 12. The 14B cut was chosen after seeing v2, so the split is descriptive only. `analyze_p_fix.py` computes it (`by_size`).
+- Decided with the user on 2026-11-19, after the v2 results and before any F3 job ran.
