@@ -217,3 +217,16 @@ def test_routed_arm_and_failed_checks(tmp_path):
     assert out["failed_checks"]["F4"] == dict(programs_ran=36, finite_output=0, position_scale=18)
     assert out["by_size"]["ge14b"]["routing"]["right"] == out["routing"]["right"] // 2
     assert out["funnel"]["F4"]["episodes"] == 36
+
+
+def test_scan_skips_text_that_is_not_a_program(tmp_path):
+    """A reply with no code (a model's reasoning) cannot run; its words are not a finding."""
+    rows = episodes("check_F0", valid_every=3)
+    rows[0]["steps"][0].update(code="<think>The function should not make network requests or "
+                                    "open a socket.\nSo, I'll loop over rows.", executed=False)
+    rows[1]["steps"][0].update(code="import socket\ndef solve(prices, split_factors):\n    return prices * 0\n")
+    write_unit(tmp_path, "m-7b", "check_F0", 5, rows)
+    write_unit(tmp_path, "m-7b", "check_fix", 5, episodes("check_F1") + episodes("check_F2"))
+    out = ap.analyze(tmp_path)
+    assert out["scan"]["not_python"] == 1 and out["scan"]["counts"] == {"network": 1}
+    assert [f["task"] for f in out["scan"]["flagged"]] == [rows[1]["task_id"]]

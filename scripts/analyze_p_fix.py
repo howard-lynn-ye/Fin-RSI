@@ -23,6 +23,7 @@ adds what the router named per episode and how often each visible check failed.
 from __future__ import annotations
 
 import argparse
+import ast
 import collections
 import json
 import re
@@ -187,6 +188,7 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
     flagged, infrastructure = [], []
     programs = {a: collections.Counter() for a in ARMS.values()}
     failed_checks = {a: collections.Counter() for a in ARMS.values()}
+    scan_not_python = 0
     routing = collections.Counter()
     routing_by_model = {}
     for model, rows in sorted(rows_by.items()):
@@ -241,7 +243,15 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
                             p["last_uses_" + k] += bool(re.search(rx, code, re.M))
                             p["last_uses_" + k + "_valid"] += bool(re.search(rx, code, re.M)) and bool(r["valid"])
                 # Full-line comments are not code: models often leave commented-out example I/O.
+                # Text that does not parse is not a program either (a reply with no code, for
+                # example a model's reasoning): the worker's compile() raises before any
+                # statement runs, so its words are counted, not scanned.
                 live = "\n".join(x for x in code.splitlines() if not x.lstrip().startswith("#"))
+                try:
+                    ast.parse(code)
+                except (SyntaxError, ValueError):
+                    scan_not_python += 1
+                    live = ""
                 hits = [k for k, rx in SCAN.items() if re.search(rx, live, re.M)]
                 for k in hits:
                     scan[k] += 1
@@ -305,7 +315,8 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
         library_errors={a: dict(c.most_common()) for a, c in errors.items()},
         failed_checks={a: dict(c) for a, c in failed_checks.items()},
         routing=dict(routing), routing_by_model={m: dict(c) for m, c in routing_by_model.items()},
-        scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged),
+        scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged,
+                  not_python=scan_not_python),
         infrastructure_suspect=infrastructure)
     return out
 
