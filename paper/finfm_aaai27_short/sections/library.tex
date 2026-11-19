@@ -1,43 +1,45 @@
 \section{The \lib{} library}
 \label{sec:library}
 
-\lib{} is a Python package whose base install needs only numpy, pandas and scipy.
+\lib{} is a Python package; its base install needs only numpy, pandas and scipy.
 
 \paragraph{Skills.}
-\NSkills{} skill documents in \NPlugins{} plugins follow the Agent Skills specification
-\citep{agentskills}, with \NReferenceFiles{} reference files and \NScripts{} runnable
-scripts. A skill records the defaults, licence changes and silent failure modes that a
-model's training prior gets wrong; each claim is dated and marked by how it was verified.
-A catalog of \NAlgorithms{} algorithms covers \NAlgorithmTasks{} task types (\NNative{}
-native, \NAdapters{} adapters to \NOptionalLibraries{} optional libraries). \texttt{positions()}
-takes raw quotes and split factors, applies the factors once and returns positions decided on
-the previous close; \texttt{rolling()} does the same for volatility, risk and forecasts, and
-\texttt{signal\_positions()} applies the lag, warm-up and scaling to a model's own states.
-\texttt{adjust\_prices()} reads the factor convention (cumulative factors or event ratios) from
-the data and records it. A call the library cannot honour raises an error that names the right
-one instead of returning a plausible result. A task describes its rule without naming it, so
-\texttt{route(description, generate)} asks the connected model which catalogue rule, if any,
-computes the description, and returns its id or \texttt{None}. \NCards{} rule cards in
-\NCardFamilies{} families (timing, corporate actions, data hygiene; Appendix
-Table~\ref{tab:cards}) hold a short rule, its source passage, the checks that verify it and, where one exists, the
-library call that follows it; a task receives only the cards its traits select.
+The \NSkills{} skill documents (\NPlugins{} plugins in the Agent Skills format
+\citep{agentskills}, with \NReferenceFiles{} reference files and \NScripts{} runnable scripts)
+record what a model's training prior gets wrong: defaults, licence changes and silent failure
+modes, each claim dated and marked by how it was verified. Behind them is a catalogue of
+\NAlgorithms{} algorithms for \NAlgorithmTasks{} task types, \NNative{} native and \NAdapters{}
+adapters to \NOptionalLibraries{} optional libraries. One call does the error-prone part of a
+strategy: \texttt{positions()} takes raw quotes and split factors, applies each split once and
+decides every position on the previous close; \texttt{rolling()} does the same for volatility,
+risk and forecasts; \texttt{signal\_positions()} adds the lag, warm-up and scaling to signals a
+model computes itself. \texttt{adjust\_prices()} reads from the data whether split factors are
+cumulative or per event, and records which. A call the library cannot honour raises an error
+that names the right call instead of returning a plausible result. Tasks describe a rule in
+words, not by name, so \texttt{route(description, generate)} asks the agent's own model which
+catalogue algorithm, if any, computes the description, and returns its id or \texttt{None}.
+Finally, \NCards{} rule cards in \NCardFamilies{} families (timing, corporate actions, data
+hygiene; Appendix Table~\ref{tab:cards}) each pair a short rule with its source, the checks that
+verify it and the library call that follows it; a task receives only the cards that apply.
 
 \paragraph{Checks.}
-\NGuards{} guards share one interface (\NGuardsExported{} exported as tools). For generated
-programs, \FixVisibleChecks{} property checks need no expected output. Three are metamorphic
-relations \citep{segura2016metamorphic}: \texttt{finite\_output} (no missing or infinite
-values); \texttt{split\_representation} (the same economic prices given as adjusted closes with
-unit factors must not change the output); \texttt{execution\_lag} (perturb prices from row $k$
-on; no position up to row $k$ may move, Figure~\ref{fig:episode}c), which fails a rule that
-trades on the close it reads although a plain causality test passes it. Three more, opt-in, test
-a sentence of the task text on the program's own output: \texttt{takes\_positions} (not zero on
-every row), \texttt{position\_scale} ($\pm1/N$ or 0 for a long/short/flat rule, within the cap
-for a sized one, non-negative and summing to at most one for a portfolio) and
-\texttt{warmup\_rows\_zero} (no position before the lookback and the lag allow). None reads the
-reference, and every reference passes all six. Each check carries a \emph{cause}, and
-\texttt{explain()} pairs it with the cards that address it.
+The \NGuards{} guards share one interface, and \NGuardsExported{} are exported as agent tools.
+For generated programs, \FixVisibleChecks{} property checks find errors without knowing the
+right answer. Three are metamorphic relations \citep{segura2016metamorphic}:
+\texttt{finite\_output} rejects missing or infinite values; \texttt{split\_representation} gives
+the same prices as adjusted closes with unit factors and requires the same output; and
+\texttt{execution\_lag} perturbs prices from row $k$ on and requires every position up to row
+$k$ to stay put (Figure~\ref{fig:episode}c), which catches a rule that trades on the close it
+reads even when a plain causality test passes it. Three more test a sentence of the task text
+against the program's own output: \texttt{takes\_positions} (some position is not zero),
+\texttt{position\_scale} ($\pm1/N$ or 0 for a long/short/flat rule, within the cap for a sized
+one, non-negative and summing to at most one for a portfolio) and \texttt{warmup\_rows\_zero}
+(no position before the lookback and the lag allow). None of the six reads the reference, and
+every reference passes all six. A failed check reports its \emph{cause}, and \texttt{explain()}
+returns the rule cards that address it.
 
 \paragraph{Agent interfaces.}
-One registry yields \NTools{} tools under the same names as a Model Context Protocol server
-\citep{mcp2026spec} and as OpenAI and Anthropic tool schemas; \texttt{agents.Team} turns the
-user's \texttt{generate} callable into a writer and one reviewer per rule family.
+One registry serves \NTools{} tools under the same names as a Model Context Protocol server
+\citep{mcp2026spec} and as OpenAI and Anthropic tool schemas, so one agent runs on any of them.
+\texttt{agents.Team} turns the user's \texttt{generate} callable into a writer with one reviewer
+per rule family.

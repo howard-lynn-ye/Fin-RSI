@@ -1,48 +1,45 @@
 \section{Introduction}
 \label{sec:intro}
 
-Financial research code fails silently. A program that applies stock splits twice, decides
-a position with the close it trades over, or leaves warm-up rows missing still runs and
-still returns a backtest (Figure~\ref{fig:episode}). Language models are moving into
-financial work \citep{nie2024survey,kong2024applications,dong2025agents}, and agents now write
-such code \citep{zhang2024finagent,bigeard2025finance}. They make these mistakes: in our earlier
-audit, all 24 programs a 14B coding model wrote re-applied split factors that the prompt
-defined as already cumulative. The problem does not go away when a foundation model
-supplies the forecast or the portfolio weights
-\citep{jin2024timellm,liang2024foundation,hwang2025decision}: the code that turns them into
-positions must still apply each split once and trade only on what was known.
+Financial research code fails silently. A program that applies a stock split twice, sizes a
+position with the close it trades at, or takes positions before its indicator has enough
+history still runs and still produces a backtest (Figure~\ref{fig:episode}). Language models
+are moving into financial work \citep{nie2024survey,kong2024applications,dong2025agents}, and
+agents now write this code \citep{zhang2024finagent,bigeard2025finance}. A foundation model
+that supplies the forecast or the portfolio weights does not remove the risk
+\citep{jin2024timellm,liang2024foundation,hwang2025decision}: the code that turns its output
+into positions must still apply each split once and trade only on what was known at the time.
 
-An agent would need three things to avoid them: knowledge of the failure modes, checks that
-detect each failure without an expected output, and a way to turn check results into better
-programs. All three exist, but separately. Skill documents and tool collections give
-knowledge; testing utilities give checks; self-improvement methods each come with their own
-tasks, feedback and budgets
-\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,agrawal2026gepa}, so their
-results cannot be compared. Intrinsic self-correction without an external signal rarely
-helps \citep{huang2024cannot}, and financial benchmarks score answers or returns
-\citep{xie2024finben,chen2025stockbench}; a return can reward a wrong program on a
-favourable price path, and repeated trials make such false discoveries likely
-\citep{bailey2017pbo}. Evaluation practice has the same gap: of 164 recent papers on
-language models in finance, about a quarter acknowledge look-ahead bias
+To avoid these errors an agent must know the failure modes, detect them without an expected
+output, and turn what it detects into a better program. Each piece exists on its own. Skill
+documents and tool collections carry knowledge, and testing libraries carry checks. Every
+self-improvement method arrives with its own tasks, feedback and budget
+\citep{shinn2023reflexion,chen2024selfdebug,zhao2024expel,agrawal2026gepa}, so their results
+cannot be compared, and self-correction without an outside signal rarely helps
+\citep{huang2024cannot}. Financial benchmarks score answers or returns
+\citep{xie2024finben,chen2025stockbench}, yet a return can reward a wrong program on a lucky
+price path, and repeated trials make such false discoveries likely \citep{bailey2017pbo}. Only
+about a quarter of 164 recent papers on language models in finance acknowledge look-ahead bias
 \citep{kong2026bias}.
 
-\lib{} puts all three behind interfaces an agent can call (Figure~\ref{fig:overview}).
-PyOD put outlier detectors behind one interface \citep{zhao2019pyod,chen2025pyod2}, which let
-ADBench compare them on equal terms \citep{han2022adbench}. \lib{} does the same for
-self-improvement: every method gets the same judge and the same metered budget. A user
-connects a model once, as one \texttt{generate(messages)} callable. Our contributions:
+\lib{} brings the three pieces together behind interfaces an agent can call
+(Figure~\ref{fig:overview}). A user connects a model once, as a single
+\texttt{generate(messages)} callable; the agent can then find the rule a task describes, call a
+tested implementation, check its own program and act on what the checks report. PyOD put
+outlier detectors behind one interface \citep{zhao2019pyod,chen2025pyod2}, and that made a fair
+comparison possible \citep{han2022adbench}. \lib{} does this for self-improvement, with one judge
+and one metered budget for every method. We contribute:
 \begin{itemize}
-\item an agent-native library of skills, checks and tools, including \texttt{route()}, which
-asks the connected model which catalogue rule computes a rule described in words
-(\S\ref{sec:library});
-\item \NMethods{} self-improvement methods behind one interface with equal budgets
-(\S\ref{sec:methods});
-\item \NTasks{} financial programming tasks with independent references, a hidden grader, an
-algorithm-level held-out split and real-price panels (\S\ref{sec:tasks});
-\item a study on \StudyModels{} open-weight models: the library against none on held-out tasks,
-how models find the right call, and, without the library, error feedback against repetition
-and the \NMethods{} methods (\S\ref{sec:study}).
+\item \textbf{a library} of skills, checks and agent tools, including \texttt{route()}, which
+asks the agent's own model which catalogue algorithm a task describes (\S\ref{sec:library});
+\item \textbf{\NMethods{} self-improvement methods}, from plain retries to evolved prompts and
+gated playbooks, behind one interface with equal budgets (\S\ref{sec:methods});
+\item \textbf{a benchmark} of \NTasks{} financial programming tasks with independent
+references, a hidden grader, a held-out split by algorithm and real prices around four stock
+splits (\S\ref{sec:tasks});
+\item \textbf{a study} of \StudyModels{} open-weight models on held-out tasks, with and without
+the library, and of the self-improvement methods on equal terms (\S\ref{sec:study}).
 \end{itemize}
-Models get held-out tasks right with the library once they know which call computes the rule.
-Letting them name it through \texttt{route()} works as well as naming it for them, for models of
-\FixSizeCut{} parameters and more (\S\ref{sec:results}).
+The library pays off once a model knows which call computes the rule. For models of
+\FixSizeCut{} parameters or more, letting the model name that call through \texttt{route()}
+works as well as naming it for them (\S\ref{sec:results}).

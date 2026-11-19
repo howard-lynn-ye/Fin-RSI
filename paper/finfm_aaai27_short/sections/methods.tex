@@ -1,33 +1,34 @@
 \section{Self-improvement behind one interface}
 \label{sec:methods}
 
-Every method is a class with three calls: \texttt{m.fit(generate, tasks.dev)} learns on the
-development tasks (or does nothing), \texttt{m.solve(generate, task, seed)} returns an episode
-with the program, its acceptance and its usage, and \texttt{m.state()} returns what the method
-learned, hashed into every episode record. \texttt{solve()} sees the task text and a judge on
-which it can only call \texttt{check(code)}: whether the program ran, its error and each check's
-result with the cause of a failure, never the grade (Figure~\ref{fig:episode}b); learning methods
-may keep a candidate by its development grade, but no text a model reads contains one. A meter refuses
-any call beyond the budget: \BudgetAttempts{} program executions, \BudgetCalls{} model calls and
-\BudgetTokens{} generated tokens per episode, and \FitEpisodes{} development episodes,
-\FitProposals{} proposals, \FitCalls{} calls and \FitTokens{} tokens for learning.
+Every method implements the same three calls, so one can replace another without changing the
+agent. \texttt{m.fit(generate, tasks.dev)} learns on the development tasks (or does nothing);
+\texttt{m.solve(generate, task, seed)} returns an episode with the program, whether it was
+accepted and what it used; \texttt{m.state()} returns what the method has learned, and its hash
+is stored with every episode. Inside \texttt{solve()} a method sees the task text and one judge
+function, \texttt{check(code)}, which reports whether the program ran, its error and each check's
+result with the cause of a failure, never the grade (Figure~\ref{fig:episode}b). Learning
+methods may keep a candidate by its development grade, but no grade appears in any text a model
+reads. A meter refuses every call over budget: \BudgetAttempts{} program runs, \BudgetCalls{}
+model calls and \BudgetTokens{} generated tokens per episode, and \FitEpisodes{} development
+episodes, \FitProposals{} proposals, \FitCalls{} calls and \FitTokens{} tokens for learning.
 
 \paragraph{Methods.}
 The \NMethods{} methods (Appendix Table~\ref{tab:methods}) keep the mechanism each is known
-for: \texttt{NoImprove} (one program); \texttt{SelfDebug}, which returns only errors
-\citep{chen2024selfdebug}; \texttt{CheckFeedback}, which returns the failed checks with
-causes and cards; \texttt{Reflexion}, which adds a written reflection before each retry
-\citep{shinn2023reflexion}; \texttt{Team}, with one reviewer per rule family;
-\texttt{Evolve}, which evolves a prompt addendum on development tasks
-\citep{agrawal2026gepa}; and \texttt{PlaybookLearning}
-\citep{zhao2024expel,suzgun2026dynamic}, whose proposer edits one playbook entry from
-development traces without grades and keeps it only if no development task that passed every
-check now fails one (Appendix Figure~\ref{fig:gate}).
+for: \texttt{NoImprove} writes one program; \texttt{SelfDebug} returns only errors
+\citep{chen2024selfdebug}; \texttt{CheckFeedback} returns the failed checks with their causes
+and cards; \texttt{Reflexion} adds a written reflection before each retry
+\citep{shinn2023reflexion}; \texttt{Team} adds one reviewer per rule family; \texttt{Evolve}
+evolves a prompt addendum on development tasks \citep{agrawal2026gepa}; and
+\texttt{PlaybookLearning} \citep{zhao2024expel,suzgun2026dynamic} edits one playbook entry at a
+time from development traces without grades, keeping it only if no development task that
+passed every check now fails one (Appendix Figure~\ref{fig:gate}).
 
 \paragraph{Controlled arms.}
-A retry can help because of what the judge returned or because the model sampled again. Three
-arms share one prompt and budget and differ only in what follows a failed attempt:
-\texttt{Repeat} returns nothing; \texttt{Check} returns the error or the names of the failed
-checks; \texttt{Explain} adds each failed check's cause. No first prompt contains a rule card,
-and every arm delivers the first program that passes the visible checks. At our low
-temperature, \texttt{Repeat} is close to repetition rather than diverse resampling.
+A retry can help because the judge said something useful or simply because the model sampled
+again. Three arms separate the two. They share one prompt and budget and differ only in what
+follows a failed attempt: \texttt{Repeat} returns nothing, \texttt{Check} returns the error or
+the names of the failed checks, and \texttt{Explain} adds each failed check's cause. No first
+prompt contains a rule card, and each arm delivers the first program that passes the visible
+checks. At our low temperature, \texttt{Repeat} mostly repeats itself rather than sampling new
+programs.

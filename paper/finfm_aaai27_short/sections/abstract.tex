@@ -1,18 +1,18 @@
-Financial research code fails silently: a program that applies stock splits twice, or
-trades on the closing price it reads, still runs and still returns a backtest. We present
-\lib{}, an agent-native Python library that puts three things behind interfaces a
-language-model agent can call: \emph{skills} (\NSkills{} dated skill documents,
-\NAlgorithms{} algorithms and \NCards{} rule cards), \emph{checks} (\NGuards{} guards,
-including \FixVisibleChecks{} property checks that need no expected output) and
-\emph{self-improvement} (\NMethods{} methods behind one \texttt{fit}/\texttt{solve}/\texttt{state}
-interface with metered, equal budgets). With it comes a suite of \NTasks{} financial
-programming tasks, each with an independent reference and a hidden grader that no method sees.
-On held-out tasks that one library call solves, \FixModels{} open-weight models wrote a valid
-program in \FixFZeroPct\% of episodes without the library and \FixFOnePct\% with its interface,
-mostly by rewriting the rule themselves. When the library first asked the model which of its
-rules the task describes, \FixFFourPct\% were valid, nearly as many as when we named the call
-(\FixFTwoPct\%); models of \FixSizeCut{} parameters or more rose from \FixLargeFZeroPct\% to
-\FixLargeFFourPct\%, while smaller ones never exceeded \FixSmallMaxPct\%. These results come from the third
-revision of the library on the same tasks and are exploratory. Without the library, the
-self-improvement methods helped only models that were already valid without them. The library,
-tasks and run records will be released.
+Financial research code fails silently: a program that applies a stock split twice, or trades
+on the close it has just read, still runs and still produces a backtest. We present \lib{}, an
+agent-native Python library that gives a language-model agent what it needs to get such code
+right: \emph{skills} (\NSkills{} dated skill documents, \NAlgorithms{} algorithms and
+\NCards{} rule cards), \emph{checks} (\NGuards{} guards, among them \FixVisibleChecks{} property
+checks that need no expected output) and \emph{self-improvement} (\NMethods{} methods under one
+interface and one metered budget). It comes with \NTasks{} financial programming tasks, each
+graded against an independent reference by a grader the agent never sees. On held-out tasks
+that a single library call solves, \FixModels{} open-weight models were valid in
+\FixFZeroPct\% of episodes without the library. Shown its interface, they mostly rewrote the
+rule themselves (\FixFOnePct\%). When \texttt{route()} let them name the matching call first,
+\FixFFourPct\% were valid, close to the \FixFTwoPct\% reached when we named it for them. Models
+of \FixSizeCut{} parameters or more went from \FixLargeFZeroPct\% to \FixLargeFFourPct\%;
+smaller ones never passed \FixSmallMaxPct\%. Without the library, the self-improvement
+methods helped only models that already solved some tasks in a single attempt. These results are
+exploratory,
+since the library was revised on the same tasks before the final run. The library, the tasks
+and every run record will be released.
