@@ -19,14 +19,16 @@ HERE = Path(__file__).parent
 SUMMARY = HERE / "study_summary.min.json"
 SUMMARY_SHA256 = "4918cd8be77a42925aad63540a69a38f9bc4febb982b2681e7765923783824a5"
 ANALYSIS = HERE / "pfix_analysis.json"
-ANALYSIS_SHA256 = "23f5f085a6b96c8f7ec68c4185cc94cf4a6a4b3088fdde16e473417317fc9cef"
+ANALYSIS_SHA256 = "1b5ac441666a40d045264b6546ca0ef054be5903368db480c7e154552213e013"
 CORE = ["qwen-coder-32b", "mistral-small-24b", "granite-8b", "olmo3-7b", "phi4-mini"]
 EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-general-14b",
              "qwen-general-7b", "qwen3-30b-a3b", "qwen3-4b", "deepseek-r1-distill-14b",
              "phi4-14b", "mistral-nemo-12b", "mistral-7b", "falcon3-10b", "falcon3-7b",
              "granite-2b", "smollm3-3b"]
 METHODS = ["self_debug", "check_feedback", "reflexion", "team", "evolve", "playbook"]
-TAG = {"F0": "FZero", "F1": "FOne", "F2": "FTwo"}
+TAG = {"F0": "FZero", "F1": "FOne", "F2": "FTwo", "F3": "FThree"}
+# The post-hoc size split of analyze_p_fix.py (by_size): total parameters >= 14B, or fewer.
+SIZE = {"ge14b": "Large", "lt14b": "Small"}
 # Fixed by the P-fix design (branch claude/pfix, commit bf782d72): fin_skills.rsi.pfix.interface_text()
 # is 5,312 characters and lists 12 algorithms that positions() accepts; adopt.OUTPUT_CAP is 4,096
 # tokens; 6 held-out tasks x 3 seeds per arm.
@@ -79,8 +81,10 @@ def main(argv):
     pooled, num = fix["pooled"], dict(DESIGN)
     num["FixModels"] = len(models)
     num["FixArm"] = f'{pooled["F0"]["n"]:,}'
-    for arm, tag in TAG.items():
-        p = pooled[arm]
+    arms_run = [a for a in TAG if a in pooled]  # F3 (Amendment 2) once its runs are in
+    num["FixDocumented"] = int("F3" in pooled)
+    for arm in arms_run:
+        tag, p = TAG[arm], pooled[arm]
         num[f"Fix{tag}Valid"] = p["valid"]
         num[f"Fix{tag}Pct"] = pct(p["valid"], p["n"])
         num[f"Fix{tag}First"] = p["first_valid"]
@@ -88,12 +92,12 @@ def main(argv):
         num[f"Fix{tag}NoneValid"] = p["models_none_valid"]
         best = max(models, key=lambda m: per[m][arm]["valid"])
         num[f"Fix{tag}Best"], num[f"Fix{tag}BestModel"] = per[best][arm]["valid"], best
-    for c in fix["contrasts"]:
+    for c in fix["contrasts"] + fix.get("exploratory_contrasts", []):
         a, b = c["contrast"].split("-")
         key = f"Fix{TAG[a]}Minus{TAG[b]}"
         num[key] = signed(c["pooled_pct_points"])
         num[key + "Better"], num[key + "Worse"], num[key + "Same"] = c["better"], c["worse"], c["same"]
-    for arm in ("F1", "F2"):
+    for arm in [a for a in arms_run if a != "F0"]:
         f, pr, tag = fix["funnel"][arm], fix["programs"][arm], TAG[arm]
         num[f"Fix{tag}UsedAny"] = f.get("library_used_any", 0)
         num[f"Fix{tag}LastCalls"] = f.get("last_calls_library", 0)
@@ -113,7 +117,7 @@ def main(argv):
             num[f"Fix{tag}LastUses{ut}"] = pr.get("last_uses_" + use, 0)
             num[f"Fix{tag}LastUses{ut}Valid"] = pr.get("last_uses_" + use + "_valid", 0)
     errors = {}
-    for arm in ("F1", "F2"):
+    for arm in ("F1", "F2"):  # the declared arms; F3's errors are reported on their own
         for k, v in fix["library_errors"][arm].items():
             errors[k] = errors.get(k, 0) + v
     top = sorted(errors.items(), key=lambda kv: -kv[1])
@@ -129,6 +133,21 @@ def main(argv):
         for arm, atag in TAG.items():
             cell = fix["by_variant"].get(f"{var}|{arm}")
             num[f"FixVar{var.upper()}{atag}"] = cell["valid_pct"] if cell else "--"
+    num["FixSizeCut"] = "14B"
+    for label, size in SIZE.items():
+        g = fix["by_size"][label]
+        num[f"Fix{size}Models"] = len(g["models"])
+        for arm in arms_run:
+            p = g["pooled"][arm]
+            num[f"Fix{size}{TAG[arm]}Valid"], num[f"Fix{size}{TAG[arm]}N"] = p["valid"], p["n"]
+            num[f"Fix{size}{TAG[arm]}Pct"] = pct(p["valid"], p["n"])
+            num[f"Fix{size}{TAG[arm]}NoneValid"] = p["models_none_valid"]
+        for c in g["contrasts"] + g.get("exploratory_contrasts", []):
+            a, b = c["contrast"].split("-")
+            key = f"Fix{size}{TAG[a]}Minus{TAG[b]}"
+            num[key] = signed(c["pooled_pct_points"])
+            num[key + "Better"], num[key + "Worse"] = c["better"], c["worse"]
+    assert not fix["unsized"], f"models without a parameter count: {fix['unsized']}"
     num["FixScanFlagged"] = len(fix["scan"]["flagged"])
     num["FixScanFlaggedRan"] = sum(x["executed"] for x in fix["scan"]["flagged"])
     # The pre-registered study, no-library cells only: feedback arms and the seven methods.
@@ -178,17 +197,19 @@ def main(argv):
         rce = " & ".join(str(fr[f"{a}|0"][0]) for a in ("repeat", "check", "explain"))
         if m in per:
             c = per[m]
-            calls = c["F1"]["calling"] + c["F2"]["calling"]
-            ran = c["F1"]["calling_ran"] + c["F2"]["calling_ran"]
-            cells = [str(c[a]["valid"]) for a in ("F0", "F1", "F2")] + [f"{ran}/{calls}"]
+            lib = ("F1", "F2")  # the caption's "ran": the declared library arms
+            calls = sum(c[a]["calling"] for a in lib)
+            ran = sum(c[a]["calling_ran"] for a in lib)
+            cells = [str(c[a]["valid"]) if c[a]["n"] else "--" for a in arms_run] + [f"{ran}/{calls}"]
         else:
-            cells = ["\\multicolumn{4}{c}{\\emph{running}}"]
+            cells = [f"\\multicolumn{{{len(arms_run) + 1}}}{{c}}{{\\emph{{running}}}}"]
         rows.append(" & ".join([name, *cells, rce]) + " \\\\" + (" \\midrule" if m == CORE[-1] else ""))
+    k = len(arms_run) + 1  # arm columns plus "ran"
     table = ["% Generated by make_pfix_results.py; do not edit." + mark,
-             "\\begin{tabular}{@{}lrrrrrrr@{}}", "\\toprule",
-             " & \\multicolumn{4}{c}{Library study} & \\multicolumn{3}{c}{No library} \\\\",
-             "\\cmidrule(lr){2-5}\\cmidrule(l){6-8}",
-             "Model & F0 & F1 & F2 & ran & Rep. & Check & Expl. \\\\",
+             "\\begin{tabular}{@{}l" + "r" * (k + 3) + "@{}}", "\\toprule",
+             f" & \\multicolumn{{{k}}}{{c}}{{Library study}} & \\multicolumn{{3}}{{c}}{{No library}} \\\\",
+             f"\\cmidrule(lr){{2-{k + 1}}}\\cmidrule(l){{{k + 2}-{k + 4}}}",
+             "Model & " + " & ".join(arms_run) + " & ran & Rep. & Check & Expl. \\\\",
              "\\midrule", *rows, "\\bottomrule", "\\end{tabular}"]
     (HERE / "results_table.tex").write_text("\n".join(table) + "\n", encoding="utf-8")
     print(f"{len(models)} P-fix models{mark}; wrote pfix_numbers.tex and results_table.tex")
