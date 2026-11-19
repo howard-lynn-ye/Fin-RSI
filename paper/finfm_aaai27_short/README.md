@@ -49,30 +49,33 @@ held-out tasks are those of the suite of 8 November; in the current 34-task spli
 development task, and section 4 says so. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
 macros; the text no longer uses its numbers.
 
-## Figures (2026-11-19, second design)
+## Figures (2026-11-19, third design)
 
-Figure 1 is the system overview (Howard). The three data figures were redesigned after an
-independent review and a survey of result figures in benchmark and Nature papers (project doc
-`claude/PAPER_FIGURES.md`): each shows every model, carries the paper's argument rather than
-repeating the text, and is drawn in a journal style (bold lower-case panel letters, thin axes,
-outward ticks, no grid). `make_pfix_figures.py` draws them from the pinned analysis (it imports
-the hash from `make_pfix_results.py`) at the exact column or text width, and refuses to save a
-figure with text below 7 pt, text outside the figure or overlapping labels. `--png` also
-writes previews.
+Every figure is in one journal style (bold lower-case panel letters, thin axes, outward ticks,
+no grid, TeX Gyre Heros, nothing below 7 pt). `make_pfix_figures.py` draws Figures 2-4 from the
+pinned analysis (it imports the hash from `make_pfix_results.py`) at the exact column or text
+width, and refuses to save a figure with text below 7 pt, text outside the figure or overlapping
+labels; `--png` also writes previews (not committed). Background: project docs
+`claude/PAPER_FIGURES.md` and `claude/FINFM_FIGURE_RESEARCH_20261119.md`.
 
-- Page 2, Figure 1: the library overview (shared with the ACL draft).
-- Page 2, Figure 2 `pfix_models.pdf`: one column per model ordered by size; F0 open, F4 filled,
-  F2 dash; pooled numbers per size group; qwen3-4b and qwen3-30b-a3b labelled.
-- Page 3, Figure 3 `pfix_arms.pdf`: what each arm adds (design matrix) beside a strip per arm
-  with every model and the two size-group pools.
-- Page 4, Figure 4 `pfix_analysis.pdf` (full width): (a) how episodes ended (valid first, valid
-  later, accepted but wrong, rejected) by arm and size group; (b) the 360 F4 episodes as a flow
-  from what `route()` named to the last program to the outcome; (c) checks failed among programs
-  that ran, all arms; (d) flagged then fixed.
-- Page 1 has no figure: a full-width figure cannot print on page 1, and no figure may precede
-  Figure 1.
-- Appendix: per-model table (`results_table.tex`) and the no-library study as a table
-  (`frozen_table.tex`, written by `make_pfix_results.py`).
+- Figure 1 `figures/overview_short.tex`: a copy of the shared `overview3d.tex` with `route()` on
+  the pick arrow and the hidden grader behind a wall after deliver; its caption is
+  `overview_caption_short.tex`. The shared files are untouched.
+- Figure 2 `pfix_models.pdf`: every model, grouped by series (the id without its size; the
+  study's eight families split Qwen into three series) and ordered by size; F0 open, F4 filled,
+  F2 dash, a line through F4 along each series, shaded columns for 14B or more.
+- Figure 3 `pfix_matrix.pdf`: model x arm matrix of valid episodes (of 18), shaded by size
+  group, with what `route()` named per model and the pooled row.
+- Figure 4 `pfix_analysis.pdf` (full width): (a) how episodes ended by arm and size group; (b) the
+  360 F4 episodes from what `route()` named to the last program to the outcome; (c) the share of
+  programs that ran failing each check, with what a failure means and F0 -> F4. The repair
+  numbers that were panel (d) are in the results text.
+- Appendix Figure 7 `real_panel_short.pdf`, drawn by `make_real_panel.py` from the fetched real
+  panel (not in the repository; pass its path in `FIN_TASKS_REAL_PANEL`, the SHA-256 is
+  checked): the four splits, with the first-day change of the raw quote and of the adjusted
+  close. Figures 5 (one episode) and 6 (the playbook gate) are the shared TikZ figures.
+- Appendix tables: per-model table (`results_table.tex`) and the no-library study
+  (`frozen_table.tex`), both written by `make_pfix_results.py`.
 
 Track: Benchmark (Howard, 2026-11-19).
 
