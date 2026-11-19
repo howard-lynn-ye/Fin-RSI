@@ -19,21 +19,25 @@ HERE = Path(__file__).parent
 SUMMARY = HERE / "study_summary.min.json"
 SUMMARY_SHA256 = "4918cd8be77a42925aad63540a69a38f9bc4febb982b2681e7765923783824a5"
 ANALYSIS = HERE / "pfix_analysis.json"
-ANALYSIS_SHA256 = "1b5ac441666a40d045264b6546ca0ef054be5903368db480c7e154552213e013"
+ANALYSIS_SHA256 = "e2eb603d78cbe145ff45a609be507272c068dee1e7f1a7c2d8077432010b38a4"
 CORE = ["qwen-coder-32b", "mistral-small-24b", "granite-8b", "olmo3-7b", "phi4-mini"]
 EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-general-14b",
              "qwen-general-7b", "qwen3-30b-a3b", "qwen3-4b", "deepseek-r1-distill-14b",
              "phi4-14b", "mistral-nemo-12b", "mistral-7b", "falcon3-10b", "falcon3-7b",
              "granite-2b", "smollm3-3b"]
 METHODS = ["self_debug", "check_feedback", "reflexion", "team", "evolve", "playbook"]
-TAG = {"F0": "FZero", "F1": "FOne", "F2": "FTwo", "F3": "FThree"}
+TAG = {"F0": "FZero", "F1": "FOne", "F2": "FTwo", "F3": "FThree", "F4": "FFour"}
+# The declared-property checks of fin_skills/tasks/properties.py (Amendment 3).
+CHECK_TAG = {"takes_positions": "TakesPositions", "position_scale": "PositionScale",
+             "warmup_rows_zero": "WarmupRowsZero", "finite_output": "FiniteOutput",
+             "split_representation": "SplitRepresentation", "execution_lag": "ExecutionLag"}
 # The post-hoc size split of analyze_p_fix.py (by_size): total parameters >= 14B, or fewer.
 SIZE = {"ge14b": "Large", "lt14b": "Small"}
 # Fixed by the P-fix design (branch claude/pfix, commit bf782d72): fin_skills.rsi.pfix.interface_text()
 # is 5,312 characters and lists 12 algorithms that positions() accepts; adopt.OUTPUT_CAP is 4,096
 # tokens; 6 held-out tasks x 3 seeds per arm.
-DESIGN = dict(FixInterfaceChars="5,312", FixInterfaceAlgorithms=12, FixOutputCap="4,096",
-              FixEpisodesPerArm=18)
+DESIGN = dict(FixInterfaceChars="5,657", FixInterfaceAlgorithms=12, FixOutputCap="4,096",
+              FixEpisodesPerArm=18, FixVisibleChecks=6, FixRouteCap="1,024")
 # How each library-error group of analyze_p_fix.py reads in a sentence.
 PROSE = {"argument that does not apply to the algorithm": "an argument that does not apply to the algorithm",
          "too few rows (called on a slice)": r"a call on a slice of the rows",
@@ -148,6 +152,21 @@ def main(argv):
             num[key] = signed(c["pooled_pct_points"])
             num[key + "Better"], num[key + "Worse"] = c["better"], c["worse"]
     assert not fix["unsized"], f"models without a parameter count: {fix['unsized']}"
+    # F4: what the model named when route() asked which catalogue rule computes the task's rule.
+    for scope, routing in (("", fix.get("routing", {})),
+                           *((size, fix["by_size"][label].get("routing", {}))
+                             for label, size in SIZE.items())):
+        for how in ("right", "none", "wrong"):
+            num[f"Fix{scope}Route{how.capitalize()}"] = routing.get(how, 0)
+            num[f"Fix{scope}Route{how.capitalize()}Valid"] = routing.get(how + "_valid", 0)
+    # Programs that ran and failed each visible check, per arm and over all arms.
+    for name, tag in CHECK_TAG.items():
+        total = 0
+        for arm in arms_run:
+            n = fix.get("failed_checks", {}).get(arm, {}).get(name, 0)
+            num[f"Fix{TAG[arm]}Failed{tag}"] = n
+            total += n
+        num[f"FixFailed{tag}"] = total
     num["FixScanFlagged"] = len(fix["scan"]["flagged"])
     num["FixScanFlaggedRan"] = sum(x["executed"] for x in fix["scan"]["flagged"])
     # The pre-registered study, no-library cells only: feedback arms and the seven methods.
