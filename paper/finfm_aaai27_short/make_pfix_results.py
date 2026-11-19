@@ -19,7 +19,7 @@ HERE = Path(__file__).parent
 SUMMARY = HERE / "study_summary.min.json"
 SUMMARY_SHA256 = "4918cd8be77a42925aad63540a69a38f9bc4febb982b2681e7765923783824a5"
 ANALYSIS = HERE / "pfix_analysis.json"
-ANALYSIS_SHA256 = "e2eb603d78cbe145ff45a609be507272c068dee1e7f1a7c2d8077432010b38a4"
+ANALYSIS_SHA256 = "f9962b897bb93626bbbf8647c65b4fb506848930078ddc31ef9cd6cd07e36923"
 CORE = ["qwen-coder-32b", "mistral-small-24b", "granite-8b", "olmo3-7b", "phi4-mini"]
 EXTENSION = ["qwen-coder-14b", "qwen-coder-7b", "qwen-general-32b", "qwen-general-14b",
              "qwen-general-7b", "qwen3-30b-a3b", "qwen3-4b", "deepseek-r1-distill-14b",
@@ -159,6 +159,31 @@ def main(argv):
         for how in ("right", "none", "wrong"):
             num[f"Fix{scope}Route{how.capitalize()}"] = routing.get(how, 0)
             num[f"Fix{scope}Route{how.capitalize()}Valid"] = routing.get(how + "_valid", 0)
+    # The best arm of the models under 14B (abstract and results: small models).
+    small = fix["by_size"]["lt14b"]["pooled"]
+    num["FixSmallMaxPct"] = max(pct(small[a]["valid"], small[a]["n"]) for a in arms_run)
+    # Episodes in which a property check flagged a program that ran: another attempt? valid?
+    total = {"episodes_flagged": 0, "with_another_attempt": 0, "then_valid": 0}
+    for arm in arms_run:
+        r = fix.get("repair", {}).get(arm, {})
+        for key, name in (("episodes_flagged", "Flagged"), ("with_another_attempt", "FlaggedRetry"),
+                          ("then_valid", "FlaggedThenValid")):
+            num[f"Fix{TAG[arm]}{name}"] = r.get(key, 0)
+            total[key] += r.get(key, 0)
+    num["FixFlagged"], num["FixFlaggedRetry"] = total["episodes_flagged"], total["with_another_attempt"]
+    num["FixFlaggedThenValid"] = total["then_valid"]
+    # F2, and F4 after a right route: the sentence named the task's own rule. Did the last
+    # program call positions() or keep a rule of its own?
+    for scope, told in (("", fix.get("told", {})),
+                        *((size, fix["by_size"][label].get("told", {})) for label, size in SIZE.items())):
+        for arm in ("F2", "F4"):
+            t = told.get(arm, {})
+            for key, name in (("episodes", "Told"), ("valid", "ToldValid"),
+                              ("last_calls_positions", "ToldCalls"),
+                              ("last_calls_positions_valid", "ToldCallsValid"),
+                              ("last_own_rule", "ToldOwn"), ("last_own_rule_valid", "ToldOwnValid"),
+                              ("no_program_ran", "ToldNoProgram")):
+                num[f"Fix{scope}{TAG[arm]}{name}"] = t.get(key, 0)
     # Programs that ran and failed each visible check, per arm and over all arms.
     for name, tag in CHECK_TAG.items():
         total = 0
