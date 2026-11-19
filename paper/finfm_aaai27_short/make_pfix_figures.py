@@ -64,74 +64,175 @@ def save(fig, name):
     plt.close(fig)
 
 
-def main_figure(fix):
-    """(a) valid rate by arm and size group; (b) every model's valid episodes, F0 against F4."""
-    big, small = fix["by_size"]["ge14b"], fix["by_size"]["lt14b"]
-    sizes = fix["sizes_b"]
-    per = fix["per_model"]
-    key = lambda m: (-per[m]["F4"]["valid"], -per[m]["F0"]["valid"], m)  # noqa: E731
-    rows_big = sorted(big["models"], key=key)
-    rows_small = sorted(small["models"], key=key)
-    zero = [m for m in rows_small if per[m]["F0"]["valid"] == per[m]["F4"]["valid"] == 0]
-    rows_small = [m for m in rows_small if m not in zero]
-    n_rows = len(rows_big) + len(rows_small)
-    h_a, h_b = 1.18, 0.112 * (n_rows + 2.2) + 0.62
-    fig = plt.figure(figsize=(COL, h_a + h_b), layout="constrained")
-    fig.get_layout_engine().set(h_pad=0.015, w_pad=0.01)
-    top, bottom = fig.subfigures(2, 1, height_ratios=[h_a, h_b], hspace=0.04)
+TEXTW = 7.0    # AAAI text width, inches
 
-    ax = top.subplots()
-    style(ax)
-    w, gap = 0.36, 0.04
+
+def nature(ax, x=True, y=True):
+    """Journal style: left and bottom spines only, thin, outward ticks, no grid."""
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.spines["left"].set_visible(y)
+    ax.spines["bottom"].set_visible(x)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_linewidth(0.5)
+        ax.spines[side].set_color(fs.MUTED)
+    ax.tick_params(axis="both", direction="out", length=2.5, width=0.5, pad=1.5, labelsize=7,
+                   colors=fs.INK2)
+    if not y:
+        ax.tick_params(axis="y", length=0)
+    if not x:
+        ax.tick_params(axis="x", length=0)
+
+
+def panel(ax, letter, title, x=-0.02, y=1.0):
+    """Bold lower-case panel letter and a short title, left-aligned above the axes."""
+    ax.text(x, y, letter, transform=ax.transAxes, fontsize=8.5, fontweight="bold",
+            color=fs.INK, ha="right", va="bottom")
+    ax.text(x + 0.03, y, title, transform=ax.transAxes, fontsize=7.5, color=fs.INK,
+            ha="left", va="bottom")
+
+
+def headline_figure(fix):
+    """Page 1: every model's valid rate without the library, with its interface, and after
+    route(); the call named by us (F2) as a reference."""
+    per, big, small = fix["per_model"], fix["by_size"]["ge14b"], fix["by_size"]["lt14b"]
+    xs = {"F0": 0, "F1": 1, "F4": 2, "F2": 3.25}
+    fig, axes = plt.subplots(1, 2, figsize=(COL, 1.72), sharey=True, layout="constrained")
+    fig.get_layout_engine().set(w_pad=0.01, h_pad=0.01, wspace=0.06)
+    for ax, group, colour, letter, title in (
+            (axes[0], big, LARGE, "a", f"{len(big['models'])} models of 14B or more"),
+            (axes[1], small, SMALL, "b", f"{len(small['models'])} smaller models")):
+        nature(ax)
+        ax.axvspan(1.6, 2.4, color=fs.mix(colour, "#ffffff", 0.08), linewidth=0, zorder=0)
+        ax.axvline(2.75, color=fs.GRID, linewidth=0.6, linestyle=(0, (2, 2)), zorder=0)
+        light = fs.mix(colour, "#ffffff", 0.32)
+        for m in group["models"]:
+            ys = [100 * per[m][a]["valid"] / per[m][a]["n"] for a in ("F0", "F1", "F4")]
+            ax.plot([0, 1, 2], ys, color=light, linewidth=0.7, zorder=1, solid_capstyle="round")
+            ax.scatter([xs["F2"]], [100 * per[m]["F2"]["valid"] / per[m]["F2"]["n"]], s=6,
+                       color=light, linewidth=0, zorder=1)
+        pooled = group["pooled"]
+        mean = [100 * pooled[a]["valid"] / pooled[a]["n"] for a in ("F0", "F1", "F4")]
+        ax.plot([0, 1, 2], mean, color=colour, linewidth=2.0, zorder=3, solid_capstyle="round")
+        ax.scatter([0, 1, 2], mean, s=22, color=colour, edgecolor="white", linewidth=0.8, zorder=4)
+        f2 = 100 * pooled["F2"]["valid"] / pooled["F2"]["n"]
+        ax.plot([xs["F2"] - 0.22, xs["F2"] + 0.22], [f2, f2], color=fs.INK2, linewidth=1.4, zorder=3)
+        ax.annotate(f"{mean[2]:.1f}%", (2, mean[2]), xytext=(0, 5), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=7, color=fs.INK, fontweight="bold")
+        ax.annotate(f"{mean[0]:.1f}%", (0, mean[0]), xytext=(0, 5), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=7, color=fs.INK)
+        ax.set_xticks([0, 1, 2, xs["F2"]], ["F0\nnone", "F1\nAPI", "F4\nroute", "F2\nnamed"],
+                      fontsize=7, linespacing=1.0)
+        ax.set_xlim(-0.45, 3.65)
+        ax.set_ylim(-3, 103)
+        ax.set_yticks([0, 50, 100], ["0", "50", "100"])
+        panel(ax, letter, title, x=0.0, y=1.03)
+    axes[0].set_ylabel("valid (%)", fontsize=7, labelpad=1, color=fs.INK2)
+    save(fig, "pfix_headline")
+
+
+def analysis_figure(fix):
+    """Page 4: a valid rate by arm with every model; b after the right rule was named; c checks
+    failed without and with the library; d flagged programs that were then fixed."""
+    per, sizes = fix["per_model"], fix["sizes_b"]
+    big, small = fix["by_size"]["ge14b"], fix["by_size"]["lt14b"]
+    fig = plt.figure(figsize=(TEXTW, 1.82), layout="constrained")
+    fig.get_layout_engine().set(w_pad=0.02, h_pad=0.01, wspace=0.05)
+    ax_a, ax_b, ax_c, ax_d = fig.subplots(1, 4, width_ratios=[1.3, 1.28, 1.22, 1.1])
+
+    # a: bars per arm and size group, each model as a dot
+    nature(ax_a)
+    w = 0.34
     for i, arm in enumerate(ARMS):
         for j, (group, colour) in enumerate(((big, LARGE), (small, SMALL))):
             p = group["pooled"][arm]
-            v = 100 * p["valid"] / p["n"]
-            x = i + (j - 0.5) * (w + gap)
-            ax.bar(x, v, width=w, color=colour, linewidth=0)
-            ax.text(x, v + 2.2, f"{v:.0f}" if v >= 1 or v == 0 else f"{v:.1f}", ha="center",
-                    va="bottom", fontsize=7, color=fs.INK)
-    ax.set_xticks(range(len(ARMS)), [ARM_LABEL[a] for a in ARMS], fontsize=7, linespacing=1.0)
-    ax.set_ylim(0, 75)
-    ax.set_yticks([0, 25, 50, 75], ["0", "25", "50", "75%"], fontsize=7)
-    ax.set_xlim(-0.6, len(ARMS) - 0.4)
-    ax.legend(handles=[Patch(color=LARGE, label=f"{len(big['models'])} models of 14B or more"),
-                       Patch(color=SMALL, label=f"{len(small['models'])} smaller models")],
-              loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, frameon=False, fontsize=7,
-              handlelength=0.9, handleheight=0.7, borderaxespad=0.1, columnspacing=1.0)
-    top.suptitle("(a) Valid episodes by arm", x=0.0, ha="left", fontsize=7.5, fontweight="bold",
-                 color=fs.INK)
+            x = i + (j - 0.5) * (w + 0.05)
+            ax_a.bar(x, 100 * p["valid"] / p["n"], width=w, color=fs.mix(colour, "#ffffff", 0.28),
+                     linewidth=0, zorder=1)
+            vals = sorted(100 * per[m][arm]["valid"] / per[m][arm]["n"] for m in group["models"])
+            off = [((k % 3) - 1) * 0.07 for k in range(len(vals))]
+            ax_a.scatter([x + o for o in off], vals, s=5, color=colour, linewidth=0, zorder=2)
+    ax_a.set_xticks(range(len(ARMS)), [f"{a}" for a in ARMS])
+    ax_a.set_ylim(0, 119)
+    ax_a.spines["left"].set_bounds(0, 100)
+    ax_a.set_yticks([0, 25, 50, 75, 100], ["0", "25", "50", "75", "100"])
+    ax_a.set_ylabel("valid (%)", fontsize=7, labelpad=1, color=fs.INK2)
+    ax_a.legend(handles=[Patch(color=fs.mix(LARGE, "#ffffff", 0.28), label="14B or more"),
+                         Patch(color=fs.mix(SMALL, "#ffffff", 0.28), label="smaller"),
+                         Line2D([], [], marker="o", linestyle="", color=fs.INK2, markersize=2.5,
+                                label="a model")],
+                loc="upper left", ncol=3, frameon=False, fontsize=7, handlelength=0.8,
+                handleheight=0.7, borderaxespad=0.0, columnspacing=0.6, handletextpad=0.3)
+    panel(ax_a, "a", "Valid episodes by arm", x=0.0, y=1.03)
 
-    ax = bottom.subplots()
-    style(ax, grid_axis="x")
+    # b: F4 after a right route: did the last program call positions(), and was it valid?
+    nature(ax_b, y=False)
     y, ticks, labels = 0, [], []
-    for group, colour in ((rows_big, LARGE), (rows_small, SMALL)):
-        for m in group:
-            f0, f4 = per[m]["F0"]["valid"], per[m]["F4"]["valid"]
-            ax.plot([f0, f4], [y, y], color=fs.mix(colour, "#ffffff", 0.45), linewidth=1.6,
-                    solid_capstyle="round", zorder=1)
-            ax.scatter([f0], [y], s=16, facecolor="white", edgecolor=colour, linewidth=1.0, zorder=3)
-            ax.scatter([f4], [y], s=18, facecolor=colour, edgecolor="white", linewidth=0.6, zorder=4)
+    for name, t, colour in (("14B or more", big["told"]["F4"], LARGE),
+                            ("smaller", small["told"]["F4"], SMALL)):
+        ax_b.text(0, y - 0.66, f"{name}: {t['episodes']} right routes", ha="left", va="center",
+                  fontsize=7, color=fs.INK)
+        for what, total_key, valid_key in (("called positions()", "last_calls_positions",
+                                            "last_calls_positions_valid"),
+                                           ("own rule", "last_own_rule", "last_own_rule_valid")):
+            total, valid = t.get(total_key, 0), t.get(valid_key, 0)
+            ax_b.barh(y, total, height=0.62, color=fs.mix(colour, "#ffffff", 0.3), linewidth=0)
+            if valid:
+                ax_b.barh(y, valid, height=0.62, color=colour, linewidth=0)
+            ax_b.text(total + 2, y, f"{valid}/{total} valid", ha="left", va="center", fontsize=7,
+                      color=fs.INK)
             ticks.append(y)
-            labels.append(f"{m} ({sizes[m]:g}B)")
+            labels.append(what)
             y += 1
-        y += 0.4
-    ax.text(-0.3, y, f"and {len(zero)} smaller models at 0 in both", fontsize=7, color=fs.INK2,
-            va="center", ha="left")
-    ax.set_yticks(ticks, labels, fontsize=7)
-    ax.set_xlim(-0.6, 18.6)
-    ax.set_ylim(y + 0.7, -0.7)
-    ax.set_xticks([0, 6, 12, 18], ["0", "6", "12", "18"], fontsize=7)
-    ax.set_xlabel("valid episodes of 18", fontsize=7, labelpad=2)
-    ax.legend(handles=[Line2D([], [], marker="o", linestyle="", markerfacecolor="white",
-                              markeredgecolor=fs.INK2, markersize=4.2, label="F0, no library"),
-                       Line2D([], [], marker="o", linestyle="", markerfacecolor=fs.INK2,
-                              markeredgecolor="white", markersize=4.6, label="F4, after route()")],
-              loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, frameon=False, fontsize=7,
-              handletextpad=0.2, borderaxespad=0.1, columnspacing=1.0)
-    bottom.suptitle("(b) Each model, F0 and F4", x=0.0, ha="left", fontsize=7.5, fontweight="bold",
-                    color=fs.INK)
-    save(fig, "pfix_main")
+        y += 0.95
+    ax_b.set_yticks(ticks, labels)
+    ax_b.tick_params(axis="y", length=0, pad=2)
+    ax_b.set_ylim(y - 0.75, -1.2)
+    ax_b.set_xlim(0, 150)
+    ax_b.set_xticks([0, 50, 100], ["0", "50", "100"])
+    ax_b.spines["bottom"].set_bounds(0, 100)
+    ax_b.set_xlabel("F4 episodes", fontsize=7, labelpad=1, color=fs.INK2)
+    panel(ax_b, "b", "Told the right rule", x=-0.55, y=1.03)
+
+    # c: share of programs that ran failing each check, F0 against F4
+    nature(ax_c, y=False)
+    fc = fix["failed_checks"]
+    for yy, (key, label) in enumerate(CHECKS):
+        a0 = 100 * fc["F0"][key] / fc["F0"]["programs_ran"]
+        a4 = 100 * fc["F4"][key] / fc["F4"]["programs_ran"]
+        ax_c.plot([a0, a4], [yy, yy], color=fs.mix(fs.ORANGE, "#ffffff", 0.35), linewidth=1.4,
+                  solid_capstyle="round", zorder=1)
+        ax_c.scatter([a0], [yy], s=16, facecolor="white", edgecolor=fs.ORANGE, linewidth=1.0, zorder=3)
+        ax_c.scatter([a4], [yy], s=18, facecolor=fs.ORANGE, edgecolor="white", linewidth=0.6, zorder=4)
+        ax_c.text(-2, yy, label, ha="right", va="center", fontsize=7, color=fs.INK2)
+    ax_c.set_ylim(len(CHECKS) + 0.35, -0.8)
+    ax_c.set_yticks([])
+    ax_c.set_xlim(0, 62)
+    ax_c.set_xticks([0, 20, 40, 60], ["0", "20", "40", "60%"])
+    ax_c.legend(handles=[Line2D([], [], marker="o", linestyle="", markerfacecolor="white",
+                                markeredgecolor=fs.ORANGE, markersize=4, label="F0"),
+                         Line2D([], [], marker="o", linestyle="", markerfacecolor=fs.ORANGE,
+                                markeredgecolor="white", markersize=4.4, label="F4")],
+                loc="lower right", bbox_to_anchor=(1.0, 0.0), frameon=False, fontsize=7,
+                handletextpad=0.1, ncol=2, columnspacing=0.6, borderaxespad=0.0)
+    ax_c.set_xlabel("of the programs that ran", fontsize=7, labelpad=1, color=fs.INK2)
+    panel(ax_c, "c", "Checks failed", x=-0.62, y=1.03)
+
+    # d: episodes in which a new check flagged a program and an attempt was left: ended valid?
+    nature(ax_d)
+    rp = fix["repair"]
+    for i, arm in enumerate(ARMS):
+        r = rp[arm]
+        share = 100 * r["then_valid"] / r["with_another_attempt"]
+        ax_d.bar(i, share, width=0.6, color=fs.mix(fs.ORANGE, "#ffffff", 0.75), linewidth=0)
+        ax_d.text(i, share + 1.2, f"{r['then_valid']}/{r['with_another_attempt']}", ha="center",
+                  va="bottom", fontsize=7, color=fs.INK, rotation=90)
+    ax_d.set_xticks(range(len(ARMS)), ARMS)
+    ax_d.set_ylim(0, 40)
+    ax_d.set_yticks([0, 10, 20, 30, 40], ["0", "10", "20", "30", "40"])
+    ax_d.set_ylabel("ended valid (%)", fontsize=7, labelpad=1, color=fs.INK2)
+    panel(ax_d, "d", "Flagged, then fixed", x=-0.3, y=1.03)
+    save(fig, "pfix_analysis")
 
 
 def checks_figure(fix):
@@ -232,7 +333,8 @@ def frozen_figure(frozen):
 def main():
     plt.rcParams.update(fs.RC)
     fix, frozen = load()
-    main_figure(fix)
+    headline_figure(fix)
+    analysis_figure(fix)
     checks_figure(fix)
     routing_figure(fix)
     frozen_figure(frozen)

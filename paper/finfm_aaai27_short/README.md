@@ -51,17 +51,23 @@ macros; the text no longer uses its numbers.
 
 ## Figures (2026-11-19)
 
+One figure on each of the four main pages, in a journal style (bold lower-case panel letters,
+thin axes with outward ticks, no grid, every model shown as a point or line).
 `make_pfix_figures.py` draws the data figures from the same pinned files as
-`make_pfix_results.py` (it checks both hashes) into `figures/`, at the exact column width so
-LaTeX places them unscaled; colours and font come from `../latex_acl2027/figstyle.py`. Colour is
-the model-size group (blue: 14B or more; magenta: smaller; validated pair), orange the checks,
-aqua self-improvement.
+`make_pfix_results.py` (it checks both hashes) into `figures/`, at the exact column or text
+width so LaTeX places them unscaled; colours and font come from `../latex_acl2027/figstyle.py`.
+Colour is the model-size group (blue: 14B or more; magenta: smaller; validated pair), orange
+the checks, aqua self-improvement.
 
-- `pfix_main.pdf` (main text, Figure 2): (a) valid episodes per arm by size group; (b) every
-  model's F0 and F4. It replaced the per-model table, which moved to the appendix.
-- Appendix: `figures/arms_pfix.tex` (TikZ, what each arm adds, with pooled valid rates as
-  macros), `pfix_checks.pdf` (failed checks among programs that ran), `pfix_routing.pdf` (what
-  `route()` returned per model), `frozen_nolib.pdf` (the 8 November study without the library).
+- Page 1, Figure 1 `pfix_headline.pdf`: each model's valid rate in F0, F1 and F4, pooled line,
+  F2 as a reference; (a) models of 14B or more, (b) smaller. Defined in `main.tex` before the
+  overview, because a figure cannot print before an earlier-numbered one.
+- Page 2, Figure 2: the library overview (shared with the ACL draft).
+- Page 3, Figure 3 `figures/arms_pfix.tex` (TikZ): what each arm adds, with pooled valid rates.
+- Page 4, Figure 4 `pfix_analysis.pdf` (full width): (a) valid rate per arm by size group with
+  every model, (b) F4 after a right route: called `positions()` or kept an own rule, and valid,
+  (c) checks failed among programs that ran, F0 against F4, (d) flagged then fixed.
+- Appendix: per-model table, `pfix_checks.pdf`, `pfix_routing.pdf`, `frozen_nolib.pdf`.
 
 Track: Benchmark (Howard, 2026-11-19).
 

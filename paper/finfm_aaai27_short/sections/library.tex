@@ -9,48 +9,35 @@
 scripts. A skill records the defaults, licence changes and silent failure modes that a
 model's training prior gets wrong; each claim is dated and marked by how it was verified.
 A catalog of \NAlgorithms{} algorithms covers \NAlgorithmTasks{} task types (\NNative{}
-native, \NAdapters{} adapters to \NOptionalLibraries{} optional libraries, reported as
-missing rather than replaced when absent). \texttt{positions()} takes raw quotes and split
-factors, applies the factors once and returns positions decided on the previous close;
-\texttt{rolling()} does the same for volatility, risk and forecasts, and
-\texttt{signal\_positions()} applies the same lag, warm-up and scaling to states a model
-computes for a rule of its own. \texttt{adjust\_prices()} reads the factor convention
-(cumulative factors or event ratios) from the data and records it. A call the library cannot
-honour raises an error that names the right one rather than returning a plausible result: a
-function passed as the algorithm, an argument that does not apply to it, states passed where
-prices belong, or a stated factor convention the data contradict. A task describes its rule
-without naming it, so an agent must first find the entry that computes it:
+native, \NAdapters{} adapters to \NOptionalLibraries{} optional libraries). \texttt{positions()}
+takes raw quotes and split factors, applies the factors once and returns positions decided on
+the previous close; \texttt{rolling()} does the same for volatility, risk and forecasts, and
+\texttt{signal\_positions()} applies the lag, warm-up and scaling to a model's own states.
+\texttt{adjust\_prices()} reads the factor convention (cumulative factors or event ratios) from
+the data and records it. A call the library cannot honour raises an error that names the right
+one instead of returning a plausible result. A task describes its rule without naming it, so
 \texttt{route(description, generate)} asks the connected model which catalogue rule, if any,
-computes the description, and returns its id or \texttt{None}. Between documents and
-code sit \NCards{} rule cards in \NCardFamilies{} families (timing, corporate actions, data
-hygiene; Appendix Table~\ref{tab:cards}). A card holds a short rule, the skill passage it
-comes from, the checks that verify it and, where one exists, the library call that follows
-it. A task declares traits such as \emph{split factors} and receives only the cards they
-select.
+computes the description, and returns its id or \texttt{None}. \NCards{} rule cards in
+\NCardFamilies{} families (timing, corporate actions, data hygiene; Appendix
+Table~\ref{tab:cards}) hold a short rule, its source passage, the checks that verify it and, where one exists, the
+library call that follows it; a task receives only the cards its traits select.
 
 \paragraph{Checks.}
-The library has \NGuards{} guards behind one interface, which returns whether the guard
-passed, a message and warnings; \NGuardsExported{} take JSON inputs and are exported as
-tools. For generated programs, \FixVisibleChecks{} property checks need no expected output.
-Three are metamorphic relations \citep{segura2016metamorphic}:
-\begin{itemize}
-\item \texttt{finite\_output}: no missing or infinite values;
-\item \texttt{split\_representation}: re-run on the same economic prices, given as adjusted
-closes with unit factors, the output must not change ($10^{-8}$);
-\item \texttt{execution\_lag}: perturb prices from row $k$ on; no position up to row $k$ may
-move (Figure~\ref{fig:episode}c). A rule that trades on the close it reads fails, although it
-passes a plain causality test.
-\end{itemize}
-Three more, opt-in, test a sentence of the task text on the program's own output:
-\texttt{takes\_positions}
-(not zero on every row), \texttt{position\_scale} ($\pm1/N$ or 0 for a long/short/flat rule,
-within the cap for a sized one, non-negative and summing to at most one for a portfolio) and
+\NGuards{} guards share one interface (\NGuardsExported{} exported as tools). For generated
+programs, \FixVisibleChecks{} property checks need no expected output. Three are metamorphic
+relations \citep{segura2016metamorphic}: \texttt{finite\_output} (no missing or infinite
+values); \texttt{split\_representation} (the same economic prices given as adjusted closes with
+unit factors must not change the output); \texttt{execution\_lag} (perturb prices from row $k$
+on; no position up to row $k$ may move, Figure~\ref{fig:episode}c), which fails a rule that
+trades on the close it reads although a plain causality test passes it. Three more, opt-in, test
+a sentence of the task text on the program's own output: \texttt{takes\_positions} (not zero on
+every row), \texttt{position\_scale} ($\pm1/N$ or 0 for a long/short/flat rule, within the cap
+for a sized one, non-negative and summing to at most one for a portfolio) and
 \texttt{warmup\_rows\_zero} (no position before the lookback and the lag allow). None reads the
-reference, and every reference passes all six. Each check carries a \emph{cause}, one sentence
-on what it observed, and \texttt{explain()} pairs it with the cards that address it.
+reference, and every reference passes all six. Each check carries a \emph{cause}, and
+\texttt{explain()} pairs it with the cards that address it.
 
 \paragraph{Agent interfaces.}
 One registry yields \NTools{} tools under the same names as a Model Context Protocol server
-\citep{mcp2026spec} and as OpenAI and Anthropic tool schemas: read and search skills, run
-algorithms, run guards. \texttt{agents.Team} turns the user's \texttt{generate} callable into
-a writer and one reviewer per rule family; only the checks decide acceptance.
+\citep{mcp2026spec} and as OpenAI and Anthropic tool schemas; \texttt{agents.Team} turns the
+user's \texttt{generate} callable into a writer and one reviewer per rule family.

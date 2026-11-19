@@ -1,42 +1,40 @@
 % What each arm of the library study adds to the messages (this version only). Every arm also has
-% the system prompt, the task text and Check feedback. Numbers are macros from pfix_numbers.tex.
+% the system prompt, the task text and Check feedback. Numbers are macros from pfix_numbers.tex;
+% the bars are drawn from the same macros (1 pt per 2 percentage points).
 \begin{tikzpicture}[x=1pt, y=1pt,
     chip/.style={fig item, minimum height=10pt, inner sep=0pt, font=\figSmallFont, align=center},
     on/.style={chip, fill=finblue!14, draw=finblue!70, line width=0.5pt, text=figink},
     off/.style={chip, fill=figfaint, draw=figfaint, text=figmid},
     head/.style={font=\figSmallFont, text=figmid, align=center, anchor=south},
     arm/.style={font=\figLabelFont, text=figink, anchor=west, inner sep=0}]
-  % columns: x centre and width of each piece
-  \def\cR{38}\def\wR{44}      % route() before the episode
-  \def\cI{89}\def\wI{50}      % interface text in the system prompt
-  \def\cD{141}\def\wD{46}     % one line per algorithm
-  \def\cS{193}\def\wS{50}     % sentence naming the call
-  \def\cV{228}                % valid, pooled (right edge at \cV + 10)
+  \def\cR{34}\def\wR{36}      % route() before the episode
+  \def\cI{78}\def\wI{42}      % interface text in the system prompt
+  \def\cD{122}\def\wD{36}     % one line per algorithm
+  \def\cS{169}\def\wS{44}     % sentence naming the call
+  \def\xV{197}                % valid: bar start
   \node[head] at (\cR, 6) {asked first};
   \node[head] at (\cI, 6) {system prompt};
   \node[head] at (\cD, 6) {in the listing};
   \node[head] at (\cS, 6) {task text};
-  \node[head] at (\cV, 6) {valid};
+  \node[head, anchor=south west, inner sep=0] at (\xV, 8.5) {valid};
   \foreach \row/\name in {0/F0, 1/F1, 2/F2, 3/F3, 4/F4} {
     \node[arm] at (0, -\row*14) {\name};
   }
-  % route()
   \foreach \row in {0,1,2,3} {\node[off, minimum width=\wR pt] at (\cR, -\row*14) {};}
   \node[on, minimum width=\wR pt] (r4) at (\cR, -56) {\texttt{route()}};
-  % interface
   \node[off, minimum width=\wI pt] at (\cI, 0) {};
   \foreach \row in {1,2,3,4} {\node[on, minimum width=\wI pt] at (\cI, -\row*14) {interface};}
-  % rule lines
   \foreach \row in {0,1,2,4} {\node[off, minimum width=\wD pt] at (\cD, -\row*14) {};}
   \node[on, minimum width=\wD pt] at (\cD, -42) {rule lines};
-  % sentence naming the call
   \foreach \row in {0,1,3} {\node[off, minimum width=\wS pt] at (\cS, -\row*14) {};}
   \node[on, minimum width=\wS pt] at (\cS, -28) {id from us};
   \node[on, minimum width=\wS pt] (s4) at (\cS, -56) {id it named};
   \draw[fig flow, line width=0.6pt, -{Latex[length=1.2mm,width=1.1mm]}]
     (r4.south) to[out=-25, in=-155] (s4.south);
-  % result column
+  % valid share, pooled: a thin bar and its value
   \foreach \row/\v in {0/\FixFZeroPct, 1/\FixFOnePct, 2/\FixFTwoPct, 3/\FixFThreePct, 4/\FixFFourPct} {
-    \node[font=\figLabelFont, text=figink, anchor=east, inner sep=0] at (\cV+10, -\row*14) {\v\%};
+    \pgfmathsetmacro{\len}{\v/2}
+    \fill[finblue, rounded corners=0.8pt] (\xV, -\row*14-2.6) rectangle ++(\len pt, 5.2);
+    \node[font=\figSmallFont, text=figink, anchor=west, inner sep=0] at (\xV+\len+2, -\row*14) {\v\%};
   }
 \end{tikzpicture}%

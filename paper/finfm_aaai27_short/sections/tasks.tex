@@ -1,6 +1,26 @@
 \section{Task suite}
 \label{sec:tasks}
 
+\begin{figure}[t]
+\centering
+\input{figures/arms_pfix}
+\caption{The five arms of the library study (\S\ref{sec:study}): what each adds to the system
+prompt, task text and \texttt{Check} feedback they share. Right: valid episodes over
+\FixModels{} models.}
+\label{fig:arms}
+\end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics{figures/pfix_analysis}
+\caption{Why the library helps and where it stops. (a)~Valid episodes per arm by size group; dots
+are models. (b)~F4 episodes after \texttt{route()} returned the task's rule: did the last program
+call \texttt{positions()}, and was it valid? (c)~Share of the programs that ran that failed each
+visible check, without the library (F0) and after \texttt{route()} (F4). (d)~Episodes in which a
+new check flagged a program and an attempt was left: how many ended valid.}
+\label{fig:analysis}
+\end{figure*}
+
 \NTasks{} tasks cover \NTaskAlgorithms{} algorithms in \NFamilies{} families, two variants
 each (Appendix Table~\ref{tab:tasks}). A task states a rule in prose; the model implements
 \texttt{solve(prices, split\_factors)} returning positions, or for volatility, risk and
@@ -27,11 +47,9 @@ ran, passed every check and matches an independent numpy reference within $10^{-
 \emph{accepted but wrong}; we report that rate because the checks cannot see it.
 
 \paragraph{Qualification.}
-Before any model ran: on every task and data panel, the reference agrees with the library
-to within $\RefGapOther$ ($\RefGapMinVariance$ for \texttt{min\_variance}); a correct
-program passes every check and is graded valid; and on a position task and a table task,
-planted versions of each failure (same close, no adjustment, factors cumulated twice,
-missing warm-up) fail their check and the grade.
+Before any model ran, the reference agreed with the library on every task and panel (within
+$\RefGapOther$; $\RefGapMinVariance$ for \texttt{min\_variance}), a correct program passed every
+check, and planted versions of each failure failed their check and the grade.
 
 \paragraph{Split.}
 The split is by algorithm. The \NForcedDev{} algorithms a model has already seen go to
