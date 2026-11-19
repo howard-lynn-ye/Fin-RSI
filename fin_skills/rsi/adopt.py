@@ -23,11 +23,11 @@ from collections import Counter
 
 from .methods import PlaybookLearning
 from .meter import Budget
+from fin_skills.algorithms.routing import POINTER   # the sentence L2, F2 and F4 add
 from .run_record import digest
 from .study import StudyArm, initial_messages
 
 ARMS = ("L0", "L1", "L2", "L3")
-POINTER = 'The fin_skills library implements this rule as positions("{algorithm}", ...).'
 RETRIEVED = "Library entry retrieved for this rule by text search:\n{entry}"
 STOP = set("a an the of to and or in on at by for is be it its as with from that this when each "
            "every over than then into not no are was were has have which where while".split())

@@ -192,3 +192,28 @@ def test_size_split(tmp_path):
     assert big["pooled"]["F2"]["valid"] == 36 and small["pooled"]["F0"]["valid"] == 12
     assert {c["contrast"]: c["models"] for c in big["contrasts"]} == {
         "F1-F0": 2, "F2-F0": 2, "F2-F1": 2}
+
+
+def test_routed_arm_and_failed_checks(tmp_path):
+    """v4: every unit in one root; F4 rows carry what the router named."""
+    for m in ("qwen-a-32b", "small-7b"):
+        write_unit(tmp_path, m, "check_F0", 5, episodes("check_F0", valid_every=3))
+        write_unit(tmp_path, m, "check_fix", 5,
+                   episodes("check_F1", calls=1) + episodes("check_F2", valid_every=1, calls=1))
+        write_unit(tmp_path, m, "check_doc", 5, episodes("check_F3", calls=1))
+        routed = episodes("check_F4", valid_every=2, calls=1)
+        for i, r in enumerate(routed):
+            r["extra"] = dict(routed=[r["task_algorithm"], None, "macd"][i % 3], route_reply="x")
+            r["steps"][0]["checks"] = dict(finite_output=True, position_scale=i % 2 == 0)
+        write_unit(tmp_path, m, "check_route", 5, routed)
+    out = ap.analyze(tmp_path, doc_root=tmp_path, route_root=tmp_path)
+    assert out["missing_route"] == [] and out["pooled"]["F4"]["n"] == 36
+    assert out["routing"]["right"] + out["routing"]["none"] + out["routing"]["wrong"] == 36
+    assert out["routing"]["wrong"] == 8          # "macd" named for a macd task counts as right
+    assert out["routing"]["right_valid"] <= out["routing"]["right"]
+    e = {x["contrast"]: x for x in out["exploratory_contrasts"]}
+    assert set(e) == {"F3-F1", "F3-F2", "F3-F0", "F4-F1", "F4-F2", "F4-F0"}
+    assert e["F4-F0"]["models"] == 2
+    assert out["failed_checks"]["F4"] == dict(programs_ran=36, finite_output=0, position_scale=18)
+    assert out["by_size"]["ge14b"]["routing"]["right"] == out["routing"]["right"] // 2
+    assert out["funnel"]["F4"]["episodes"] == 36

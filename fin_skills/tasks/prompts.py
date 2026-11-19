@@ -77,39 +77,7 @@ def _signature(fn) -> str:
 FROZEN_INTERFACE_SHA256 = "f0940c646523ca388a970de725e9088510d33e4248506d2ce2eeba08e4058a4f"
 
 
-# What each position algorithm computes at a close, before positions() applies lag, warm-up and
-# scale; written from fin_skills/algorithms (technical.py, runtime.py, catalog.py). Shown only by
-# the documented interface (library_text(documented=True), P-fix arm F3).
-RULES = {
-    "equal_weight": "1 / N on every asset.",
-    "inverse_volatility": "weights proportional to 1 / volatility of each asset's returns over "
-                          "the window, summing to 1.",
-    "min_variance": "long-only weights that minimise the variance of portfolio returns over the "
-                    "window.",
-    "hrp": "hierarchical risk parity weights from the window's returns.",
-    "cross_sectional_momentum": "1 / top_k on each of the top_k assets by summed log return over "
-                                "the last lookback rows, only where that sum is positive; the "
-                                "rest is cash.",
-    "ma_crossover": "sign of (mean of the last fast closes - mean of the last slow closes).",
-    "momentum": "sign of the summed log return over the last lookback returns.",
-    "vol_target_momentum": "sign of the change over the last lookback closes, times "
-                           "min(target_vol / (sample std of the last lookback simple returns "
-                           "* sqrt(periods_per_year)), max_exposure), 0 when that std is 0.",
-    "macd": "sign of (line - EMA(signal_span) of line), with line = EMA(fast) - EMA(slow) of "
-            "closes; every EMA is pandas ewm(span, adjust=False).",
-    "bollinger_reversion": "z = (close - mean) / sample std (ddof=1) over the last lookback "
-                           "closes including the current one, z = 0 when std is 0. Walking "
-                           "forward from flat: +1 when z < -entry_z, -1 when z > entry_z, back "
-                           "to 0 when long and z >= 0 or short and z <= 0, otherwise unchanged.",
-    "rsi_reversion": "RSI = 100 * gain / (gain + loss), with gain and loss the simple means of "
-                     "the positive and negative close-to-close changes over the last lookback "
-                     "changes (not Wilder smoothing), RSI = 50 when both are 0. Walking forward "
-                     "from flat: +1 when RSI < lower, -1 when RSI > upper, back to 0 when long "
-                     "and RSI >= 50 or short and RSI <= 50, otherwise unchanged.",
-    "donchian_breakout": "upper and lower = max and min of the lookback closes before the "
-                         "current one. From flat once defined: +1 on a close above upper, -1 on "
-                         "a close below lower, otherwise unchanged.",
-}
+from fin_skills.algorithms.routing import RULES  # noqa: E402  (shown by documented=True)
 
 
 def library_text(*, rolling: bool = True, frozen: bool | None = None,

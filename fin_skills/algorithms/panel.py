@@ -30,7 +30,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-FACTOR_KINDS = ("cumulative", "ratio")
+FACTOR_KINDS = ("auto", "cumulative", "ratio")
 WARMUP = ("zero", "nan")
 ADJUSTED = "split_adjusted"      # attrs key set by adjust_prices() on its output
 
@@ -61,14 +61,19 @@ def _frame(x: Any, name: str) -> pd.DataFrame:
 
 
 def adjust_prices(prices: pd.DataFrame | pd.Series, split_factors=None, *,
-                  factors: str = "cumulative") -> pd.DataFrame | pd.Series:
+                  factors: str = "auto") -> pd.DataFrame | pd.Series:
     """Continuous split-adjusted closes from raw quotes.
 
-    factors="cumulative" (default): split_factors[t] is already the product of every split
+    factors="auto" (default): the convention is read from split_factors, which show it once
+        a split has a row after it: event ratios go back to 1.0, cumulative factors stay
+        changed. Data that cannot show it raises and asks for one of the two below. The
+        convention applied is recorded in attrs["factors"].
+    factors="cumulative": split_factors[t] is already the product of every split
         ratio effective on or before row t, known on its event date. The adjusted close is
         prices * split_factors. Do NOT take a cumulative product of these again.
     factors="ratio": split_factors[t] is the ratio of a split effective on row t and 1.0 on
         every other row; its running product is formed here, once.
+    A stated convention that the data contradicts raises.
 
     split_factors=None returns the prices unchanged (already adjusted). Index and columns of
     prices and split_factors must match exactly; nothing is aligned silently.
@@ -87,35 +92,48 @@ def adjust_prices(prices: pd.DataFrame | pd.Series, split_factors=None, *,
     f = _frame(split_factors, "split_factors")
     if not (p.index.equals(f.index) and list(p.columns) == list(f.columns)):
         raise ValueError("prices and split_factors must have identical index and columns")
-    _refuse_other_convention(f, factors)
-    if factors == "ratio":
+    applied = _convention(f, factors)
+    if applied == "ratio":
         f = f.cumprod()
     out = p * f
-    return _mark_adjusted(out.iloc[:, 0].copy()) if series else _mark_adjusted(out)
+    out = _mark_adjusted(out.iloc[:, 0].copy()) if series else _mark_adjusted(out)
+    out.attrs["factors"] = applied
+    return out
 
 
-def _refuse_other_convention(f: pd.DataFrame, factors: str) -> None:
-    """Factors in the other convention would adjust every row after a split wrongly and still
-    return a plausible price table. Event ratios are 1.0 except on split days, so a split shows
-    as a one-row deviation; cumulative factors change on a split day and stay changed."""
+def _convention(f: pd.DataFrame, factors: str) -> str:
+    """The convention to apply: the stated one unless the data contradicts it, and for "auto"
+    the one the data shows. Factors read in the other convention would adjust every row after
+    a split wrongly and still return a plausible price table. Event ratios are 1.0 except on
+    split days, so a split shows as a one-row deviation; cumulative factors change on a split
+    day and stay changed."""
     v = f.to_numpy(dtype=float)
     if len(v) < 3 or not np.isfinite(v).all():
-        return
+        return "cumulative" if factors == "auto" else factors
+    spike = bool(((v[1:-1] != v[:-2]) & (v[2:] == v[:-2])).any())   # looks like event ratios
+    held = bool(((v[1:] != 1.0) & (v[:-1] != 1.0)).any())           # looks cumulative
     if factors == "cumulative":
-        spike = (v[1:-1] != v[:-2]) & (v[2:] == v[:-2])
-        if spike.any():
+        if spike:
             raise ValueError(
                 "split_factors look like event ratios (1.0 except on split days), but "
-                "factors='cumulative' (the default) reads each row as the running product of "
-                "all splits so far. Pass factors='ratio' for event ratios.")
-    else:
-        held = (v[1:] != 1.0) & (v[:-1] != 1.0)
-        if held.any():
+                "factors='cumulative' reads each row as the running product of all splits so "
+                "far. Pass factors='ratio' for event ratios, or leave factors='auto'.")
+        return factors
+    if factors == "ratio":
+        if held:
             raise ValueError(
                 "split_factors look cumulative (they stay away from 1.0 after a split), but "
                 "factors='ratio' multiplies them up again. Pass factors='cumulative' for "
                 "running products, or event ratios (1.0 except on split days) with "
                 "factors='ratio'.")
+        return factors
+    if spike != held:
+        return "ratio" if spike else "cumulative"
+    if not spike and np.array_equal(v, np.cumprod(v, axis=0)):
+        return "cumulative"                      # no split, or one on the last row: same result
+    raise ValueError(
+        "cannot tell from the data whether split_factors are cumulative factors or event "
+        "ratios. Pass factors='cumulative' or factors='ratio'.")
 
 
 def _refuse_readjusting(prices) -> None:
@@ -195,7 +213,7 @@ def _needed(spec, window: int | None, parameters: Mapping[str, Any]) -> int:
 
 
 def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors=None, *,
-              factors: str = "cumulative", window: int | None = None,
+              factors: str = "auto", window: int | None = None,
               rebalance_every: int = 1, lag: int = 1, warmup: str = "zero",
               scale: float | str = "equal", parameters: Mapping[str, Any] | None = None,
               registry=None, **algorithm_parameters) -> pd.DataFrame:
@@ -328,7 +346,8 @@ def positions(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors
     if warmup == "zero":
         out = out.fillna(0.0)
     out.attrs.update(algorithm=algorithm_id, task=spec.task, lag_bars=int(lag),
-                     warmup_rows=warm_rows, warmup=warmup, factors=factors,
+                     warmup_rows=warm_rows, warmup=warmup,
+                     factors=close.attrs.get("factors", factors),
                      window=window, rebalance_every=int(rebalance_every), parameters=params)
     return out
 
@@ -389,7 +408,7 @@ ROLLING_TASKS = {"volatility": "volatility", "risk": "var", "forecast": None}
 
 
 def rolling(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors=None, *,
-            window: int, output: str | None = None, factors: str = "cumulative", lag: int = 1,
+            window: int, output: str | None = None, factors: str = "auto", lag: int = 1,
             warmup: str = "zero", parameters: Mapping[str, Any] | None = None,
             registry=None) -> pd.DataFrame:
     """One value per date and asset from a volatility, risk or forecast algorithm.
@@ -461,6 +480,7 @@ def rolling(algorithm_id: str, prices: pd.DataFrame | pd.Series, split_factors=N
     if warmup == "zero":
         out = out.fillna(0.0)
     out.attrs.update(algorithm=algorithm_id, task=spec.task, output=field, window=int(window),
-                     lag_bars=int(lag), warmup_rows=warm_rows, warmup=warmup, factors=factors,
+                     lag_bars=int(lag), warmup_rows=warm_rows, warmup=warmup,
+                     factors=close.attrs.get("factors", factors),
                      parameters=params)
     return out

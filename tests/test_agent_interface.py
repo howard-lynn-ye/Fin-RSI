@@ -185,25 +185,52 @@ def _split_panel():
     return raw, ratio, ratio.cumprod()
 
 
-def test_event_ratios_read_as_cumulative_are_refused():
+def test_the_factor_convention_is_read_from_the_data():
+    from fin_skills.algorithms import adjust_prices
+    raw, ratio, cumulative = _split_panel()
+    flat = adjust_prices(raw, ratio)                 # default: detected as event ratios
+    assert flat.attrs["factors"] == "ratio" and flat.attrs["split_adjusted"]
+    assert np.allclose(flat["A"], 100.0) and np.allclose(flat["B"], 90.0)
+    assert flat.equals(adjust_prices(raw, ratio, factors="ratio"))
+    same = adjust_prices(raw, cumulative)            # default: detected as cumulative
+    assert same.attrs["factors"] == "cumulative" and np.allclose(same.to_numpy(), flat.to_numpy())
+    for factors in (ratio, cumulative):
+        w = positions("bollinger_reversion", raw, factors)
+        assert w.attrs["factors"] == ("ratio" if factors is ratio else "cumulative")
+    assert positions("bollinger_reversion", raw, ratio).equals(
+        positions("bollinger_reversion", raw, cumulative))
+    unit = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
+    assert adjust_prices(raw, unit).equals(adjust_prices(raw, unit, factors="ratio"))
+    last = unit.copy()
+    last.iloc[-1, 0] = 2.0                           # a split on the last row reads the same
+    assert adjust_prices(raw, last).equals(adjust_prices(raw, last, factors="ratio"))
+
+
+def test_a_stated_convention_the_data_contradicts_is_refused():
     from fin_skills.algorithms import adjust_prices
     raw, ratio, cumulative = _split_panel()
     with pytest.raises(ValueError, match="look like event ratios.*factors='ratio'"):
-        adjust_prices(raw, ratio)
+        adjust_prices(raw, ratio, factors="cumulative")
     with pytest.raises(ValueError, match="look like event ratios"):
-        positions("bollinger_reversion", raw, ratio)
-    flat = adjust_prices(raw, ratio, factors="ratio")
-    assert np.allclose(flat.to_numpy(), adjust_prices(raw, cumulative).to_numpy())
-    assert np.allclose(flat["A"], 100.0) and np.allclose(flat["B"], 90.0)
-
-
-def test_cumulative_factors_read_as_ratios_are_refused():
-    from fin_skills.algorithms import adjust_prices
-    raw, ratio, cumulative = _split_panel()
+        positions("bollinger_reversion", raw, ratio, factors="cumulative")
     with pytest.raises(ValueError, match="look cumulative.*factors='cumulative'"):
         adjust_prices(raw, cumulative, factors="ratio")
-    unit = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
-    assert adjust_prices(raw, unit).equals(adjust_prices(raw, unit, factors="ratio"))
+
+
+def test_data_that_cannot_show_the_convention_asks_for_it():
+    from fin_skills.algorithms import adjust_prices
+    raw, ratio, cumulative = _split_panel()
+    first = pd.DataFrame(1.0, index=raw.index, columns=raw.columns)
+    first.iloc[0, 0] = 2.0          # ratio: a split on row 0; cumulative: 2.0 then back to 1.0
+    with pytest.raises(ValueError, match="cannot tell.*factors='cumulative' or factors='ratio'"):
+        adjust_prices(raw, first)
+    mixed = ratio.copy()
+    mixed["B"] = cumulative["B"]
+    with pytest.raises(ValueError, match="cannot tell"):
+        adjust_prices(raw, mixed)
+    assert adjust_prices(raw, first, factors="ratio").attrs["factors"] == "ratio"
+    with pytest.raises(ValueError, match="factors must be one of"):
+        adjust_prices(raw, ratio, factors="events")
 
 
 def test_states_given_to_positions_point_to_signal_positions(prices):

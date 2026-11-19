@@ -1,7 +1,7 @@
 """P-fix analysis (exploratory, descriptive): docs/P_FIX_STUDY_DESIGN_20261118.md.
 
     python scripts/analyze_p_fix.py <runs/main> <out.json> [--models a,b,...]
-        [--fix-root <runs-v2/main>] [--doc-root <runs-v3/main>]
+        [--fix-root <runs-v2/main>] [--doc-root <runs-v3/main>] [--route-root <runs/main>]
 
 For each model, the first complete run of each unit (lowest Slurm job id with a complete terminal
 record) is read; every refusal, context stop, truncated reply and failed program stays in the
@@ -14,6 +14,11 @@ Amendment 2 adds arm F3 (documented interface, unit check_doc), read from --doc-
 contrasts are reported apart from the declared ones, over the models whose F3 run is complete;
 models without one keep their F0-F2 results. The split by model size (total parameters >= 14B
 or smaller) is post hoc and descriptive.
+
+Amendment 3 (v4) reruns every arm in one root with the declared-property checks and adds arm F4
+(unit check_route): the model is first asked which catalogue rule computes the task's rule
+(fin_skills.algorithms.routing). Pass that root as root, --doc-root and --route-root. The report
+adds what the router named per episode and how often each visible check failed.
 """
 from __future__ import annotations
 
@@ -23,12 +28,15 @@ import json
 import re
 from pathlib import Path
 
-ARMS = {"check_F0": "F0", "check_F1": "F1", "check_F2": "F2", "check_F3": "F3"}
+ARMS = {"check_F0": "F0", "check_F1": "F1", "check_F2": "F2", "check_F3": "F3",
+        "check_F4": "F4"}
 UNITS = {"check_F0": ("check_F0",), "check_fix": ("check_F1", "check_F2")}
-DOC_UNIT = ("check_doc", ("check_F3",))  # Amendment 2, optional
+OPTIONAL_UNITS = {"check_doc": ("check_F3",),      # Amendment 2
+                  "check_route": ("check_F4",)}    # Amendment 3
 CONTRASTS = (("F1", "F0"), ("F2", "F0"), ("F2", "F1"))
-EXPLORATORY_CONTRASTS = (("F3", "F1"), ("F3", "F2"), ("F3", "F0"))
-LIBRARY_ARMS = ("F1", "F2", "F3")
+EXPLORATORY_CONTRASTS = (("F3", "F1"), ("F3", "F2"), ("F3", "F0"),
+                         ("F4", "F1"), ("F4", "F2"), ("F4", "F0"))
+LIBRARY_ARMS = ("F1", "F2", "F3", "F4")
 # Total parameters in billions: the number in the model's name (qwen3-30b-a3b counts its 30B
 # total, not its 3B active), and phi4-mini's 3.8B from its model card. Post-hoc split at 14B.
 SIZE_OVERRIDES = {"phi4-mini": 3.8}
@@ -81,6 +89,8 @@ def error_group(error: str) -> str:
         return "argument that does not apply to the algorithm"
     if "look like event ratios" in head or "look cumulative" in head:
         return "split factors in the other convention"
+    if "cannot tell from the data whether split_factors" in head:
+        return "split factor convention not shown by the data"
     if "1-D array" in head:
         return "run() given a table"
     if re.search(r"requires >= \d+ observations|made no decision on any", head):
@@ -130,12 +140,16 @@ def pool(per_model, arm):
                 models_none_valid=sum(c["valid"] == 0 for c in rows))
 
 
-def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Path | None = None):
+def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Path | None = None,
+            route_root: Path | None = None):
     """fix_root: read check_fix from another runs/main (a later library version with identical
-    prompts); check_F0 never imports the library and is read from root. doc_root: read
-    check_doc (F3, Amendment 2) from its runs/main; a model without one keeps F0-F2."""
+    prompts); check_F0 never imports the library and is read from root. doc_root, route_root:
+    read check_doc (F3) and check_route (F4) from their runs/main; a model without one keeps
+    its other arms."""
+    optional = {"check_doc": doc_root, "check_route": route_root}
     out = dict(models={}, runs={}, missing=[], fix_root=str(fix_root) if fix_root else None,
-               doc_root=str(doc_root) if doc_root else None, missing_doc=[])
+               doc_root=str(doc_root) if doc_root else None, missing_doc=[],
+               route_root=str(route_root) if route_root else None, missing_route=[])
     rows_by = collections.defaultdict(list)
     for model_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         model = model_dir.name
@@ -155,11 +169,12 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
             out["missing"].append(model)
             rows_by.pop(model, None)
             continue
-        if doc_root is not None:
-            unit, methods = DOC_UNIT
-            run, rows = first_complete(doc_root / model / unit)
+        for unit, methods in OPTIONAL_UNITS.items():
+            if optional[unit] is None:
+                continue
+            run, rows = first_complete(optional[unit] / model / unit)
             if rows is None:
-                out["missing_doc"].append(model)
+                out["missing_" + unit.split("_")[1]].append(model)
             else:
                 got[unit] = run
                 rows_by[model].extend(r for r in rows if r["method"] in methods)
@@ -171,6 +186,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
     scan = collections.Counter()
     flagged, infrastructure = [], []
     programs = {a: collections.Counter() for a in ARMS.values()}
+    failed_checks = {a: collections.Counter() for a in ARMS.values()}
+    routing = collections.Counter()
+    routing_by_model = {}
     for model, rows in sorted(rows_by.items()):
         counts = {a: dict(n=0, valid=0, first_valid=0, accepted_wrong=0, calling=0, calling_ran=0)
                   for a in ARMS.values()}
@@ -187,8 +205,20 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
             variants[(var, arm)]["n"] += 1
             variants[(var, arm)]["valid"] += bool(r["valid"])
             steps = r["steps"]
+            if arm == "F4":
+                # What the model named when asked which catalogue rule computes the task's rule.
+                named = (r.get("extra") or {}).get("routed")
+                how = "right" if named == fam else "none" if named is None else "wrong"
+                for k in (how, how + "_valid" if r["valid"] else None):
+                    if k:
+                        routing[k] += 1
+                        routing_by_model.setdefault(model, collections.Counter())[k] += 1
             for i, s in enumerate(steps):
                 p = programs[arm]
+                if s["executed"]:
+                    failed_checks[arm]["programs_ran"] += 1
+                    for name, ok in (s.get("checks") or {}).items():
+                        failed_checks[arm][name] += not ok
                 p["replies"] += 1
                 p["programs"] += bool(s.get("code"))
                 p["executed"] += bool(s["executed"])
@@ -240,6 +270,8 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
         expected = {a: EPISODES_PER_ARM for a in ("F0", "F1", "F2")}
         if doc_root is not None and model not in out["missing_doc"]:
             expected["F3"] = EPISODES_PER_ARM
+        if route_root is not None and model not in out["missing_route"]:
+            expected["F4"] = EPISODES_PER_ARM
         got_n = {a: c["n"] for a, c in counts.items() if c["n"]}
         if got_n != expected:
             raise ValueError(f"{model}: episodes per arm {got_n}, expected {expected}")
@@ -247,7 +279,7 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
     arms = [a for a in ARMS.values() if any(m[a]["n"] for m in per_model.values())]
     pooled = {arm: pool(per_model, arm) for arm in arms}
     contrasts = [contrast(per_model, a, b) for a, b in CONTRASTS]
-    exploratory = [contrast(per_model, a, b) for a, b in EXPLORATORY_CONTRASTS if "F3" in arms]
+    exploratory = [contrast(per_model, a, b) for a, b in EXPLORATORY_CONTRASTS if a in arms]
     by_size = {}
     sizes = {m: size_b(m) for m in per_model}
     for label, keep in ((f"ge{LARGE_B}b", lambda m: sizes[m] is not None and sizes[m] >= LARGE_B),
@@ -257,7 +289,9 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
             models=sorted(group), pooled={arm: pool(group, arm) for arm in arms},
             contrasts=[contrast(group, a, b) for a, b in CONTRASTS],
             exploratory_contrasts=[contrast(group, a, b) for a, b in EXPLORATORY_CONTRASTS
-                                   if "F3" in arms])
+                                   if a in arms],
+            routing=dict(sum((routing_by_model.get(m, collections.Counter()) for m in group),
+                             collections.Counter())))
     out.update(
         per_model=per_model, pooled=pooled, contrasts=contrasts,
         exploratory_contrasts=exploratory,
@@ -269,6 +303,8 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
         funnel={a: dict(c) for a, c in funnel.items()},
         programs={a: dict(c) for a, c in programs.items()},
         library_errors={a: dict(c.most_common()) for a, c in errors.items()},
+        failed_checks={a: dict(c) for a, c in failed_checks.items()},
+        routing=dict(routing), routing_by_model={m: dict(c) for m, c in routing_by_model.items()},
         scan=dict(patterns=SCAN, counts=dict(scan), flagged=flagged),
         infrastructure_suspect=infrastructure)
     return out
@@ -276,7 +312,7 @@ def analyze(root: Path, models=None, fix_root: Path | None = None, doc_root: Pat
 
 def report(out):
     print(f"models complete: {len(out['per_model'])}; missing: {out['missing']}; "
-          f"without F3: {out['missing_doc']}")
+          f"without F3: {out['missing_doc']}; without F4: {out['missing_route']}")
     arms = list(out["pooled"])
     print("model                    " + "".join(f"{a:>4}" for a in arms) + "   (valid of 18)")
     for m, c in out["per_model"].items():
@@ -297,6 +333,11 @@ def report(out):
         print(f"funnel {a}: {f}")
     for a, e in out["library_errors"].items():
         print(f"library calls that raised, {a}: {e}")
+    for a, c in out["failed_checks"].items():
+        print(f"checks failed by programs that ran, {a}: {c}")
+    print(f"F4 routing (episodes; _valid: of those, valid): {out['routing']}")
+    for label, g in out["by_size"].items():
+        print(f"  {label}: {g['routing']}")
     print(f"programs: {out['programs']}")
     print(f"scan: {out['scan']['counts']}; flagged programs {len(out['scan']['flagged'])}")
     print(f"steps whose error is a runtime file the filesystem failed to return: "
@@ -313,9 +354,11 @@ def main(argv=None):
                         help="runs/main of a later library version, for check_fix only")
     parser.add_argument("--doc-root", type=Path, default=None,
                         help="runs/main holding check_doc (arm F3, Amendment 2)")
+    parser.add_argument("--route-root", type=Path, default=None,
+                        help="runs/main holding check_route (arm F4, Amendment 3)")
     args = parser.parse_args(argv)
     out = analyze(args.root, set(filter(None, args.models.split(","))) or None, args.fix_root,
-                  args.doc_root)
+                  args.doc_root, args.route_root)
     args.out.write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
     report(out)
 

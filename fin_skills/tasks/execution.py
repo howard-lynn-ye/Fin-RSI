@@ -230,6 +230,9 @@ def evaluate(code, request, timeout):
                                and np.allclose(probe["array"][:k+1], values[:k+1],
                                                atol=1e-8, rtol=0))
         checks["execution_lag"] = bool(lag_ok)
+        if request.get("properties"):             # declared-property checks (opt-in)
+            from .properties import checks as property_checks
+            checks.update(property_checks(task, values))
         return dict(executed=True, checks=checks, positions=np.nan_to_num(values).tolist(),
                     library_calls=base["library_calls"], trace=base["trace"],
                     confinement=base.get("confinement", {}), execution_processes=sandbox.calls)

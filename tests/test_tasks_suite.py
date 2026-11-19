@@ -224,3 +224,13 @@ def test_table_task_defects_fail_their_check(bug):
     judge = Judge(TASKS.get("historical_volatility_a"), seed=11, library=False)
     seen = judge.check(code)
     assert seen.executed and seen.checks[check] is False and not judge.grade(code)
+
+
+def test_the_library_reads_every_task_panel_in_the_tasks_convention():
+    """adjust_prices(factors="auto") must never pick the other convention on suite data."""
+    from fin_skills.algorithms.panel import _convention
+    from fin_skills.tasks import suite
+    for task in suite().tasks:
+        for seed in (11, 101, 211, 307, *range(1, 12)):
+            _, factors, _ = panel(seed, rows=task.rows, factors=task.factors, order=task.order)
+            assert _convention(factors, "auto") == task.factors, (task.id, seed)

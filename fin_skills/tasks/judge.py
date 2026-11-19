@@ -72,8 +72,11 @@ def _run_worker(code: str, request: dict, timeout: int) -> dict:
 
 class Judge:
     def __init__(self, task: Task, *, seed: int, library: bool, meter=None,
-                 lag_ks=LAG_KS, timeout: int = TIMEOUT):
+                 lag_ks=LAG_KS, timeout: int = TIMEOUT, properties: bool = False):
+        """properties=True adds the declared-property checks of tasks/properties.py to the
+        visible checks; the default is the three checks the frozen study ran with."""
         self.task, self.seed, self.library = task, as_seed(seed), bool(library)
+        self.properties = bool(properties)
         self.meter, self.lag_ks, self.timeout = meter, tuple(lag_ks), timeout
         self.records: list[dict] = []
         self._attempt_positions: list = []
@@ -90,6 +93,8 @@ class Judge:
         request = dict(task=self.task.manifest(), task_sha256=self.task.sha256,
                        seed=self.seed, library=self.library,
                        lag_ks=list(self.lag_ks))
+        if self.properties:
+            request["properties"] = True
         result = _run_worker(code, request, self.timeout)
         from fin_skills.rsi.meter import event
         event("program_completed", task_sha256=self.task.sha256, result=result)

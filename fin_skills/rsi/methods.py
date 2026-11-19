@@ -103,6 +103,8 @@ class Episode:
         d = asdict(self)
         d.update(accepted=self.accepted, library_used=self.library_used,
                  arm=arm_name(self.library, self.cards))
+        if getattr(self, "extra", None):          # what a method records beyond its steps
+            d["extra"] = dict(self.extra)
         return d
 
 
