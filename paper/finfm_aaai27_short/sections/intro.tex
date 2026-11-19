@@ -5,8 +5,7 @@ Financial research code fails silently. A program that applies stock splits twic
 a position with the close it trades over, or leaves warm-up rows missing still runs and
 still returns a backtest (Figure~\ref{fig:episode}). Language models are moving into
 financial work \citep{nie2024survey,kong2024applications,dong2025agents}, and agents now write
-such code
-\citep{zhang2024finagent,bigeard2025finance}. They make these mistakes: in our earlier
+such code \citep{zhang2024finagent,bigeard2025finance}. They make these mistakes: in our earlier
 audit, all 24 programs a 14B coding model wrote re-applied split factors that the prompt
 defined as already cumulative. The problem does not go away when a foundation model
 supplies the forecast or the portfolio weights
@@ -29,20 +28,21 @@ language models in finance, about a quarter acknowledge look-ahead bias
 
 \lib{} puts all three behind interfaces an agent can call (Figure~\ref{fig:overview}).
 PyOD put outlier detectors behind one interface \citep{zhao2019pyod,chen2025pyod2}, which let
-ADBench
-compare them on equal terms \citep{han2022adbench}. \lib{} does the same for
+ADBench compare them on equal terms \citep{han2022adbench}. \lib{} does the same for
 self-improvement: every method gets the same judge and the same metered budget. A user
 connects a model once, as one \texttt{generate(messages)} callable. Our contributions:
 \begin{itemize}
-\item an agent-native library of skills, checks and tools (\S\ref{sec:library});
+\item an agent-native library of skills, checks and tools, including \texttt{route()}, which
+asks the connected model which catalogue rule computes a rule described in words
+(\S\ref{sec:library});
 \item \NMethods{} self-improvement methods behind one interface with equal budgets
 (\S\ref{sec:methods});
 \item \NTasks{} financial programming tasks with independent references, a hidden grader, an
 algorithm-level held-out split and real-price panels (\S\ref{sec:tasks});
-\item a study fixed before any test run, on \StudyModels{} open-weight models: feedback
-against repetition at the same temperature, the library against none, the \NMethods{}
-methods, and what the library's interface text does to public BizBench questions
-(\S\ref{sec:study}).
+\item a study on \StudyModels{} open-weight models: the library against none on held-out tasks,
+how models find the right call, and, without the library, error feedback against repetition
+and the \NMethods{} methods (\S\ref{sec:study}).
 \end{itemize}
-The first results point at adoption, not capability: models that could solve a task with one
-library call rarely make it (\S\ref{sec:results}).
+Models get held-out tasks right with the library once they know which call computes the rule.
+Letting them name it through \texttt{route()} works as well as naming it for them, for models of
+\FixSizeCut{} parameters and more (\S\ref{sec:results}).

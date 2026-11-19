@@ -19,26 +19,62 @@ Portal: https://openreview.net/group?id=AAAI.org%2F2027%2FWorkshop%2FFinFM
 
 ## Layout
 
-Since 2026-11-10 the text describes the study that actually ran (section 5, "Study
-protocol": tracks P, E and S, frozen on 2026-11-08), not the earlier four-arm design. Its
-numbers are in `study_numbers.tex`, read from the frozen plan.
+Since 2026-11-18 the paper reports experiments on the library as it now is (decided with the
+author): section 5 "Study" has two parts, and section 6 reports them.
 
-Since 2026-11-12 section 6 reports the models that have finished (17 of 20 for P and E, 4 of 5
-core models for S), one row per model, pooled nothing (the protocol allows only a per-model
-description until all 20 finish). `make_results.py` writes `results_numbers.tex` and
-`results_table.tex` from `study_summary.min.json`, a digest of read-only Slurm jobs 3620741,
-3620783 and 3620797 whose SHA-256 the script checks; three further facts carry their job IDs in
-the script. Track E is reported within 1% (BizBench's own criterion) rather than by exact match,
-because 115 of the 200 CodeFinQA labels are float32 leftovers; see
-`docs/E_ENDPOINT_DEVIATION_20261112.md` on branch `claude/frozen-study-fixes`. Figure 2 moved to
-the appendix to keep the technical content within four pages; it now ends about two thirds
-down the right column of page 4. When the last three models finish, refresh the digest and
-rerun `make_results.py`.
+- **The library on held-out tasks (P-fix v4).** Arms F0 (no library), F1 (the position
+  interface), F2 (F1 plus one sentence naming the call, id from the harness), F3 (F1 with each
+  algorithm's rule documented) and F4 (`route()` first, then F2's sentence with the id the model
+  named), Check feedback, six visible checks, 3 programs, 6 calls, 12,288 tokens per episode,
+  4,096 per reply, 6 held-out tasks x 3 seeds, 20 models, on Zaratan H100s. F1-F0, F2-F0 and
+  F2-F1 were declared first; F3, F4 and the 14B split are exploratory. Design and amendments 1-3:
+  `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix` (library source b8417dcc).
+  `pfix_analysis.json` is `scripts/analyze_p_fix.py runs-v4/main out.json --doc-root
+  runs-v4/main --route-root runs-v4/main` (4830421c on `claude/pfix`);
+  `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and `results_table.tex`, and
+  asserts every direction the prose states. The analysis was re-pinned at f9962b897bb9... when
+  it gained `repair` (episodes in which a new property check flagged a program) and `told`
+  (F2, and F4 after a right route: did the last program call positions()); nothing else changed.
+  One number comes from the analysis before amendment 3 (commit 49891186, sha256
+  1b5ac441666a...) and is a documented constant in the script: 81 accepted-but-wrong F0
+  programs under the first three checks.
+- **Feedback and self-improvement without the library.** The no-library cells of the study frozen
+  on 2026-11-08 (`study_summary.min.json`, pinned in both generators). Its library conditions
+  and track E used an earlier interface text; they are released, not reported.
 
-The method table, rule cards and task table are in the appendix; the skill-arm figure is
-commented out here because that ablation was not run. Numbers, figures and tables come from
-`../latex_acl2027/` (`make_numbers.py`), so the three versions cannot disagree. The condensed
-text is in `sections/`.
+One positions() call with each task's parameters and factor convention is valid on all 18
+held-out task x seed pairs (checked with the judge on 2026-11-18). Technical content ends at
+the bottom of page 4 (2026-11-19, with no spare line): any addition needs a cut. The study's six
+held-out tasks are those of the suite of 8 November; in the current 34-task split Bollinger is a
+development task, and section 4 says so. `make_results.py` and `results_numbers.tex` still build the earlier frozen-study draft's
+macros; the text no longer uses its numbers.
+
+## Figures (2026-11-19, second design)
+
+Figure 1 is the system overview (Howard). The three data figures were redesigned after an
+independent review and a survey of result figures in benchmark and Nature papers (project doc
+`claude/PAPER_FIGURES.md`): each shows every model, carries the paper's argument rather than
+repeating the text, and is drawn in a journal style (bold lower-case panel letters, thin axes,
+outward ticks, no grid). `make_pfix_figures.py` draws them from the pinned analysis (it imports
+the hash from `make_pfix_results.py`) at the exact column or text width, and refuses to save a
+figure with text below 7 pt, text outside the figure or overlapping labels. `--png` also
+writes previews.
+
+- Page 2, Figure 1: the library overview (shared with the ACL draft).
+- Page 2, Figure 2 `pfix_models.pdf`: one column per model ordered by size; F0 open, F4 filled,
+  F2 dash; pooled numbers per size group; qwen3-4b and qwen3-30b-a3b labelled.
+- Page 3, Figure 3 `pfix_arms.pdf`: what each arm adds (design matrix) beside a strip per arm
+  with every model and the two size-group pools.
+- Page 4, Figure 4 `pfix_analysis.pdf` (full width): (a) how episodes ended (valid first, valid
+  later, accepted but wrong, rejected) by arm and size group; (b) the 360 F4 episodes as a flow
+  from what `route()` named to the last program to the outcome; (c) checks failed among programs
+  that ran, all arms; (d) flagged then fixed.
+- Page 1 has no figure: a full-width figure cannot print on page 1, and no figure may precede
+  Figure 1.
+- Appendix: per-model table (`results_table.tex`) and the no-library study as a table
+  (`frozen_table.tex`, written by `make_pfix_results.py`).
+
+Track: Benchmark (Howard, 2026-11-19).
 
 ## Template and build
 

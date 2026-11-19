@@ -1,60 +1,54 @@
-\section{Preliminary results}
+\section{Results}
 \label{sec:results}
 
-\ResModelsDone{} of the \StudyModels{} models have finished tracks P and E, and \ResCoreS{}
-of the \StudyCoreModels{} core models track S; \ResModelsRunning{} are still running
-(Table~\ref{tab:results}). Until all have finished the protocol allows only a description per
-model, so nothing below is pooled.
+\paragraph{Knowing the call is what helps.}
+Pooled over \FixModels{} models and \FixArm{} episodes per arm (Figures~\ref{fig:headline}
+and~\ref{fig:analysis}a), F0 was valid in \FixFZeroValid{} episodes (\FixFZeroPct\%), F1 in
+\FixFOneValid{} (\FixFOnePct\%) and F2 in \FixFTwoValid{} (\FixFTwoPct\%), better than F0 in
+\FixFTwoMinusFZeroBetter{} models and worse in none. With the interface alone, models mostly wrapped a
+rule of their own: \FixFOneUsesSignalPositions{} of \FixFOnePrograms{} programs passed their own
+states to \texttt{signal\_positions()}, \FixFOneUsesPositions{} called \texttt{positions()}. Documenting
+each rule did not change that: F3 matched F1 (\FixFThreeValid{} valid) and only
+\FixFThreeLastCalls{} episodes ended on a library call. Asking the model did. \texttt{route()}
+returned the task's rule in \FixRouteRight{} of \FixArm{} F4 episodes, nothing in
+\FixRouteNone{} and a wrong rule in \FixRouteWrong{} (Figure~\ref{fig:analysis}b), and F4
+was valid in \FixFFourValid{} (\FixFFourPct\%): \FixFFourMinusFTwo{} points from F2,
+\FixFFourMinusFZero{} over F0, better in \FixFFourMinusFZeroBetter{} models, worse in none, and
+at 0 in both for the other \FixFFourSameAtZero.
 
-\begin{table}[t]
-\centering\scriptsize\setlength{\tabcolsep}{2.5pt}
-\input{results_table}
-\caption{Finished models ($^\ast$: core). P: valid episodes of 54 without / with the library,
-summed over the three arms, and programs that called the library and ran. E: share within 1\%
-of the label (sources weighted equally) and episodes of 1,101 with no program in the reply,
-each without $\to$ with the library.}
-\label{tab:results}
-\end{table}
+\paragraph{The gain is in the larger models.}
+The \FixLargeModels{} models of \FixSizeCut{} parameters or more named the right rule in all
+\FixLargeRouteRight{} of their F4 episodes and rose from \FixLargeFZeroPct\% in F0 to
+\FixLargeFFourPct\% (F2 \FixLargeFTwoPct\%); each did better, \FixLargeFFourByOne{} by one
+episode. Told the rule, they still kept a rule of their own in \FixLargeFFourToldOwn{} of
+\FixLargeFFourTold{} episodes (Figure~\ref{fig:analysis}b). The \FixSmallModels{} smaller models
+never exceeded \FixSmallMaxPct\%: after \FixSmallFFourTold{} right routes, no program ran at
+all in \FixSmallFFourToldNoProgram; no wrong route gave a valid episode.
 
-\paragraph{The library goes unused.}
-One library call solves every held-out task, but the library arms almost never make it:
-across all models \ResLibCallsRan{} programs that called the library ran, and \ResValidWithLib{}
-episodes were valid with a library call. \ResZeroP{} models wrote no valid program in any of
-their \StudyPEpisodes{} episodes; the most was \ResBestP{} (\texttt{\ResBestPModel}). The visible
-checks let many wrong programs through: \ResQwenAcceptedWrong{} of
-\texttt{qwen-coder-32b}'s \ResQwenAccepted{} accepted episodes were wrong. Per model,
-\texttt{Explain} minus \texttt{Check} ranged from 0 to +\ResExplainCheckMax{} points and was
-never negative, \texttt{Check} minus \texttt{Repeat} from \ResCheckRepeatMin{} to
-+\ResCheckRepeatMax{}, and the library under \texttt{Explain} from \ResLibExplainMin{} to
-+\ResLibExplainMax{}.
+\paragraph{What the checks see.}
+Of the programs that ran, \FixFZeroFailedExecutionLag{} of \FixFZeroRan{} in F0 traded on a
+close they read and \FixFZeroFailedWarmupRowsZero{} held positions in warm-up rows; in F4,
+\FixFFourFailedExecutionLag{} and \FixFFourFailedWarmupRowsZero{} of \FixFFourRan{}
+(Figure~\ref{fig:analysis}c). Final programs that passed all six checks but were wrong numbered
+\FixFZeroAcceptedWrong, \FixFOneAcceptedWrong, \FixFTwoAcceptedWrong, \FixFThreeAcceptedWrong{}
+and \FixFFourAcceptedWrong{} in F0--F4; no property check sees another rule or a one-row delay.
+Models rarely fixed what the new checks flagged (Figure~\ref{fig:analysis}d).
 
-\paragraph{Track E measures the interface text.}
-The library left both \texttt{qwen-coder} models unchanged within 1\%
-(\ResEQwenCoderBigNo{} to \ResEQwenCoderBigLib\%, \ResEQwenCoderMidNo{} to
-\ResEQwenCoderMidLib\%), but \ResELibLower{} of the \ResModelsDone{} models lost accuracy,
-\texttt{\ResEWorstModel} the most (\ResEWorstNo{} to \ResEWorstLib\%). The loss is one of format:
-after the interface text, smaller models answered in prose (\texttt{\ResEWorstModel}:
-\ResEWorstNoProgNo{} to \ResEWorstNoProgLib{} episodes without a program). No valid answer, in
-any model, called the library.
-
-\paragraph{Self-improvement.}
-In track S only \texttt{qwen-coder-32b} wrote valid programs (\ResSQwen{} of \ResSEpisodes{}
-episodes; the other core models \ResSOthers). Out of 18 episodes without and with the library,
-\texttt{NoImprove} had \ResSQwenNoImprove{}, \texttt{PlaybookLearning} \ResSQwenPlaybook{},
-\texttt{Evolve} \ResSQwenEvolve{}, \texttt{CheckFeedback} \ResSQwenCheckFeedback{},
-\texttt{Reflexion} \ResSQwenReflexion{}, \texttt{SelfDebug} \ResSQwenSelfDebug{} and
-\texttt{Team} \ResSQwenTeam{}.
+\paragraph{Feedback and self-improvement without the library.}
+Of \FrozenArm{} episodes per arm, \texttt{Repeat} was valid in \FrozenRepeat, \texttt{Check} in
+\FrozenCheck{} and \texttt{Explain} in \FrozenExplain{} (Appendix Table~\ref{tab:frozen}). Of \SNoLibEpisodes{} episodes on the core models, \texttt{NoImprove} was valid in \SNoLibNoImprove{} and the
+other methods in \SNoLibSelfDebug{} (\texttt{SelfDebug}) to \SNoLibCheckFeedback{}
+(\texttt{CheckFeedback}, \texttt{Evolve}); every gain came from the two core models that
+\texttt{NoImprove} already solved sometimes.
 
 \paragraph{Limitations.}
-The study covers three position rules on synthetic panels, all among the library's own, and
-public questions the library does not cover; the newer tasks and the real panel are released
-but not evaluated here. All tasks are public, so a model may have seen them. No track measures
-returns, and we make no claim about them. The checks reject only the failures they were
-written for. We moved track E's reported endpoint from exact matching to 1\% after the runs,
-because of the label defect; exact results are released with the rest. The frozen source had
-three defects that the release fixes: \texttt{Evolve} chose the development failures it showed
-its proposer by the hidden grade; without the library, the \texttt{PlaybookLearning} proposer
-saw library hints in \FactLeakPrompts{} of \FactLeakOf{} development prompts (in no test
-prompt); and a reply fenced as \texttt{Python} rather than \texttt{python} ran whole as code.
-All models are open-weight, under one attempt budget and at most \StudyOutputCap{} generated
-tokens per call, which cuts off long reasoning.
+We revised the library three times after seeing results on these six held-out tasks (each run is
+released); the new checks, the factor reading and \texttt{route()} answer what those runs
+showed, and every arm was rerun on the last revision. The tasks therefore no longer test a
+library fixed in advance; a frozen library on unseen tasks is the next step. The tasks are three
+public position rules on synthetic panels, all among the library's own. No experiment measures
+returns. The library study's cluster lacks Landlock: programs could not open sockets or start
+processes, but file access was not confined, and a scan of every program found none that
+touches files, the network or other processes (\FixScanNotPython{} texts did not parse and
+could not run). All models are open-weight, at most 32B, with at most
+\FixOutputCap{} generated tokens per reply (\StudyOutputCap{} in the earlier study).
