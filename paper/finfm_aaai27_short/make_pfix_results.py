@@ -42,8 +42,8 @@ DESIGN = dict(FixInterfaceChars="5,657", FixInterfaceAlgorithms=12, FixOutputCap
               FixCalls=6, FixTokens="12,288")
 # From the analysis of the runs before amendment 3 (pfix_analysis.json at commit 49891186, sha256
 # 1b5ac441666a...): pooled["F0"]["accepted_wrong"] (F0 from run v1, judged with the first three
-# checks) and funnel["F2"]["last_calls_library_accepted_wrong_rescaled"] (F2 from run v2).
-EARLIER = dict(FixEarlierFZeroAcceptedWrong=81, FixEarlierFTwoRescaled=15)
+# checks).
+EARLIER = dict(FixEarlierFZeroAcceptedWrong=81)
 # How each library-error group of analyze_p_fix.py reads in a sentence.
 PROSE = {"argument that does not apply to the algorithm": "an argument that does not apply to the algorithm",
          "too few rows (called on a slice)": r"a call on a slice of the rows",
@@ -243,7 +243,13 @@ def main(argv):
         assert big["routing"]["right"] == big["pooled"]["F4"]["n"], "a large model misrouted"
         assert {x["contrast"]: x for x in big["exploratory_contrasts"]}["F4-F0"]["better"] == \
             len(big["models"]), "not every large model did better with route()"
-        assert all(100 * p["valid"] / p["n"] < 7 for p in small["pooled"].values()), "small >= 7%"
+        sp = small["pooled"]
+        assert num["FixSmallMaxPct"] == max(pct(sp[a]["valid"], sp[a]["n"]) for a in sp), "small max"
+        rp = fix["repair"]
+        assert all(2 * rp[a]["then_valid"] < rp[a]["with_another_attempt"] for a in rp), "repair rare"
+        st = small["told"]["F4"]
+        assert st["episodes"] == small["routing"]["right"] and \
+            st["last_calls_positions"] < st["episodes"] / 2, "small models told the rule"
         assert fix["routing"].get("wrong_valid", 0) == 0, "a wrong route was valid"
         assert f2["last_calls_library_accepted_wrong_rescaled"] == 0 == \
             fix["funnel"]["F4"]["last_calls_library_accepted_wrong_rescaled"], "a call scaled twice"

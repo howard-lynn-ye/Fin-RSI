@@ -30,12 +30,14 @@ author): section 5 "Study" has two parts, and section 6 reports them.
   F2-F1 were declared first; F3, F4 and the 14B split are exploratory. Design and amendments 1-3:
   `docs/P_FIX_STUDY_DESIGN_20261118.md` on branch `claude/pfix` (library source b8417dcc).
   `pfix_analysis.json` is `scripts/analyze_p_fix.py runs-v4/main out.json --doc-root
-  runs-v4/main --route-root runs-v4/main` at 6a782a8d, sha256 e2eb603d78cb...;
+  runs-v4/main --route-root runs-v4/main` (4830421c on `claude/pfix`);
   `make_pfix_results.py` pins that hash, writes `pfix_numbers.tex` and `results_table.tex`, and
-  asserts every direction the prose states. Two numbers come from the analysis before amendment 3
-  (commit 49891186, sha256 1b5ac441666a...) and are documented constants in the script: 81
-  accepted-but-wrong F0 programs under the first three checks, and 15 F2 library calls scaled
-  twice.
+  asserts every direction the prose states. The analysis was re-pinned at f9962b897bb9... when
+  it gained `repair` (episodes in which a new property check flagged a program) and `told`
+  (F2, and F4 after a right route: did the last program call positions()); nothing else changed.
+  One number comes from the analysis before amendment 3 (commit 49891186, sha256
+  1b5ac441666a...) and is a documented constant in the script: 81 accepted-but-wrong F0
+  programs under the first three checks.
 - **Feedback and self-improvement without the library.** The no-library cells of the study frozen
   on 2026-11-08 (`study_summary.min.json`, pinned in both generators). Its library conditions
   and track E used an earlier interface text; they are released, not reported.
